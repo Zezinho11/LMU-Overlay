@@ -21,5 +21,6 @@ jobs:
       - run: dotnet restore
       - run: dotnet build --no-restore --configuration Release
       - run: dotnet run --no-build --configuration Release --project tests/LmuOverlay.Core.Tests
+      - run: dotnet run --no-build --configuration Release --project tests/LmuOverlay.Desktop.Tests
       - run: dotnet run --no-build --configuration Release --project tests/LmuOverlay.Domain.Tests
       - run: dotnet run --no-build --configuration Release --project tests/LmuOverlay.LmuSharedMemory.Tests
