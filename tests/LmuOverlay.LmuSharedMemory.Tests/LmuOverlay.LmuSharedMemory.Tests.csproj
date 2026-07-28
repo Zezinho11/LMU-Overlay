@@ -9,4 +9,10 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\LmuOverlay.LmuSharedMemory\LmuOverlay.LmuSharedMemory.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <Content Include="..\fixtures\spa-single-vehicle.snapshot.json">
+      <Link>fixtures\spa-single-vehicle.snapshot.json</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
 </Project>
