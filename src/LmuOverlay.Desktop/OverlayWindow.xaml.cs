@@ -64,6 +64,41 @@ public partial class OverlayWindow : Window
 
     public bool IsEditMode { get; private set; }
     public LayoutProfile CurrentProfile => _profile;
+    public string ActiveProfileName => _layoutStore.ActiveProfileName;
+    public IReadOnlyList<string> ProfileNames => _layoutStore.ProfileNames;
+
+    public void SwitchProfile(string name)
+    {
+        _profile = _layoutStore.Switch(name);
+        ApplyProfile();
+    }
+
+    public void CreateProfile(string name, bool duplicateCurrent)
+    {
+        _profile = _layoutStore.Create(
+            name,
+            duplicateCurrent ? _profile : LayoutProfile.Default);
+        ApplyProfile();
+    }
+
+    public void RenameProfile(string newName) =>
+        _layoutStore.Rename(ActiveProfileName, newName);
+
+    public void DeleteActiveProfile()
+    {
+        _profile = _layoutStore.Delete(ActiveProfileName);
+        ApplyProfile();
+    }
+
+    public void ExportActiveProfile(string destinationPath) =>
+        _layoutStore.Export(ActiveProfileName, destinationPath);
+
+    public void ImportProfile(string sourcePath)
+    {
+        var importedName = _layoutStore.Import(sourcePath);
+        _profile = _layoutStore.Switch(importedName);
+        ApplyProfile();
+    }
 
     public void UpdateFrame(Rect gameBounds, LmuTelemetrySnapshot snapshot)
     {

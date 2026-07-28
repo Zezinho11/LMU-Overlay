@@ -2,13 +2,14 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="LMU Overlay — Configuração"
-        Width="560" Height="470"
-        MinWidth="520" MinHeight="430"
+        Width="650" Height="610"
+        MinWidth="620" MinHeight="570"
         WindowStartupLocation="CenterScreen"
         Background="#FF0B1117"
         Foreground="White">
     <Grid Margin="22">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
@@ -20,11 +21,46 @@
                    FontWeight="Bold"
                    FontSize="22" />
         <TextBlock Grid.Row="1"
-                   Text="Widgets do perfil Padrão"
-                   Foreground="#FFAAB7C4"
-                   FontSize="12"
-                   Margin="0,3,0,18" />
-        <Grid Grid.Row="2">
+                   Text="PERFIS DE LAYOUT"
+                   Foreground="#FF788795"
+                   FontWeight="Bold"
+                   FontSize="10"
+                   Margin="0,14,0,5" />
+        <Grid Grid.Row="2" Margin="0,0,0,20">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <ComboBox x:Name="ProfileSelector"
+                      Grid.Column="0"
+                      Height="32"
+                      Margin="0,0,8,0"
+                      VerticalContentAlignment="Center"
+                      SelectionChanged="ProfileSelectionChanged" />
+            <Button Grid.Column="1" Content="Novo"
+                    Click="NewProfileClicked" Padding="12,6" Margin="0,0,6,0" />
+            <Button Grid.Column="2" Content="Duplicar"
+                    Click="DuplicateProfileClicked" Padding="12,6" Margin="0,0,6,0" />
+            <Button Grid.Column="3" Content="Renomear"
+                    Click="RenameProfileClicked" Padding="12,6" Margin="0,0,6,0" />
+            <Button Grid.Column="4" Content="Excluir"
+                    Click="DeleteProfileClicked" Padding="12,6" />
+            <StackPanel Grid.Row="1" Grid.ColumnSpan="5"
+                        Orientation="Horizontal" Margin="0,9,0,0">
+                <Button Content="Importar perfil"
+                        Click="ImportProfileClicked" Padding="12,6" Margin="0,0,6,0" />
+                <Button Content="Exportar perfil"
+                        Click="ExportProfileClicked" Padding="12,6" />
+            </StackPanel>
+        </Grid>
+        <Grid Grid.Row="3">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="190" />
                 <ColumnDefinition Width="*" />
@@ -92,8 +128,8 @@
             <TextBlock Grid.Row="6" Grid.Column="2" VerticalAlignment="Center"
                        Text="{Binding ElementName=FuelOpacity, Path=Value, StringFormat={}{0:P0}}" />
         </Grid>
-        <DockPanel Grid.Row="3" Margin="0,20,0,0">
-            <Button Content="Restaurar layout"
+        <DockPanel Grid.Row="4" Margin="0,20,0,0">
+            <Button Content="Restaurar perfil"
                     Click="ResetClicked"
                     Padding="14,8"
                     Background="#FF202A33"
