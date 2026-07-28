@@ -14,6 +14,7 @@ public partial class App
     };
 
     private OverlayWindow? _overlay;
+    private ConfigurationWindow? _configurationWindow;
     private WinForms.NotifyIcon? _trayIcon;
     private LmuSharedMemoryReader? _reader;
     private DateTimeOffset _lastReconnectAttempt;
@@ -31,6 +32,8 @@ public partial class App
     private void CreateTrayIcon()
     {
         var menu = new WinForms.ContextMenuStrip();
+        menu.Items.Add("Configurar widgets", null, (_, _) => ShowConfiguration());
+        menu.Items.Add(new WinForms.ToolStripSeparator());
         menu.Items.Add("Editar layout", null, (_, _) => SetEditMode(true));
         menu.Items.Add("Bloquear overlay", null, (_, _) => SetEditMode(false));
         menu.Items.Add("Restaurar layout", null, (_, _) => _overlay?.ResetLayout());
@@ -50,6 +53,25 @@ public partial class App
     private void SetEditMode(bool enabled)
     {
         _overlay?.SetEditMode(enabled);
+    }
+
+    private void ShowConfiguration()
+    {
+        if (_overlay is null)
+        {
+            return;
+        }
+
+        if (_configurationWindow is null)
+        {
+            _configurationWindow = new ConfigurationWindow(_overlay);
+            _configurationWindow.Closed += (_, _) => _configurationWindow = null;
+            _configurationWindow.Show();
+        }
+        else
+        {
+            _configurationWindow.Activate();
+        }
     }
 
     private void OnTick(object? sender, EventArgs e)
@@ -116,6 +138,7 @@ public partial class App
         _isExiting = true;
         _timer.Stop();
         _reader?.Dispose();
+        _configurationWindow?.Close();
         _overlay?.Close();
         if (_trayIcon is not null)
         {

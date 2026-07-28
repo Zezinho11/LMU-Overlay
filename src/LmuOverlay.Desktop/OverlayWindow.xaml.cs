@@ -63,6 +63,7 @@ public partial class OverlayWindow : Window
     }
 
     public bool IsEditMode { get; private set; }
+    public LayoutProfile CurrentProfile => _profile;
 
     public void UpdateFrame(Rect gameBounds, LmuTelemetrySnapshot snapshot)
     {
@@ -244,6 +245,16 @@ public partial class OverlayWindow : Window
         _profile = LayoutProfile.Default;
         ApplyProfile();
         SaveProfile();
+    }
+
+    public void ApplyDisplaySettings(LayoutProfile profile)
+    {
+        _profile = profile with
+        {
+            SchemaVersion = LayoutProfile.CurrentSchemaVersion,
+        };
+        ApplyProfile();
+        _layoutStore.Save(_profile);
     }
 
     private void ApplyProfile()
