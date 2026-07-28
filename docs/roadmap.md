@@ -52,6 +52,8 @@
 - [x] Add the first configuration window with widget visibility, opacity, and
   live application.
 - [x] Add named profiles and profile import/export.
+- [x] Add an always-interactive floating toolbar for direct profile switching,
+  configuration, edit mode, and explicit layout locking.
 - [x] Add advanced weighted fuel/energy projection, fuel-saving target, pit-lap
   recommendation, fuel-to-add amount, reserve, and confidence.
 - [x] Add self-contained Windows packaging, checksums, CI artifacts, and
