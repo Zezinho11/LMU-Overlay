@@ -2,8 +2,8 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="LMU Overlay — Configuração"
-        Width="650" Height="610"
-        MinWidth="620" MinHeight="570"
+        Width="900" Height="780"
+        MinWidth="820" MinHeight="700"
         WindowStartupLocation="CenterScreen"
         Background="#FF0B1117"
         Foreground="White">
@@ -13,6 +13,7 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
         <TextBlock Text="REDFOX RACING"
@@ -57,12 +58,16 @@
                 <Button Content="Importar perfil"
                         Click="ImportProfileClicked" Padding="12,6" Margin="0,0,6,0" />
                 <Button Content="Exportar perfil"
-                        Click="ExportProfileClicked" Padding="12,6" />
+                        Click="ExportProfileClicked" Padding="12,6" Margin="0,0,6,0" />
+                <Button Content="Exportar diagnóstico"
+                        Click="ExportDiagnosticsClicked" Padding="12,6" />
             </StackPanel>
         </Grid>
         <Grid Grid.Row="3">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="190" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="54" />
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="54" />
             </Grid.ColumnDefinitions>
@@ -74,10 +79,13 @@
                 <RowDefinition Height="*" />
                 <RowDefinition Height="*" />
                 <RowDefinition Height="*" />
+                <RowDefinition Height="*" />
             </Grid.RowDefinitions>
             <TextBlock Grid.Row="0" Grid.Column="0" Text="VISIBILIDADE"
                        Foreground="#FF788795" FontWeight="Bold" FontSize="10" />
             <TextBlock Grid.Row="0" Grid.Column="1" Text="OPACIDADE"
+                       Foreground="#FF788795" FontWeight="Bold" FontSize="10" />
+            <TextBlock Grid.Row="0" Grid.Column="3" Text="ESCALA"
                        Foreground="#FF788795" FontWeight="Bold" FontSize="10" />
 
             <CheckBox x:Name="DashboardVisible" Grid.Row="1" Grid.Column="0"
@@ -87,6 +95,11 @@
                     VerticalAlignment="Center" />
             <TextBlock Grid.Row="1" Grid.Column="2" VerticalAlignment="Center"
                        Text="{Binding ElementName=DashboardOpacity, Path=Value, StringFormat={}{0:P0}}" />
+            <Slider x:Name="DashboardScale" Grid.Row="1" Grid.Column="3"
+                    Minimum="0.5" Maximum="2" TickFrequency="0.05"
+                    VerticalAlignment="Center" />
+            <TextBlock Grid.Row="1" Grid.Column="4" VerticalAlignment="Center"
+                       Text="{Binding ElementName=DashboardScale, Path=Value, StringFormat={}{0:0.00}x}" />
 
             <CheckBox x:Name="InputsVisible" Grid.Row="2" Grid.Column="0"
                       Content="Inputs" VerticalAlignment="Center" />
@@ -95,6 +108,11 @@
                     VerticalAlignment="Center" />
             <TextBlock Grid.Row="2" Grid.Column="2" VerticalAlignment="Center"
                        Text="{Binding ElementName=InputsOpacity, Path=Value, StringFormat={}{0:P0}}" />
+            <Slider x:Name="InputsScale" Grid.Row="2" Grid.Column="3"
+                    Minimum="0.5" Maximum="2" TickFrequency="0.05"
+                    VerticalAlignment="Center" />
+            <TextBlock Grid.Row="2" Grid.Column="4" VerticalAlignment="Center"
+                       Text="{Binding ElementName=InputsScale, Path=Value, StringFormat={}{0:0.00}x}" />
 
             <CheckBox x:Name="StandingsVisible" Grid.Row="3" Grid.Column="0"
                       Content="Live Standings" VerticalAlignment="Center" />
@@ -103,6 +121,11 @@
                     VerticalAlignment="Center" />
             <TextBlock Grid.Row="3" Grid.Column="2" VerticalAlignment="Center"
                        Text="{Binding ElementName=StandingsOpacity, Path=Value, StringFormat={}{0:P0}}" />
+            <Slider x:Name="StandingsScale" Grid.Row="3" Grid.Column="3"
+                    Minimum="0.5" Maximum="2" TickFrequency="0.05"
+                    VerticalAlignment="Center" />
+            <TextBlock Grid.Row="3" Grid.Column="4" VerticalAlignment="Center"
+                       Text="{Binding ElementName=StandingsScale, Path=Value, StringFormat={}{0:0.00}x}" />
 
             <CheckBox x:Name="RelativeVisible" Grid.Row="4" Grid.Column="0"
                       Content="Relative" VerticalAlignment="Center" />
@@ -111,6 +134,11 @@
                     VerticalAlignment="Center" />
             <TextBlock Grid.Row="4" Grid.Column="2" VerticalAlignment="Center"
                        Text="{Binding ElementName=RelativeOpacity, Path=Value, StringFormat={}{0:P0}}" />
+            <Slider x:Name="RelativeScale" Grid.Row="4" Grid.Column="3"
+                    Minimum="0.5" Maximum="2" TickFrequency="0.05"
+                    VerticalAlignment="Center" />
+            <TextBlock Grid.Row="4" Grid.Column="4" VerticalAlignment="Center"
+                       Text="{Binding ElementName=RelativeScale, Path=Value, StringFormat={}{0:0.00}x}" />
 
             <CheckBox x:Name="SessionVisible" Grid.Row="5" Grid.Column="0"
                       Content="Session / Flags" VerticalAlignment="Center" />
@@ -119,6 +147,11 @@
                     VerticalAlignment="Center" />
             <TextBlock Grid.Row="5" Grid.Column="2" VerticalAlignment="Center"
                        Text="{Binding ElementName=SessionOpacity, Path=Value, StringFormat={}{0:P0}}" />
+            <Slider x:Name="SessionScale" Grid.Row="5" Grid.Column="3"
+                    Minimum="0.5" Maximum="2" TickFrequency="0.05"
+                    VerticalAlignment="Center" />
+            <TextBlock Grid.Row="5" Grid.Column="4" VerticalAlignment="Center"
+                       Text="{Binding ElementName=SessionScale, Path=Value, StringFormat={}{0:0.00}x}" />
 
             <CheckBox x:Name="FuelVisible" Grid.Row="6" Grid.Column="0"
                       Content="Fuel / Virtual Energy" VerticalAlignment="Center" />
@@ -127,8 +160,87 @@
                     VerticalAlignment="Center" />
             <TextBlock Grid.Row="6" Grid.Column="2" VerticalAlignment="Center"
                        Text="{Binding ElementName=FuelOpacity, Path=Value, StringFormat={}{0:P0}}" />
+            <Slider x:Name="FuelScale" Grid.Row="6" Grid.Column="3"
+                    Minimum="0.5" Maximum="2" TickFrequency="0.05"
+                    VerticalAlignment="Center" />
+            <TextBlock Grid.Row="6" Grid.Column="4" VerticalAlignment="Center"
+                       Text="{Binding ElementName=FuelScale, Path=Value, StringFormat={}{0:0.00}x}" />
+
+            <CheckBox x:Name="RaceControlVisible" Grid.Row="7" Grid.Column="0"
+                      Content="Race Control / Damage" VerticalAlignment="Center" />
+            <Slider x:Name="RaceControlOpacity" Grid.Row="7" Grid.Column="1"
+                    Minimum="0.2" Maximum="1" TickFrequency="0.05"
+                    VerticalAlignment="Center" />
+            <TextBlock Grid.Row="7" Grid.Column="2" VerticalAlignment="Center"
+                       Text="{Binding ElementName=RaceControlOpacity, Path=Value, StringFormat={}{0:P0}}" />
+            <Slider x:Name="RaceControlScale" Grid.Row="7" Grid.Column="3"
+                    Minimum="0.5" Maximum="2" TickFrequency="0.05"
+                    VerticalAlignment="Center" />
+            <TextBlock Grid.Row="7" Grid.Column="4" VerticalAlignment="Center"
+                       Text="{Binding ElementName=RaceControlScale, Path=Value, StringFormat={}{0:0.00}x}" />
         </Grid>
-        <DockPanel Grid.Row="4" Margin="0,20,0,0">
+        <Border Grid.Row="4" Margin="0,18,0,0" Padding="12"
+                Background="#FF111923" BorderBrush="#FF263645" BorderThickness="1">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <TextBlock Grid.ColumnSpan="4" Text="PERFIL, ESTRATÉGIA E DESEMPENHO"
+                           Foreground="#FF788795" FontWeight="Bold" FontSize="10"
+                           Margin="0,0,0,9" />
+                <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,12,0">
+                    <TextBlock Text="Tema" Foreground="#FF9BA8B5" FontSize="10" />
+                    <ComboBox x:Name="ThemeSelector" Height="28">
+                        <ComboBoxItem Content="RedFox" Tag="RedFox" />
+                        <ComboBoxItem Content="Preto" Tag="Black" />
+                        <ComboBoxItem Content="Alto contraste" Tag="HighContrast" />
+                    </ComboBox>
+                </StackPanel>
+                <StackPanel Grid.Row="1" Grid.Column="1" Margin="0,0,12,0">
+                    <TextBlock Text="Atualização (Hz)" Foreground="#FF9BA8B5" FontSize="10" />
+                    <Slider x:Name="RefreshRate" Minimum="2" Maximum="30"
+                            TickFrequency="1" IsSnapToTickEnabled="True" />
+                    <TextBlock Text="{Binding ElementName=RefreshRate, Path=Value, StringFormat={}{0:0} Hz}" />
+                </StackPanel>
+                <StackPanel Grid.Row="1" Grid.Column="2" Margin="0,0,12,0">
+                    <TextBlock Text="Grade magnética (px)" Foreground="#FF9BA8B5" FontSize="10" />
+                    <Slider x:Name="GridSnap" Minimum="0" Maximum="50"
+                            TickFrequency="5" IsSnapToTickEnabled="True" />
+                    <TextBlock Text="{Binding ElementName=GridSnap, Path=Value, StringFormat={}{0:0} px}" />
+                </StackPanel>
+                <StackPanel Grid.Row="1" Grid.Column="3">
+                    <TextBlock Text="Reserva combustível (voltas)" Foreground="#FF9BA8B5" FontSize="10" />
+                    <Slider x:Name="FuelReserve" Minimum="0" Maximum="5"
+                            TickFrequency="0.25" IsSnapToTickEnabled="True" />
+                    <TextBlock Text="{Binding ElementName=FuelReserve, Path=Value, StringFormat={}{0:0.00}}" />
+                </StackPanel>
+                <StackPanel Grid.Row="2" Grid.Column="0" Margin="0,10,12,0">
+                    <TextBlock Text="Reserva VE (%)" Foreground="#FF9BA8B5" FontSize="10" />
+                    <TextBox x:Name="EnergyReserve" Height="27" />
+                </StackPanel>
+                <StackPanel Grid.Row="2" Grid.Column="1" Margin="0,10,12,0">
+                    <TextBlock Text="Voltas restantes (0 = auto)" Foreground="#FF9BA8B5" FontSize="10" />
+                    <TextBox x:Name="ManualRemainingLaps" Height="27" />
+                </StackPanel>
+                <StackPanel Grid.Row="2" Grid.Column="2" Margin="0,10,12,0">
+                    <TextBlock Text="Máx. stint (0 = auto)" Foreground="#FF9BA8B5" FontSize="10" />
+                    <TextBox x:Name="MaximumStintLaps" Height="27" />
+                </StackPanel>
+                <StackPanel Grid.Row="2" Grid.Column="3" Margin="0,10,0,0">
+                    <TextBlock Text="Perda por pit (s)" Foreground="#FF9BA8B5" FontSize="10" />
+                    <TextBox x:Name="PitLossSeconds" Height="27" />
+                </StackPanel>
+            </Grid>
+        </Border>
+        <DockPanel Grid.Row="5" Margin="0,20,0,0">
             <Button Content="Restaurar perfil"
                     Click="ResetClicked"
                     Padding="14,8"

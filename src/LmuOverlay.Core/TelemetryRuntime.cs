@@ -9,6 +9,7 @@ public sealed record TelemetryRuntimeHealth(
     long FailedReads,
     long Reconnects,
     double LastReadMilliseconds,
+    double AverageReadMilliseconds,
     double MaximumReadMilliseconds,
     DateTimeOffset? LastSuccessfulRead,
     string LastError);
@@ -27,6 +28,7 @@ public sealed class TelemetryRuntime : IAsyncDisposable
     private long _failedReads;
     private long _reconnects;
     private long _lastReadTicks;
+    private long _totalReadTicks;
     private long _maximumReadTicks;
     private long _lastSuccessfulReadUtcTicks;
     private string _lastError = string.Empty;
@@ -57,6 +59,13 @@ public sealed class TelemetryRuntime : IAsyncDisposable
                 Interlocked.Read(ref _failedReads),
                 Interlocked.Read(ref _reconnects),
                 ToMilliseconds(Interlocked.Read(ref _lastReadTicks)),
+                successfulUtcTicks > 0
+                    ? ToMilliseconds(Interlocked.Read(ref _totalReadTicks)) /
+                      Math.Max(
+                          1,
+                          Interlocked.Read(ref _successfulReads) +
+                          Interlocked.Read(ref _failedReads))
+                    : 0,
                 ToMilliseconds(Interlocked.Read(ref _maximumReadTicks)),
                 successfulUtcTicks > 0
                     ? new DateTimeOffset(successfulUtcTicks, TimeSpan.Zero)
@@ -142,6 +151,7 @@ public sealed class TelemetryRuntime : IAsyncDisposable
     private void RecordReadDuration(long elapsedTicks)
     {
         Interlocked.Exchange(ref _lastReadTicks, elapsedTicks);
+        Interlocked.Add(ref _totalReadTicks, elapsedTicks);
         var maximum = Interlocked.Read(ref _maximumReadTicks);
         while (elapsedTicks > maximum)
         {

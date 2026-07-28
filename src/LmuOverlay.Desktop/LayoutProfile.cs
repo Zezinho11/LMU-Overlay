@@ -9,7 +9,12 @@ public sealed record LayoutProfile(
     WidgetPlacement SessionFlags,
     WidgetPlacement FuelStrategy)
 {
-    public const int CurrentSchemaVersion = 8;
+    public const int CurrentSchemaVersion = 9;
+
+    public WidgetPlacement RaceControl { get; init; } =
+        new(0.35, 0.25, 0.26, 0.18, 1, 0.96, true);
+
+    public OverlayProfileSettings Settings { get; init; } = new();
 
     public static LayoutProfile Default => new(
         CurrentSchemaVersion,
@@ -29,3 +34,16 @@ public sealed record WidgetPlacement(
     double Scale,
     double Opacity,
     bool Visible);
+
+public sealed record OverlayProfileSettings
+{
+    public bool Locked { get; init; } = true;
+    public string Theme { get; init; } = "RedFox";
+    public int RefreshRateHz { get; init; } = 10;
+    public int GridSnapPixels { get; init; } = 10;
+    public double FuelReserveLaps { get; init; } = 1;
+    public double EnergyReservePercent { get; init; } = 2;
+    public int ManualRemainingLaps { get; init; }
+    public int MaximumStintLaps { get; init; }
+    public double EstimatedPitLossSeconds { get; init; } = 30;
+}

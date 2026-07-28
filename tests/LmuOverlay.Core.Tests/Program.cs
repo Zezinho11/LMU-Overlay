@@ -25,6 +25,17 @@ await using (var runtime = new TelemetryRuntime(
     Require(runtime.Health.LastReadMilliseconds >= 0, "Runtime records read duration");
 }
 
+var healthyBudget = RuntimePerformanceBudget.Evaluate(
+    new TelemetryRuntimeHealth(
+        100, 0, 1, 1, 2, 8, DateTimeOffset.UtcNow, string.Empty),
+    120L * 1024 * 1024);
+Require(healthyBudget.WithinBudget, "Healthy runtime must pass performance budgets.");
+var slowBudget = RuntimePerformanceBudget.Evaluate(
+    new TelemetryRuntimeHealth(
+        100, 0, 1, 5, 6, 30, DateTimeOffset.UtcNow, string.Empty),
+    300L * 1024 * 1024);
+Require(!slowBudget.WithinBudget, "Slow and oversized runtime must fail budgets.");
+
 Console.WriteLine("Core checks passed.");
 return 0;
 

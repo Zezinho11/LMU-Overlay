@@ -42,7 +42,8 @@ Packing is 4 bytes. The shared object is 324,820 bytes and supports 104 vehicles
 |---|---|
 | Session | elapsed/end time, maximum laps, lap length, phase, realtime state |
 | Weather/RealRoad | cloud, rain, ambient/track temperatures, wind, min/max/average path wetness, track grip level |
-| Player | lap, speed, gear/RPM, inputs, fuel, battery/SoC, regen, virtual energy, per-wheel tire temperature/wear |
+| Player | lap, speed, gear/RPM, inputs, fuel, battery/SoC, regen, virtual energy, per-wheel tire temperature/wear/flat/detached state |
+| Damage | overheating, detached body part, dent severity, scheduled stops, last impact time/magnitude |
 | Driver aids | limiter, ABS, TC, invalid-lap state |
 | Standings | position, laps, sector, lap distance/times, gaps, class |
 | Race state | pit state, flags, yellow, garage, DRS, penalties |

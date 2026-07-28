@@ -45,7 +45,19 @@ var player = new LmuPlayerTelemetry(
     AbsLevel: 6,
     AbsMaximum: 12,
     TireTemperatures: new LmuWheelTemperatures(82, 84, 78, 79),
-    TireWear: new LmuWheelWear(0.12, 0.14, 0.18, 0.2));
+    TireWear: new LmuWheelWear(0.12, 0.14, 0.18, 0.2),
+    Damage: new LmuDamageSnapshot(
+        1,
+        true,
+        false,
+        2,
+        3,
+        112,
+        24,
+        new LmuWheelCondition(false, false),
+        new LmuWheelCondition(false, false),
+        new LmuWheelCondition(false, false),
+        new LmuWheelCondition(false, false)));
 var snapshot = new LmuTelemetrySnapshot(
     LmuConnectionState.Connected, 14000, 1, 1, 1, 1, null, player,
     Array.Empty<LmuVehicleStanding>(), DateTimeOffset.UtcNow, string.Empty);
@@ -97,6 +109,7 @@ var raceDashboard = EssentialWidgetStateFactory.CreateDashboard(raceSnapshot);
 var liveStandings = EssentialWidgetStateFactory.CreateLiveStandings(raceSnapshot);
 var relative = EssentialWidgetStateFactory.CreateRelative(raceSnapshot);
 var sessionFlags = EssentialWidgetStateFactory.CreateSessionFlags(raceSnapshot);
+var raceControl = EssentialWidgetStateFactory.CreateRaceControl(raceSnapshot);
 
 Assert(relative.Rows.Count == 3, "Relative must include cars around the player.");
 Assert(relative.Rows[0].RelativeGapSeconds == -3.2, "Relative gaps must be player-relative.");
@@ -122,6 +135,9 @@ Assert(liveStandings.Classes[0].Rows[0].DriverAbbreviation == "LEA",
     "Standings must expose compact driver abbreviations.");
 Assert(liveStandings.Classes[0].Rows[0].VehicleModel == "Porsche 963",
     "Standings must preserve the telemetry vehicle model for manufacturer badges.");
+Assert(raceControl.RequiresAttention, "Damage must raise race-control attention.");
+Assert(raceControl.HasCriticalDamage, "Overheating must be critical damage.");
+Assert(raceControl.DamageStatus == "CRITICAL", "Critical damage must be explicit.");
 
 var deepField = Enumerable.Range(1, 15)
     .Select(position => Standing(
@@ -205,6 +221,20 @@ Assert(strategy.EstimatedTimeToFinishSeconds == 15 * 121,
     "Finish time must use the same reference lap.");
 Assert(strategy.Status == "SHORT", "Negative fuel margin must be highlighted.");
 Assert(refueled.Samples == 1, "Refueling must not be recorded as negative consumption.");
+var configuredStrategy = fuelTracker.Update(
+    nextLapSnapshot,
+    new FuelStrategyOptions(
+        FuelReserveLaps: 2,
+        EnergyReserveFraction: 0,
+        ManualRemainingLaps: 20,
+        MaximumStintLaps: 8,
+        EstimatedPitLossSeconds: 25));
+Assert(configuredStrategy.EstimatedLapsToFinish == 20,
+    "Manual remaining laps must override automatic estimation.");
+Assert(configuredStrategy.EstimatedPitStops == 2,
+    "Maximum stint length must produce a multi-stop plan.");
+Assert(configuredStrategy.EstimatedTotalPitLossSeconds == 50,
+    "Pit-loss projection must include every planned stop.");
 
 var timedSession = session with { MaximumLaps = int.MaxValue };
 var timedRace = raceSnapshot with { Session = timedSession };

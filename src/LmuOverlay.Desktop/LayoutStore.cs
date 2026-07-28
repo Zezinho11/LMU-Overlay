@@ -402,6 +402,31 @@ public sealed class LayoutStore
             Relative = relative,
             SessionFlags = sessionFlags,
             FuelStrategy = fuelStrategy,
+            RaceControl = SanitizePlacement(profile.RaceControl),
+            Settings = SanitizeSettings(profile.Settings),
+        };
+    }
+
+    private static OverlayProfileSettings SanitizeSettings(
+        OverlayProfileSettings? settings)
+    {
+        settings ??= new();
+        var theme = settings.Theme is "RedFox" or "HighContrast" or "Black"
+            ? settings.Theme
+            : "RedFox";
+        return settings with
+        {
+            Theme = theme,
+            RefreshRateHz = Math.Clamp(settings.RefreshRateHz, 2, 30),
+            GridSnapPixels = Math.Clamp(settings.GridSnapPixels, 0, 50),
+            FuelReserveLaps = Math.Clamp(settings.FuelReserveLaps, 0, 5),
+            EnergyReservePercent = Math.Clamp(settings.EnergyReservePercent, 0, 25),
+            ManualRemainingLaps = Math.Clamp(settings.ManualRemainingLaps, 0, 1000),
+            MaximumStintLaps = Math.Clamp(settings.MaximumStintLaps, 0, 1000),
+            EstimatedPitLossSeconds = Math.Clamp(
+                settings.EstimatedPitLossSeconds,
+                0,
+                600),
         };
     }
 

@@ -34,12 +34,36 @@ public partial class ConfigurationWindow : Window
     private void LoadProfile()
     {
         var profile = _overlay.CurrentProfile;
-        Set(DashboardVisible, DashboardOpacity, profile.Diagnostic);
-        Set(InputsVisible, InputsOpacity, profile.Inputs);
-        Set(StandingsVisible, StandingsOpacity, profile.LiveStandings);
-        Set(RelativeVisible, RelativeOpacity, profile.Relative);
-        Set(SessionVisible, SessionOpacity, profile.SessionFlags);
-        Set(FuelVisible, FuelOpacity, profile.FuelStrategy);
+        Set(DashboardVisible, DashboardOpacity, DashboardScale, profile.Diagnostic);
+        Set(InputsVisible, InputsOpacity, InputsScale, profile.Inputs);
+        Set(StandingsVisible, StandingsOpacity, StandingsScale, profile.LiveStandings);
+        Set(RelativeVisible, RelativeOpacity, RelativeScale, profile.Relative);
+        Set(SessionVisible, SessionOpacity, SessionScale, profile.SessionFlags);
+        Set(FuelVisible, FuelOpacity, FuelScale, profile.FuelStrategy);
+        Set(
+            RaceControlVisible,
+            RaceControlOpacity,
+            RaceControlScale,
+            profile.RaceControl);
+        foreach (var item in ThemeSelector.Items.OfType<ComboBoxItem>())
+        {
+            if (string.Equals(item.Tag?.ToString(), profile.Settings.Theme, StringComparison.Ordinal))
+            {
+                ThemeSelector.SelectedItem = item;
+                break;
+            }
+        }
+        RefreshRate.Value = profile.Settings.RefreshRateHz;
+        GridSnap.Value = profile.Settings.GridSnapPixels;
+        FuelReserve.Value = profile.Settings.FuelReserveLaps;
+        EnergyReserve.Text = profile.Settings.EnergyReservePercent.ToString(
+            System.Globalization.CultureInfo.InvariantCulture);
+        ManualRemainingLaps.Text = profile.Settings.ManualRemainingLaps.ToString(
+            System.Globalization.CultureInfo.InvariantCulture);
+        MaximumStintLaps.Text = profile.Settings.MaximumStintLaps.ToString(
+            System.Globalization.CultureInfo.InvariantCulture);
+        PitLossSeconds.Text = profile.Settings.EstimatedPitLossSeconds.ToString(
+            System.Globalization.CultureInfo.InvariantCulture);
     }
 
     private void ProfileSelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -169,20 +193,63 @@ public partial class ConfigurationWindow : Window
             "Perfil exportado com sucesso.");
     }
 
+    private void ExportDiagnosticsClicked(object sender, RoutedEventArgs e)
+    {
+        var dialog = new SaveFileDialog
+        {
+            Title = "Exportar diagnóstico do LMU Overlay",
+            Filter = "Diagnóstico JSON (*.json)|*.json",
+            FileName = $"lmu-overlay-diagnostics-{DateTime.Now:yyyyMMdd-HHmmss}.json",
+            AddExtension = true,
+            DefaultExt = ".json",
+        };
+        if (dialog.ShowDialog(this) != true)
+        {
+            return;
+        }
+
+        RunProfileAction(
+            () => _overlay.ExportDiagnostics(dialog.FileName),
+            "Diagnóstico exportado sem nomes de pilotos ou telemetria bruta.");
+    }
+
     private void ApplyClicked(object sender, RoutedEventArgs e)
     {
         var profile = _overlay.CurrentProfile;
         _overlay.ApplyDisplaySettings(profile with
         {
-            Diagnostic = Read(DashboardVisible, DashboardOpacity, profile.Diagnostic),
-            Inputs = Read(InputsVisible, InputsOpacity, profile.Inputs),
+            Diagnostic = Read(
+                DashboardVisible,
+                DashboardOpacity,
+                DashboardScale,
+                profile.Diagnostic),
+            Inputs = Read(InputsVisible, InputsOpacity, InputsScale, profile.Inputs),
             LiveStandings = Read(
                 StandingsVisible,
                 StandingsOpacity,
+                StandingsScale,
                 profile.LiveStandings),
-            Relative = Read(RelativeVisible, RelativeOpacity, profile.Relative),
-            SessionFlags = Read(SessionVisible, SessionOpacity, profile.SessionFlags),
-            FuelStrategy = Read(FuelVisible, FuelOpacity, profile.FuelStrategy),
+            Relative = Read(
+                RelativeVisible,
+                RelativeOpacity,
+                RelativeScale,
+                profile.Relative),
+            SessionFlags = Read(
+                SessionVisible,
+                SessionOpacity,
+                SessionScale,
+                profile.SessionFlags),
+            FuelStrategy = Read(
+                FuelVisible,
+                FuelOpacity,
+                FuelScale,
+                profile.FuelStrategy),
+            RaceControl = Read(
+                RaceControlVisible,
+                RaceControlOpacity,
+                RaceControlScale,
+                profile.RaceControl),
+            Settings = ReadSettings(profile.Settings),
         });
     }
 
@@ -284,18 +351,65 @@ public partial class ConfigurationWindow : Window
     private static void Set(
         System.Windows.Controls.CheckBox visible,
         Slider opacity,
+        Slider scale,
         WidgetPlacement placement)
     {
         visible.IsChecked = placement.Visible;
         opacity.Value = placement.Opacity;
+        scale.Value = placement.Scale;
     }
 
     private static WidgetPlacement Read(
         System.Windows.Controls.CheckBox visible,
         Slider opacity,
+        Slider scale,
         WidgetPlacement placement) => placement with
     {
         Visible = visible.IsChecked == true,
         Opacity = opacity.Value,
+        Scale = scale.Value,
     };
+
+    private OverlayProfileSettings ReadSettings(OverlayProfileSettings current)
+    {
+        var theme = (ThemeSelector.SelectedItem as ComboBoxItem)?.Tag?.ToString()
+            ?? "RedFox";
+        return current with
+        {
+            Theme = theme,
+            RefreshRateHz = (int)Math.Round(RefreshRate.Value),
+            GridSnapPixels = (int)Math.Round(GridSnap.Value),
+            FuelReserveLaps = FuelReserve.Value,
+            EnergyReservePercent = ParseDouble(EnergyReserve.Text, 2, 0, 25),
+            ManualRemainingLaps = ParseInt(ManualRemainingLaps.Text, 0, 0, 1000),
+            MaximumStintLaps = ParseInt(MaximumStintLaps.Text, 0, 0, 1000),
+            EstimatedPitLossSeconds = ParseDouble(PitLossSeconds.Text, 30, 0, 600),
+        };
+    }
+
+    private static double ParseDouble(
+        string text,
+        double fallback,
+        double minimum,
+        double maximum) =>
+        double.TryParse(
+            text,
+            System.Globalization.NumberStyles.Float,
+            System.Globalization.CultureInfo.InvariantCulture,
+            out var value)
+            ? Math.Clamp(value, minimum, maximum)
+            : fallback;
+
+    private static int ParseInt(
+        string text,
+        int fallback,
+        int minimum,
+        int maximum) =>
+        int.TryParse(
+            text,
+            System.Globalization.NumberStyles.Integer,
+            System.Globalization.CultureInfo.InvariantCulture,
+            out var value)
+            ? Math.Clamp(value, minimum, maximum)
+            : fallback;
 }

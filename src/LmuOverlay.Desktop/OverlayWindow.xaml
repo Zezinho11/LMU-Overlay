@@ -744,5 +744,82 @@
                                   DragCompleted="ResizeThumbDragCompleted" />
             </Grid>
         </Border>
+        <Border x:Name="RaceControlWidget" Padding="0" CornerRadius="4"
+                Background="#F20A0F1A" BorderBrush="#FF53627B" BorderThickness="1"
+                MouseLeftButtonDown="WidgetMouseLeftButtonDown"
+                MouseMove="WidgetMouseMove"
+                MouseLeftButtonUp="WidgetMouseLeftButtonUp">
+            <Grid>
+                <Viewbox Stretch="Fill">
+                    <Grid Width="430" Height="190" Background="#F20A0F1A"
+                          TextElement.FontFamily="Bahnschrift">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="34" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="32" />
+                        </Grid.RowDefinitions>
+                        <Border x:Name="RaceControlHeader" Background="#FF1B2441">
+                            <Grid Margin="12,0">
+                                <TextBlock Text="RACE CONTROL &amp; CAR STATUS"
+                                           Foreground="White" FontWeight="Bold"
+                                           FontSize="14" VerticalAlignment="Center" />
+                                <TextBlock x:Name="RaceAttentionText" Text="CLEAR"
+                                           Foreground="#FF42D3A6" FontWeight="Bold"
+                                           FontSize="11" HorizontalAlignment="Right"
+                                           VerticalAlignment="Center" />
+                            </Grid>
+                        </Border>
+                        <Grid Grid.Row="1" Margin="10,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition />
+                                <RowDefinition />
+                                <RowDefinition />
+                            </Grid.RowDefinitions>
+                            <TextBlock Text="PENALTIES" Foreground="#FF8492A6" FontSize="9" />
+                            <TextBlock x:Name="RacePenaltyText" Grid.Column="1"
+                                       Text="CLEAR" Foreground="White" FontWeight="Bold"
+                                       HorizontalAlignment="Right" />
+                            <TextBlock Grid.Row="1" Text="PIT / LAP"
+                                       Foreground="#FF8492A6" FontSize="9" />
+                            <TextBlock x:Name="RacePitLapText" Grid.Row="1" Grid.Column="1"
+                                       Text="TRACK · VALID" Foreground="White"
+                                       FontWeight="Bold" HorizontalAlignment="Right" />
+                            <TextBlock Grid.Row="2" Text="DAMAGE"
+                                       Foreground="#FF8492A6" FontSize="9" />
+                            <TextBlock x:Name="RaceDamageText" Grid.Row="2" Grid.Column="1"
+                                       Text="OK" Foreground="White" FontWeight="Bold"
+                                       HorizontalAlignment="Right" />
+                        </Grid>
+                        <Grid Grid.Row="2" Background="#FF111827" Margin="0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock x:Name="RaceFlagText" Text="FLAG UNKNOWN"
+                                       Foreground="#FFFFCA6A" FontSize="10"
+                                       FontWeight="Bold" Margin="10,0"
+                                       VerticalAlignment="Center" />
+                            <TextBlock x:Name="RaceSystemsText" Grid.Column="1"
+                                       Text="LIMITER OFF · DRS OFF"
+                                       Foreground="#FFB7D8FF" FontSize="9"
+                                       Margin="0,0,10,0" HorizontalAlignment="Right"
+                                       VerticalAlignment="Center" />
+                        </Grid>
+                    </Grid>
+                </Viewbox>
+                <primitives:Thumb x:Name="RaceControlResizeThumb"
+                                  Tag="RaceControlWidget"
+                                  Width="18" Height="18" Panel.ZIndex="10"
+                                  HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                  Cursor="SizeNWSE" Background="#FFFFCA6A"
+                                  Visibility="Collapsed"
+                                  DragDelta="ResizeThumbDragDelta"
+                                  DragCompleted="ResizeThumbDragCompleted" />
+            </Grid>
+        </Border>
     </Canvas>
 </Window>

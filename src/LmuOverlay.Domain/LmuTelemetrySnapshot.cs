@@ -98,7 +98,8 @@ public sealed record LmuPlayerTelemetry(
     int AbsLevel,
     int AbsMaximum,
     LmuWheelTemperatures TireTemperatures,
-    LmuWheelWear TireWear);
+    LmuWheelWear TireWear,
+    LmuDamageSnapshot? Damage = null);
 
 public sealed record LmuWheelTemperatures(
     double FrontLeftCelsius,
@@ -111,6 +112,30 @@ public sealed record LmuWheelWear(
     double FrontRightFraction,
     double RearLeftFraction,
     double RearRightFraction);
+
+public sealed record LmuDamageSnapshot(
+    int ScheduledStops,
+    bool Overheating,
+    bool BodyPartDetached,
+    int MaximumDentSeverity,
+    int DamagedAreas,
+    double LastImpactElapsedTime,
+    double LastImpactMagnitude,
+    LmuWheelCondition FrontLeft,
+    LmuWheelCondition FrontRight,
+    LmuWheelCondition RearLeft,
+    LmuWheelCondition RearRight)
+{
+    public bool HasCriticalDamage =>
+        Overheating ||
+        BodyPartDetached ||
+        FrontLeft.Flat || FrontLeft.Detached ||
+        FrontRight.Flat || FrontRight.Detached ||
+        RearLeft.Flat || RearLeft.Detached ||
+        RearRight.Flat || RearRight.Detached;
+}
+
+public sealed record LmuWheelCondition(bool Flat, bool Detached);
 
 public sealed record LmuVehicleStanding(
     int VehicleId,

@@ -24,6 +24,8 @@ public partial class App
     protected override void OnStartup(System.Windows.StartupEventArgs e)
     {
         base.OnStartup(e);
+        DispatcherUnhandledException += (_, args) =>
+            CrashLogWriter.TryWrite(args.Exception);
         _overlay = new OverlayWindow(new LayoutStore());
         _toolbar = new OverlayToolbarWindow(_overlay, ShowConfiguration);
         _telemetryRuntime = new TelemetryRuntime(
@@ -93,6 +95,16 @@ public partial class App
             ?? LmuTelemetrySnapshot.Unavailable(
                 LmuConnectionState.Disconnected,
                 "Waiting for LMU shared memory.");
+        if (_telemetryRuntime is not null)
+        {
+            _overlay.UpdateRuntimeHealth(_telemetryRuntime.Health);
+        }
+        var requestedInterval = TimeSpan.FromMilliseconds(
+            1000d / Math.Clamp(_overlay.RequestedRefreshRateHz, 2, 30));
+        if (Math.Abs((_timer.Interval - requestedInterval).TotalMilliseconds) >= 1)
+        {
+            _timer.Interval = requestedInterval;
+        }
 
         var gameBounds = LmuWindowTracker.TryGetClientBounds();
         if (gameBounds is null && snapshot.State == LmuConnectionState.Connected)

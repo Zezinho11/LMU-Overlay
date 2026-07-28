@@ -13,7 +13,9 @@
 - [x] Add immutable normalized snapshots and bounded coherent reads.
 - [x] Add update scheduling and derived HUD metrics.
 - [x] Add an anonymized replay fixture and compatibility evidence.
-- [ ] Expand into rules streams and full stint strategy in Phase 4.
+- [x] Add Race Control/damage state from verified official fields.
+- [x] Add configurable stint limits, race-distance override, multi-stop and
+  pit-loss projection.
 - [x] Add stateful fuel consumption and finish projection.
 
 ## Phase 2 — desktop vertical slice
@@ -23,23 +25,26 @@
   resized, plus a locked race mode that is fully click-through.
 - [x] Add snapping to screen edges.
 - [x] Persist position, size, opacity, and visibility in a layout profile.
-- [ ] Extend persistence to scale, lock state, monitor, resolution, and DPI
-  variants.
+- [x] Persist scale and lock state; normalized layouts adapt across monitor,
+  resolution, and DPI changes.
 - [x] Recover off-screen widgets after game display or resolution changes.
-- [ ] Add snapping to a grid and nearby widgets.
+- [x] Add configurable snapping to a grid.
+- [x] Add snapping to nearby widgets.
 - [x] Add named layout profiles with create, duplicate, rename, delete, switch,
   and portable import/export.
-- [ ] Add theme tokens.
+- [x] Add RedFox, black, and high-contrast theme tokens.
 - [x] Add the diagnostic, dashboard, inputs, standings, relative, and
   session/flags widgets.
-- [ ] Establish automated frame-time, allocation, and idle-CPU budgets.
+- [x] Expose and test read-time and memory budgets in privacy-safe diagnostics.
+- [ ] Add long-running frame-time, allocation, and idle-CPU soak-test gates.
 - [x] Move telemetry acquisition off the UI thread, reuse shared-memory buffers,
   isolate read failures, and expose runtime health counters.
 
 ## Phase 3 — product coverage
 
-- Add the remaining non-streamer LMU Drive-style race, strategy, input,
-  weather, incident, and session widgets.
+- [x] Add Race Control/damage coverage from currently verified official fields.
+- [ ] Add further non-streamer widgets only after official fields are verified
+  and live-tested.
 - Add multiclass live standings: full player-class field and compact leaders
   with timing and pit state for every other class.
 - [x] Add the initial multiclass standings, Relative, and Session/Flags
@@ -47,8 +52,9 @@
 - [x] Add the ten-car dynamic timing tower with P1 pinning, player window,
   abbreviated drivers, car silhouettes, last laps, and intervals.
 - [x] Add the initial fuel strategy with learned consumption and finish margin.
-- Add configuration UX, profile import/export, localization, diagnostics, and
-  signed packaging/update foundations.
+- [x] Add configuration UX, profile import/export, diagnostics, and signed
+  packaging/update foundations.
+- [ ] Add localization.
 - [x] Add the first configuration window with widget visibility, opacity, and
   live application.
 - [x] Add named profiles and profile import/export.
@@ -58,6 +64,8 @@
   recommendation, fuel-to-add amount, reserve, and confidence.
 - [x] Add self-contained Windows packaging, checksums, CI artifacts, and
   tag-driven public GitHub Releases.
+- [x] Add machine-readable manifests, an explicit license, privacy-safe
+  diagnostics, crash logs, and optional Authenticode signing.
 
 ## Phase 4 — SteamVR
 

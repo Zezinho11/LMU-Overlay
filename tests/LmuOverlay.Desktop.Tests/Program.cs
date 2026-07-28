@@ -20,6 +20,18 @@ try
         LayoutProfile.Default.Relative,
         LayoutProfile.Default.SessionFlags,
         LayoutProfile.Default.FuelStrategy);
+    requested = requested with
+    {
+        RaceControl = new WidgetPlacement(2, -1, 0.01, 4, 5, 0.1, true),
+        Settings = new OverlayProfileSettings
+        {
+            Theme = "Unsupported",
+            RefreshRateHz = 100,
+            GridSnapPixels = 80,
+            FuelReserveLaps = 20,
+            EnergyReservePercent = 50,
+        },
+    };
     store.Save(requested);
     var loaded = store.Load();
 
@@ -29,6 +41,14 @@ try
     Assert(loaded.Diagnostic.Height == 1, "Height must be clamped.");
     Assert(loaded.Diagnostic.Scale == 2, "Scale must be clamped.");
     Assert(loaded.Diagnostic.Opacity == 0.2, "Opacity must be clamped.");
+    Assert(loaded.RaceControl.X == 0.95 && loaded.RaceControl.Y == 0,
+        "Race Control placement must be sanitized.");
+    Assert(loaded.RaceControl.Scale == 2,
+        "Race Control scale must be clamped.");
+    Assert(loaded.Settings.Theme == "RedFox", "Unknown themes must fail to RedFox.");
+    Assert(loaded.Settings.RefreshRateHz == 30, "Refresh rate must be clamped.");
+    Assert(loaded.Settings.GridSnapPixels == 50, "Grid snapping must be clamped.");
+    Assert(loaded.Settings.FuelReserveLaps == 5, "Fuel reserve must be clamped.");
 
     store.Create("Endurance", loaded);
     Assert(store.ActiveProfileName == "Endurance", "New profiles must become active.");

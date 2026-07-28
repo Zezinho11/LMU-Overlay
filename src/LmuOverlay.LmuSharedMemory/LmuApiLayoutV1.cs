@@ -95,6 +95,13 @@ public static class LmuApiLayoutV1
     public const int TelemetryClutchOffset = 412;
     public const int TelemetryFuelOffset = 524;
     public const int TelemetryEngineMaximumRpmOffset = 532;
+    public const int TelemetryScheduledStopsOffset = 540;
+    public const int TelemetryOverheatingOffset = 541;
+    public const int TelemetryBodyDetachedOffset = 542;
+    public const int TelemetryDentSeverityOffset = 544;
+    public const int TelemetryDentSeverityCount = 8;
+    public const int TelemetryLastImpactElapsedTimeOffset = 552;
+    public const int TelemetryLastImpactMagnitudeOffset = 560;
     public const int TelemetryCurrentSectorOffset = 600;
     public const int TelemetryMaximumGearsOffset = 605;
     public const int TelemetryFuelCapacityOffset = 608;
@@ -124,6 +131,8 @@ public static class LmuApiLayoutV1
     public const int TelemetryWheelArrayOffset = 848;
     public const int TelemetryWheelSize = 260;
     public const int TelemetryWheelWearOffset = 152;
+    public const int TelemetryWheelFlatOffset = 177;
+    public const int TelemetryWheelDetachedOffset = 178;
     public const int TelemetryWheelCarcassTemperatureOffset = 204;
 
     public static int EventOffset(int eventIndex) => eventIndex * EventSize;

@@ -27,13 +27,23 @@ public sealed record FuelStrategyWidgetState(
     int SuggestedPitLap,
     double FuelToAddLiters,
     string Confidence,
-    string Status);
+    string Status)
+{
+    public int EstimatedPitStops { get; init; }
+    public double EstimatedTotalPitLossSeconds { get; init; }
+    public string PlanSummary { get; init; } = string.Empty;
+}
+
+public sealed record FuelStrategyOptions(
+    double FuelReserveLaps = 1,
+    double EnergyReserveFraction = 0,
+    int ManualRemainingLaps = 0,
+    int MaximumStintLaps = 0,
+    double EstimatedPitLossSeconds = 30);
 
 public sealed class FuelStrategyTracker
 {
     private const int MaximumSamples = 8;
-    private const double ReserveLaps = 1;
-
     private readonly Queue<double> _samples = new();
     private readonly Queue<double> _virtualEnergySamples = new();
     private string _trackName = string.Empty;
@@ -44,8 +54,13 @@ public sealed class FuelStrategyTracker
     private double _lapStartVirtualEnergy;
     private double _previousVirtualEnergy;
 
-    public FuelStrategyWidgetState Update(LmuTelemetrySnapshot snapshot)
+    public FuelStrategyWidgetState Update(
+        LmuTelemetrySnapshot snapshot,
+        FuelStrategyOptions? options = null)
     {
+        options ??= new();
+        var reserveLaps = Math.Clamp(options.FuelReserveLaps, 0, 5);
+        var energyReserve = Math.Clamp(options.EnergyReserveFraction, 0, 0.25);
         if (snapshot.Session is not { } session ||
             snapshot.Player is not { } player)
         {
@@ -112,17 +127,19 @@ public sealed class FuelStrategyTracker
         var virtualEnergyAverage = _virtualEnergySamples.Count > 0
             ? WeightedAverage(_virtualEnergySamples)
             : 0;
-        var lapsToFinish = EstimateLapsToFinish(session, playerStanding, completedLaps);
+        var lapsToFinish = options.ManualRemainingLaps > 0
+            ? options.ManualRemainingLaps
+            : EstimateLapsToFinish(session, playerStanding, completedLaps);
         var referenceLapSeconds = ReferenceLapSeconds(playerStanding);
         var required = projectedConsumption > 0
-            ? projectedConsumption * (lapsToFinish + ReserveLaps)
+            ? projectedConsumption * (lapsToFinish + reserveLaps)
             : 0;
         var margin = projectedConsumption > 0 ? player.FuelLiters - required : 0;
         var estimatedRange = projectedConsumption > 0
             ? player.FuelLiters / projectedConsumption
             : 0;
         var targetConsumption = lapsToFinish >= 0
-            ? player.FuelLiters / Math.Max(1, lapsToFinish + ReserveLaps)
+            ? player.FuelLiters / Math.Max(1, lapsToFinish + reserveLaps)
             : 0;
         var requiredSaving = projectedConsumption > targetConsumption &&
             projectedConsumption > 0
@@ -132,7 +149,7 @@ public sealed class FuelStrategyTracker
             ? Math.Max(
                 0,
                 (int)Math.Floor(
-                    player.FuelLiters / projectedConsumption - ReserveLaps))
+                    player.FuelLiters / projectedConsumption - reserveLaps))
             : 0;
         var virtualEnergyRange = virtualEnergyAverage > 0
             ? virtualEnergy / virtualEnergyAverage
@@ -141,7 +158,8 @@ public sealed class FuelStrategyTracker
             ? Math.Max(
                 0,
                 (int)Math.Floor(
-                    virtualEnergy / virtualEnergyAverage - ReserveLaps))
+                    virtualEnergy / virtualEnergyAverage -
+                    Math.Max(reserveLaps, energyReserve / virtualEnergyAverage)))
             : int.MaxValue;
         var lapsUntilPit = projectedConsumption > 0
             ? Math.Min(fuelLapsUntilPit, energyLapsUntilPit)
@@ -150,7 +168,7 @@ public sealed class FuelStrategyTracker
             ? completedLaps + lapsUntilPit
             : 0;
         var requiredVirtualEnergy = virtualEnergyAverage > 0
-            ? virtualEnergyAverage * (lapsToFinish + ReserveLaps)
+            ? virtualEnergyAverage * (lapsToFinish + reserveLaps) + energyReserve
             : 0;
         var virtualEnergyMargin = virtualEnergyAverage > 0
             ? virtualEnergy - requiredVirtualEnergy
@@ -167,6 +185,21 @@ public sealed class FuelStrategyTracker
                 : margin < average * 0.5 || virtualEnergyMarginal
                     ? "MARGINAL"
                     : "GOOD";
+
+        var fuelStintCapacity = projectedConsumption > 0 &&
+            player.FuelCapacityLiters > 0
+                ? Math.Max(1, (int)Math.Floor(
+                    player.FuelCapacityLiters / projectedConsumption - reserveLaps))
+                : int.MaxValue;
+        var configuredStint = options.MaximumStintLaps > 0
+            ? options.MaximumStintLaps
+            : int.MaxValue;
+        var effectiveStint = Math.Min(fuelStintCapacity, configuredStint);
+        var estimatedPitStops = lapsToFinish > 0 && effectiveStint < int.MaxValue
+            ? Math.Max(0, (int)Math.Ceiling(lapsToFinish / (double)effectiveStint) - 1)
+            : 0;
+        var pitLoss = estimatedPitStops *
+            Math.Clamp(options.EstimatedPitLossSeconds, 0, 600);
 
         return new(
             true,
@@ -193,7 +226,15 @@ public sealed class FuelStrategyTracker
             suggestedPitLap,
             Math.Max(0, required - player.FuelLiters),
             Confidence(_samples.Count),
-            status);
+            status)
+        {
+            EstimatedPitStops = estimatedPitStops,
+            EstimatedTotalPitLossSeconds = pitLoss,
+            PlanSummary = _samples.Count == 0
+                ? "LEARNING STINT"
+                : $"{estimatedPitStops} STOP{(estimatedPitStops == 1 ? string.Empty : "S")} · " +
+                  $"PIT LOSS {pitLoss:0}s · RESERVE {reserveLaps:0.0}LAP",
+        };
     }
 
     private bool HasSessionChanged(LmuSessionSnapshot session, int completedLaps) =>

@@ -90,6 +90,18 @@ data[telemetry + LmuApiLayoutV1.TelemetryTractionControlCutLevelOffset] = 3;
 data[telemetry + LmuApiLayoutV1.TelemetryTractionControlCutMaximumOffset] = 12;
 data[telemetry + LmuApiLayoutV1.TelemetryAbsLevelOffset] = 6;
 data[telemetry + LmuApiLayoutV1.TelemetryAbsMaximumOffset] = 12;
+data[telemetry + LmuApiLayoutV1.TelemetryScheduledStopsOffset] = 2;
+data[telemetry + LmuApiLayoutV1.TelemetryOverheatingOffset] = 1;
+data[telemetry + LmuApiLayoutV1.TelemetryDentSeverityOffset] = 2;
+data[telemetry + LmuApiLayoutV1.TelemetryDentSeverityOffset + 1] = 1;
+WriteDouble(
+    data,
+    telemetry + LmuApiLayoutV1.TelemetryLastImpactElapsedTimeOffset,
+    321.5);
+WriteDouble(
+    data,
+    telemetry + LmuApiLayoutV1.TelemetryLastImpactMagnitudeOffset,
+    18.25);
 for (var wheel = 0; wheel < 4; wheel++)
 {
     WriteDouble(
@@ -107,6 +119,10 @@ for (var wheel = 0; wheel < 4; wheel++)
         LmuApiLayoutV1.TelemetryWheelCarcassTemperatureOffset,
         353.15 + wheel);
 }
+data[
+    telemetry +
+    LmuApiLayoutV1.TelemetryWheelArrayOffset +
+    LmuApiLayoutV1.TelemetryWheelFlatOffset] = 1;
 
 var expectedPath = Path.Combine(
     AppContext.BaseDirectory,
@@ -146,6 +162,12 @@ Require(snapshot.Player?.TireWear.FrontLeftFraction == 0.1, "Front-left tire wea
 Require(
     Math.Abs((snapshot.Player?.TireWear.RearRightFraction ?? 0) - 0.25) < 0.0001,
     "Rear-right tire wear");
+Require(snapshot.Player?.Damage?.ScheduledStops == 2, "Scheduled stops");
+Require(snapshot.Player?.Damage?.Overheating == true, "Overheating state");
+Require(snapshot.Player?.Damage?.MaximumDentSeverity == 2, "Maximum dent severity");
+Require(snapshot.Player?.Damage?.DamagedAreas == 2, "Damaged area count");
+Require(snapshot.Player?.Damage?.FrontLeft.Flat == true, "Front-left flat state");
+Require(snapshot.Player?.Damage?.HasCriticalDamage == true, "Critical damage aggregate");
 Require(snapshot.Standings.Count == 1, "Standings count");
 Require(snapshot.Standings[0].DriverName == "Fixture Driver", "Driver name");
 Require(

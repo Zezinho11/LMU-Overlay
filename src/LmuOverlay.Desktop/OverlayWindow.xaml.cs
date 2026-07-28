@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
+using LmuOverlay.Core;
 using LmuOverlay.Domain;
 using LmuOverlay.Widgets;
 
@@ -76,6 +77,11 @@ public partial class OverlayWindow : Window
     private bool _dragging;
     private FrameworkElement? _activeWidget;
     private Rect _lastGameBounds;
+    private LmuTelemetrySnapshot _lastSnapshot = LmuTelemetrySnapshot.Unavailable(
+        LmuConnectionState.Disconnected,
+        "No telemetry captured yet.");
+    private TelemetryRuntimeHealth _runtimeHealth =
+        new(0, 0, 0, 0, 0, 0, null, string.Empty);
 
     public OverlayWindow(LayoutStore layoutStore)
     {
@@ -96,6 +102,18 @@ public partial class OverlayWindow : Window
     public LayoutProfile CurrentProfile => _profile;
     public string ActiveProfileName => _layoutStore.ActiveProfileName;
     public IReadOnlyList<string> ProfileNames => _layoutStore.ProfileNames;
+    public int RequestedRefreshRateHz => _profile.Settings.RefreshRateHz;
+
+    public void UpdateRuntimeHealth(TelemetryRuntimeHealth health) =>
+        _runtimeHealth = health;
+
+    public void ExportDiagnostics(string destinationPath) =>
+        DiagnosticsReportWriter.Write(
+            destinationPath,
+            _lastSnapshot,
+            _runtimeHealth,
+            _profile,
+            ActiveProfileName);
 
     public void SwitchProfile(string name)
     {
@@ -132,6 +150,7 @@ public partial class OverlayWindow : Window
 
     public void UpdateFrame(Rect gameBounds, LmuTelemetrySnapshot snapshot)
     {
+        _lastSnapshot = snapshot;
         _lastGameBounds = gameBounds;
         Left = gameBounds.Left;
         Top = gameBounds.Top;
@@ -234,7 +253,15 @@ public partial class OverlayWindow : Window
         UpdateStandings(EssentialWidgetStateFactory.CreateLiveStandings(snapshot));
         UpdateRelative(EssentialWidgetStateFactory.CreateRelative(snapshot));
         UpdateSessionFlags(EssentialWidgetStateFactory.CreateSessionFlags(snapshot));
-        UpdateFuelStrategy(_fuelStrategyTracker.Update(snapshot));
+        UpdateFuelStrategy(_fuelStrategyTracker.Update(
+            snapshot,
+            new FuelStrategyOptions(
+                _profile.Settings.FuelReserveLaps,
+                _profile.Settings.EnergyReservePercent / 100,
+                _profile.Settings.ManualRemainingLaps,
+                _profile.Settings.MaximumStintLaps,
+                _profile.Settings.EstimatedPitLossSeconds)));
+        UpdateRaceControl(EssentialWidgetStateFactory.CreateRaceControl(snapshot));
 
         SetGameAvailable(connected || IsEditMode);
     }
@@ -330,6 +357,7 @@ public partial class OverlayWindow : Window
         RelativeResizeThumb.Visibility = enabled ? Visibility.Visible : Visibility.Collapsed;
         SessionFlagsResizeThumb.Visibility = enabled ? Visibility.Visible : Visibility.Collapsed;
         FuelStrategyResizeThumb.Visibility = enabled ? Visibility.Visible : Visibility.Collapsed;
+        RaceControlResizeThumb.Visibility = enabled ? Visibility.Visible : Visibility.Collapsed;
         EditHint.Visibility = enabled ? Visibility.Visible : Visibility.Collapsed;
         var borderBrush = enabled
             ? System.Windows.Media.Brushes.Orange
@@ -341,6 +369,11 @@ public partial class OverlayWindow : Window
         RelativeWidget.BorderBrush = borderBrush;
         SessionFlagsWidget.BorderBrush = borderBrush;
         FuelStrategyWidget.BorderBrush = borderBrush;
+        RaceControlWidget.BorderBrush = borderBrush;
+        _profile = _profile with
+        {
+            Settings = _profile.Settings with { Locked = !enabled },
+        };
         ApplyInteractionStyle();
         if (enabled && _lastGameBounds.Width > 0)
         {
@@ -380,8 +413,12 @@ public partial class OverlayWindow : Window
         var item = _profile.Diagnostic;
         DiagnosticWidget.Visibility = item.Visible ? Visibility.Visible : Visibility.Collapsed;
         DiagnosticWidget.Opacity = item.Opacity;
-        DiagnosticWidget.Width = Math.Max(DiagnosticWidget.MinWidth, item.Width * ActualWidth);
-        DiagnosticWidget.Height = Math.Max(DiagnosticWidget.MinHeight, item.Height * ActualHeight);
+        DiagnosticWidget.Width = Math.Max(
+            DiagnosticWidget.MinWidth,
+            item.Width * ActualWidth * item.Scale);
+        DiagnosticWidget.Height = Math.Max(
+            DiagnosticWidget.MinHeight,
+            item.Height * ActualHeight * item.Scale);
         Canvas.SetLeft(DiagnosticWidget, Math.Clamp(
             item.X * ActualWidth,
             0,
@@ -395,6 +432,8 @@ public partial class OverlayWindow : Window
         ApplyPlacement(RelativeWidget, _profile.Relative, 140, 240);
         ApplyPlacement(SessionFlagsWidget, _profile.SessionFlags, 300, 150);
         ApplyPlacement(FuelStrategyWidget, _profile.FuelStrategy, 300, 190);
+        ApplyPlacement(RaceControlWidget, _profile.RaceControl, 280, 130);
+        ApplyTheme();
     }
 
     private void ApplyPlacement(
@@ -405,8 +444,12 @@ public partial class OverlayWindow : Window
     {
         element.Visibility = placement.Visible ? Visibility.Visible : Visibility.Collapsed;
         element.Opacity = placement.Opacity;
-        element.Width = Math.Max(minimumWidth, placement.Width * ActualWidth);
-        element.Height = Math.Max(minimumHeight, placement.Height * ActualHeight);
+        element.Width = Math.Max(
+            minimumWidth,
+            placement.Width * ActualWidth * placement.Scale);
+        element.Height = Math.Max(
+            minimumHeight,
+            placement.Height * ActualHeight * placement.Scale);
         Canvas.SetLeft(element, Math.Clamp(
             placement.X * ActualWidth, 0, Math.Max(0, ActualWidth - element.Width)));
         Canvas.SetTop(element, Math.Clamp(
@@ -972,6 +1015,74 @@ public partial class OverlayWindow : Window
               $"· CONF {state.Confidence} ({state.Samples}/8)";
     }
 
+    private void UpdateRaceControl(RaceControlWidgetState state)
+    {
+        RaceAttentionText.Text = !state.Available
+            ? "NO DATA"
+            : state.RequiresAttention ? "ATTENTION" : "CLEAR";
+        RaceAttentionText.Foreground = state.RequiresAttention
+            ? System.Windows.Media.Brushes.OrangeRed
+            : System.Windows.Media.Brushes.LimeGreen;
+        RacePenaltyText.Text = state.PenaltyStatus;
+        RacePenaltyText.Foreground = state.OutstandingPenalties > 0
+            ? System.Windows.Media.Brushes.OrangeRed
+            : System.Windows.Media.Brushes.White;
+        RacePitLapText.Text = $"{state.PitStatus} · {state.LapStatus}";
+        RaceDamageText.Text = state.DamageStatus == "OK"
+            ? "OK"
+            : $"{state.DamageStatus} · {state.ImpactStatus}";
+        RaceDamageText.Foreground = state.HasCriticalDamage
+            ? System.Windows.Media.Brushes.OrangeRed
+            : state.RequiresAttention
+                ? System.Windows.Media.Brushes.Gold
+                : System.Windows.Media.Brushes.White;
+        RaceFlagText.Text = $"FLAG {state.FlagStatus}";
+        RaceSystemsText.Text = state.SystemsStatus;
+        RaceControlHeader.Background = state.HasCriticalDamage
+            ? Brush(112, 23, 32)
+            : state.RequiresAttention
+                ? Brush(109, 72, 17)
+                : Brush(27, 36, 65);
+    }
+
+    private void ApplyTheme()
+    {
+        var accent = _profile.Settings.Theme switch
+        {
+            "HighContrast" => System.Windows.Media.Brushes.White,
+            "Black" => Brush(100, 110, 120),
+            _ => Brush(66, 211, 166),
+        };
+        var background = _profile.Settings.Theme switch
+        {
+            "HighContrast" => Brush(0, 0, 0),
+            "Black" => Brush(2, 3, 4),
+            _ => Brush(10, 15, 26),
+        };
+
+        foreach (var widget in AllWidgets())
+        {
+            widget.BorderBrush = IsEditMode
+                ? System.Windows.Media.Brushes.Orange
+                : accent;
+            if (widget != DiagnosticWidget)
+            {
+                widget.Background = background;
+            }
+        }
+    }
+
+    private Border[] AllWidgets() =>
+    [
+        DiagnosticWidget,
+        InputsWidget,
+        LiveStandingsWidget,
+        RelativeWidget,
+        SessionFlagsWidget,
+        FuelStrategyWidget,
+        RaceControlWidget,
+    ];
+
     private static string FormatStrategyMinutes(double seconds) =>
         seconds > 0 && double.IsFinite(seconds)
             ? $"{Math.Ceiling(seconds / 60):0} MIN"
@@ -1010,14 +1121,14 @@ public partial class OverlayWindow : Window
         var position = e.GetPosition(OverlayCanvas);
         var left = _dragLeft + position.X - _dragStart.X;
         var top = _dragTop + position.Y - _dragStart.Y;
-        Canvas.SetLeft(_activeWidget, Snap(
+        Canvas.SetLeft(_activeWidget, SnapToNearbyX(SnapToGrid(Snap(
             Math.Clamp(left, 0, Math.Max(0, ActualWidth - _activeWidget.ActualWidth)),
             0,
-            Math.Max(0, ActualWidth - _activeWidget.ActualWidth)));
-        Canvas.SetTop(_activeWidget, Snap(
+            Math.Max(0, ActualWidth - _activeWidget.ActualWidth)))));
+        Canvas.SetTop(_activeWidget, SnapToNearbyY(SnapToGrid(Snap(
             Math.Clamp(top, 0, Math.Max(0, ActualHeight - _activeWidget.ActualHeight)),
             0,
-            Math.Max(0, ActualHeight - _activeWidget.ActualHeight)));
+            Math.Max(0, ActualHeight - _activeWidget.ActualHeight)))));
     }
 
     private void WidgetMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
@@ -1083,6 +1194,9 @@ public partial class OverlayWindow : Window
             FuelStrategy = CapturePlacement(
                 FuelStrategyWidget,
                 _profile.FuelStrategy),
+            RaceControl = CapturePlacement(
+                RaceControlWidget,
+                _profile.RaceControl),
         };
         _layoutStore.Save(_profile);
     }
@@ -1093,9 +1207,77 @@ public partial class OverlayWindow : Window
     {
         X = Canvas.GetLeft(element) / ActualWidth,
         Y = Canvas.GetTop(element) / ActualHeight,
-        Width = element.ActualWidth / ActualWidth,
-        Height = element.ActualHeight / ActualHeight,
+        Width = element.ActualWidth / ActualWidth / Math.Max(0.5, current.Scale),
+        Height = element.ActualHeight / ActualHeight / Math.Max(0.5, current.Scale),
     };
+
+    private double SnapToGrid(double value)
+    {
+        var grid = _profile.Settings.GridSnapPixels;
+        return grid <= 0 ? value : Math.Round(value / grid) * grid;
+    }
+
+    private double SnapToNearbyX(double value)
+    {
+        if (_activeWidget is null)
+        {
+            return value;
+        }
+
+        var width = _activeWidget.ActualWidth;
+        foreach (var other in AllWidgets().Where(
+            item => item != _activeWidget && item.Visibility == Visibility.Visible))
+        {
+            var otherLeft = Canvas.GetLeft(other);
+            var otherRight = otherLeft + other.ActualWidth;
+            foreach (var candidate in new[]
+            {
+                otherLeft,
+                otherRight,
+                otherLeft - width,
+                otherRight - width,
+            })
+            {
+                if (Math.Abs(value - candidate) <= SnapDistance)
+                {
+                    return Math.Clamp(candidate, 0, Math.Max(0, ActualWidth - width));
+                }
+            }
+        }
+
+        return value;
+    }
+
+    private double SnapToNearbyY(double value)
+    {
+        if (_activeWidget is null)
+        {
+            return value;
+        }
+
+        var height = _activeWidget.ActualHeight;
+        foreach (var other in AllWidgets().Where(
+            item => item != _activeWidget && item.Visibility == Visibility.Visible))
+        {
+            var otherTop = Canvas.GetTop(other);
+            var otherBottom = otherTop + other.ActualHeight;
+            foreach (var candidate in new[]
+            {
+                otherTop,
+                otherBottom,
+                otherTop - height,
+                otherBottom - height,
+            })
+            {
+                if (Math.Abs(value - candidate) <= SnapDistance)
+                {
+                    return Math.Clamp(candidate, 0, Math.Max(0, ActualHeight - height));
+                }
+            }
+        }
+
+        return value;
+    }
 
     private static double Snap(double value, double start, double end)
     {

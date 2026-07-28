@@ -33,9 +33,11 @@ revalidated after LMU, EAC, SteamVR, or overlay changes.
 - Header provenance and compatibility matrix without redistributing proprietary
   Studio 397 files.
 - Movable/resizable RedFox dashboard, Live Standings, Relative, Fuel & Virtual
-  Energy strategy, inputs, and session/weather/flag widgets.
-- Weighted race strategy with conservative consumption, fuel saving target,
-  pit-lap recommendation, fuel-to-add amount, reserve, and confidence.
+  Energy strategy, Race Control/damage, inputs, and session/weather/flag widgets.
+- Weighted race strategy with conservative consumption, configurable reserves,
+  manual race distance, stint limits, multi-stop and pit-loss projection.
+- Per-profile widget scale, theme, refresh rate, magnetic grid, privacy-safe
+  diagnostics export, and local crash logging.
 - Reproducible self-contained Windows x64 ZIP releases with SHA-256 checksums.
 
 ## Prerequisites
@@ -111,5 +113,5 @@ derived for interoperability and tied to exact local header hashes.
 
 ## Source license
 
-No open-source license has been selected yet. Until one is added, all rights are
-reserved. Public visibility alone does not grant reuse rights.
+The repository currently uses an all-rights-reserved license. Public visibility
+alone does not grant permission to copy, modify, or redistribute the project.

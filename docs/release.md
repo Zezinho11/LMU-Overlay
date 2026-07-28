@@ -16,6 +16,7 @@ The command creates:
 
 - `artifacts/LMU-Overlay-0.1.0-win-x64.zip`;
 - `artifacts/LMU-Overlay-0.1.0-win-x64.zip.sha256`.
+- `artifacts/latest.json`, a machine-readable update manifest.
 
 The archive contains the executable, runtime dependencies, quick start, security
 policy, and EAC safety model. Build outputs under `artifacts/` are ignored by Git.
@@ -27,8 +28,9 @@ runs every test suite, creates the portable package and checksum, then attaches
 both files to a GitHub Release. A manually dispatched workflow builds an artifact
 without publishing a release.
 
-Code signing is intentionally not claimed. A future release may add Authenticode
-after the project has a protected signing identity and secret-management policy.
+Unsigned releases remain explicit. Maintainers with a protected signing
+identity can use `scripts/sign-release.ps1` before packaging. The manifest
+records whether the executable has a valid Authenticode signature.
 
 ## User verification
 
