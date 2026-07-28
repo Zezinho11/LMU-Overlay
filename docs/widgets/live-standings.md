@@ -33,12 +33,15 @@ vehicle is reported in pits or has a non-`None` pit state.
 If a time or interval is unavailable, the widget renders a neutral placeholder
 rather than inventing a value. Car numbers are extracted only from an explicit
 `#number` in the official vehicle name; the runtime vehicle ID is never
-misrepresented as a race number. Manufacturer badges use a known three-letter
-code and brand color, with a neutral three-character fallback.
+misrepresented as a race number. Manufacturer badges cross-reference each
+scoring row with the official telemetry vehicle model by vehicle ID, then use a
+known three-letter code and brand color. Unknown models render `---` rather than
+misrepresenting a team-name abbreviation as a manufacturer.
 
 The timing tower uses a narrow 260x410 vertical design surface without side
-rails or a horizontal footer. Existing version-4 layouts using the former wide
-default are migrated to the narrow right-aligned footprint.
+rails, a branding header, or a horizontal footer. The column headings are
+followed directly by the colored class band. Existing version-4 layouts using
+the former wide default are migrated to the narrow right-aligned footprint.
 
 ## Layout and configuration
 
