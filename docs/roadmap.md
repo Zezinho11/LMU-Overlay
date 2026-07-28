@@ -33,6 +33,8 @@
 - [x] Add the diagnostic, dashboard, inputs, standings, relative, and
   session/flags widgets.
 - [ ] Establish automated frame-time, allocation, and idle-CPU budgets.
+- [x] Move telemetry acquisition off the UI thread, reuse shared-memory buffers,
+  isolate read failures, and expose runtime health counters.
 
 ## Phase 3 — product coverage
 
@@ -50,6 +52,10 @@
 - [x] Add the first configuration window with widget visibility, opacity, and
   live application.
 - [x] Add named profiles and profile import/export.
+- [x] Add advanced weighted fuel/energy projection, fuel-saving target, pit-lap
+  recommendation, fuel-to-add amount, reserve, and confidence.
+- [x] Add self-contained Windows packaging, checksums, CI artifacts, and
+  tag-driven public GitHub Releases.
 
 ## Phase 4 — SteamVR
 
