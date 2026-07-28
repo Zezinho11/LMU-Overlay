@@ -42,6 +42,8 @@
   with timing and pit state for every other class.
 - [x] Add the initial multiclass standings, Relative, and Session/Flags
   coverage.
+- [x] Add the ten-car dynamic timing tower with P1 pinning, player window,
+  abbreviated drivers, car silhouettes, last laps, and intervals.
 - [x] Add the initial fuel strategy with learned consumption and finish margin.
 - Add configuration UX, profile import/export, localization, diagnostics, and
   signed packaging/update foundations.
