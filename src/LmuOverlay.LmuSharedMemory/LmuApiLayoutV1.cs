@@ -102,6 +102,14 @@ public static class LmuApiLayoutV1
     public const int TelemetryAbsActiveOffset = 746;
     public const int TelemetryTractionControlActiveOffset = 747;
     public const int TelemetrySpeedLimiterActiveOffset = 748;
+    public const int TelemetryTractionControlLevelOffset = 750;
+    public const int TelemetryTractionControlMaximumOffset = 751;
+    public const int TelemetryTractionControlSlipLevelOffset = 752;
+    public const int TelemetryTractionControlSlipMaximumOffset = 753;
+    public const int TelemetryTractionControlCutLevelOffset = 754;
+    public const int TelemetryTractionControlCutMaximumOffset = 755;
+    public const int TelemetryAbsLevelOffset = 756;
+    public const int TelemetryAbsMaximumOffset = 757;
     public const int TelemetryRegenerationOffset = 768;
     public const int TelemetryStateOfChargeOffset = 772;
     public const int TelemetryVirtualEnergyOffset = 776;
