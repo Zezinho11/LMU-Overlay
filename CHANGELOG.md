@@ -8,6 +8,9 @@
 - Added freely movable and resizable diagnostic telemetry widget with normalized
   persisted placement and off-screen clamping.
 - Added desktop layout tests and user documentation.
+- Added a primary-screen fallback when telemetry is connected but the LMU
+  window handle is unavailable.
+- Validated the first live desktop render over an active Spa session.
 
 All notable changes will be documented here.
 
