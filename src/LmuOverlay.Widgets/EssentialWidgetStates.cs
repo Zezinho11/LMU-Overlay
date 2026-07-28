@@ -71,7 +71,10 @@ public sealed record RelativeWidgetState(
 public sealed record RelativeRowState(
     int OverallPosition,
     string DriverName,
+    string DriverDisplayName,
     string VehicleClass,
+    string ClassAbbreviation,
+    string CarNumber,
     double RelativeGapSeconds,
     int RelativeLaps,
     bool IsPlayer,
@@ -291,7 +294,7 @@ public static class EssentialWidgetStateFactory
 
     public static RelativeWidgetState CreateRelative(
         LmuTelemetrySnapshot snapshot,
-        int carsEachSide = 3)
+        int carsEachSide = 4)
     {
         var ordered = snapshot.Standings.OrderBy(item => item.Position).ToArray();
         var playerIndex = Array.FindIndex(ordered, item => item.IsPlayer);
@@ -307,13 +310,43 @@ public static class EssentialWidgetStateFactory
             .Select(item => new RelativeRowState(
                 item.Position,
                 item.DriverName,
+                AbbreviateRelativeDriverName(item.DriverName),
                 item.VehicleClass,
+                AbbreviateVehicleClass(item.VehicleClass),
+                ExtractCarNumber(item.VehicleName),
                 item.IsPlayer ? 0 : item.GapToLeaderSeconds - player.GapToLeaderSeconds,
                 player.CompletedLaps - item.CompletedLaps,
                 item.IsPlayer,
                 item.IsInPits || item.PitState is not LmuPitState.None))
             .ToArray();
         return new RelativeWidgetState(rows);
+    }
+
+    private static string AbbreviateRelativeDriverName(string driverName)
+    {
+        var parts = driverName
+            .Trim()
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length switch
+        {
+            0 => "---",
+            1 => parts[0],
+            _ => $"{char.ToUpperInvariant(parts[0][0])} {parts[^1]}",
+        };
+    }
+
+    private static string AbbreviateVehicleClass(string vehicleClass)
+    {
+        var value = vehicleClass.Trim().ToUpperInvariant();
+        return value switch
+        {
+            _ when value.Contains("GT3", StringComparison.Ordinal) ||
+                       value.Contains("LMGT", StringComparison.Ordinal) => "GT3",
+            _ when value.Contains("HYPER", StringComparison.Ordinal) => "HYP",
+            _ when value.Contains("LMP2", StringComparison.Ordinal) => "P2",
+            _ => new string(value.Where(char.IsLetterOrDigit).Take(3).ToArray())
+                .PadRight(3, '-'),
+        };
     }
 
     public static SessionFlagsWidgetState CreateSessionFlags(
