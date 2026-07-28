@@ -118,6 +118,29 @@ try
     Assert(migratedFuelPanel.Height == 0.25,
         "The old fuel widget must migrate to the strategy-table height.");
 
+    var relativeTowerPath = Path.Combine(root, "layout-v6.json");
+    var versionSixProfile = LayoutProfile.Default with
+    {
+        SchemaVersion = 6,
+        Relative = new WidgetPlacement(
+            0.36, 0.58, 0.28, 0.28, 1, 0.92, true),
+    };
+    File.WriteAllText(relativeTowerPath, JsonSerializer.Serialize(new
+    {
+        SchemaVersion = 1,
+        ActiveProfile = "Legacy Relative",
+        Profiles = new Dictionary<string, LayoutProfile>
+        {
+            ["Legacy Relative"] = versionSixProfile,
+        },
+    }));
+    var relativeTowerStore = new LayoutStore(relativeTowerPath);
+    var migratedRelative = relativeTowerStore.Load().Relative;
+    Assert(migratedRelative.Width == 0.16 && migratedRelative.Height == 0.40,
+        "The old relative box must migrate to the timing-tower proportions.");
+    Assert(migratedRelative.X == 0.64 && migratedRelative.Y == 0.05,
+        "The relative tower must migrate beside live standings.");
+
     File.WriteAllText(path, "{broken");
     var corruptStore = new LayoutStore(path);
     Assert(corruptStore.Load() == LayoutProfile.Default, "Corrupt profiles must be recoverable.");
