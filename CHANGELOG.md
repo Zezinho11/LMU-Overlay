@@ -33,6 +33,11 @@
 - Rebuilt Live Standings as a scalable ten-car timing tower with a pinned P1,
   moving player window, abbreviated driver names, manufacturer-colored car
   silhouettes, explicit race numbers, last laps, intervals, and pit status.
+- Reworked the RedFox dashboard around the approved physical display reference
+  with a dark bezel, side LEDs, boxed telemetry, a larger central gear, and a
+  spacious 2x2 tire-temperature block.
+- Narrowed Live Standings into a rail-free vertical tower and replaced car
+  outlines with compact three-letter manufacturer badges.
 
 All notable changes will be documented here.
 
