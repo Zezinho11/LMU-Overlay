@@ -77,6 +77,7 @@ var session = new LmuSessionSnapshot(
     new LmuWeatherSnapshot(0.2, 0, 21, 29, new LmuVector3(0, 0, 0), 0, 0));
 var raceSnapshot = snapshot with { Session = session, Standings = standings };
 var raceDashboard = EssentialWidgetStateFactory.CreateDashboard(raceSnapshot);
+var liveStandings = EssentialWidgetStateFactory.CreateLiveStandings(raceSnapshot);
 var relative = EssentialWidgetStateFactory.CreateRelative(raceSnapshot);
 var sessionFlags = EssentialWidgetStateFactory.CreateSessionFlags(raceSnapshot);
 
@@ -88,6 +89,29 @@ Assert(sessionFlags.RemainingSeconds == 3600, "Remaining session time must be de
 Assert(raceDashboard.CurrentLapTimeSeconds == 120, "Current lap time must be derived.");
 Assert(raceDashboard.LastLapTimeSeconds == 121, "Last lap time must be preserved.");
 Assert(raceDashboard.BestLapTimeSeconds == 120, "Best lap time must be preserved.");
+Assert(liveStandings.Classes[0].Rows[0].DriverAbbreviation == "LEA",
+    "Standings must expose compact driver abbreviations.");
+
+var deepField = Enumerable.Range(1, 15)
+    .Select(position => Standing(
+        position,
+        position == 12 ? "Antônio da Costa" : $"Driver {position}",
+        position,
+        position * 2,
+        position == 12,
+        false,
+        vehicleName: position == 12 ? "Porsche 963 #6" : "Porsche 963"))
+    .ToArray();
+var compactStandings = EssentialWidgetStateFactory.CreateLiveStandings(
+    raceSnapshot with { Standings = deepField });
+var compactRows = compactStandings.Classes[0].Rows;
+Assert(compactRows.Count == 10, "Player-class standings must be limited to ten cars.");
+Assert(compactRows[0].ClassPosition == 1, "The class leader must always remain visible.");
+Assert(compactRows.Any(row => row.IsPlayer), "The moving window must always include the player.");
+Assert(compactRows.Single(row => row.IsPlayer).DriverAbbreviation == "COS",
+    "Driver abbreviation must use the final name component.");
+Assert(compactRows.Single(row => row.IsPlayer).CarNumber == "6",
+    "Explicit race numbers must be extracted from the official vehicle name.");
 
 var fuelTracker = new FuelStrategyTracker();
 var learning = fuelTracker.Update(raceSnapshot);
@@ -148,8 +172,9 @@ static LmuVehicleStanding Standing(
     double gap,
     bool isPlayer,
     bool isInPits,
-    int completedLaps = 4) => new(
-        id, driver, "Car", "Hypercar", position, completedLaps, 1, 100,
+    int completedLaps = 4,
+    string vehicleName = "Car") => new(
+        id, driver, vehicleName, "Hypercar", position, completedLaps, 1, 100,
         120, 121, 1, 0, gap, 0, 0, 0, isPlayer, isInPits,
         isInPits ? LmuPitState.Entering : LmuPitState.None,
         0, false, false, 0.5, false);
