@@ -18,6 +18,8 @@
   range, finish projection, reserve, margin, and refueling detection.
 - Fixed LMU's `int.MaxValue` unlimited-lap sentinel being displayed and used
   as a real lap count in timed-session fuel projections.
+- Expanded Fuel Strategy with current Virtual Energy, energy consumption per
+  lap, and estimated energy range for LMGT3 and other supported cars.
 
 All notable changes will be documented here.
 
