@@ -13,6 +13,14 @@ public sealed record DashboardWidgetState(
     int LapNumber,
     string TrackName,
     double DeltaBestSeconds,
+    double CurrentLapTimeSeconds,
+    double LastLapTimeSeconds,
+    double BestLapTimeSeconds,
+    double EngineWaterTemperatureCelsius,
+    double EngineOilTemperatureCelsius,
+    double RearBrakeBiasFraction,
+    bool AbsActive,
+    bool TractionControlActive,
     LmuWheelTemperatures TireTemperatures);
 
 public sealed record InputsWidgetState(
@@ -76,10 +84,12 @@ public static class EssentialWidgetStateFactory
             return new(
                 false, 0, "N", 0, 0, 0, 0, 0,
                 snapshot.Session?.TrackName ?? string.Empty,
-                0,
+                0, 0, 0, 0, 0, 0, 0, false, false,
                 new LmuWheelTemperatures(0, 0, 0, 0));
         }
 
+        var session = snapshot.Session;
+        var playerStanding = snapshot.Standings.FirstOrDefault(item => item.IsPlayer);
         return new(
             true,
             player.SpeedKilometersPerHour,
@@ -91,8 +101,19 @@ public static class EssentialWidgetStateFactory
             player.FuelLiters,
             player.Position,
             player.LapNumber,
-            snapshot.Session?.TrackName ?? string.Empty,
+            session?.TrackName ?? string.Empty,
             player.DeltaBestSeconds,
+            session is not null &&
+            session.CurrentElapsedTime >= player.LapStartElapsedTime
+                ? session.CurrentElapsedTime - player.LapStartElapsedTime
+                : 0,
+            playerStanding?.LastLapTimeSeconds ?? 0,
+            playerStanding?.BestLapTimeSeconds ?? 0,
+            player.EngineWaterTemperatureCelsius,
+            player.EngineOilTemperatureCelsius,
+            player.RearBrakeBiasFraction,
+            player.AbsActive,
+            player.TractionControlActive,
             player.TireTemperatures);
     }
 
