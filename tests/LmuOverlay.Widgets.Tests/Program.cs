@@ -44,7 +44,8 @@ var player = new LmuPlayerTelemetry(
     TractionControlCutMaximum: 12,
     AbsLevel: 6,
     AbsMaximum: 12,
-    TireTemperatures: new LmuWheelTemperatures(82, 84, 78, 79));
+    TireTemperatures: new LmuWheelTemperatures(82, 84, 78, 79),
+    TireWear: new LmuWheelWear(0.12, 0.14, 0.18, 0.2));
 var snapshot = new LmuTelemetrySnapshot(
     LmuConnectionState.Connected, 14000, 1, 1, 1, 1, null, player,
     Array.Empty<LmuVehicleStanding>(), DateTimeOffset.UtcNow, string.Empty);
@@ -62,6 +63,10 @@ Assert(dashboard.TractionControlLevel == 4, "TC level must reach the dashboard."
 Assert(dashboard.TractionControlSlipLevel == 7, "TC slip must reach the dashboard.");
 Assert(dashboard.TractionControlCutLevel == 3, "TC cut must reach the dashboard.");
 Assert(dashboard.AbsLevel == 6, "ABS level must reach the dashboard.");
+Assert(dashboard.TireWear.FrontLeftFraction == 0.12,
+    "Front-left wear must reach the dashboard.");
+Assert(dashboard.TireWear.RearRightFraction == 0.2,
+    "Rear-right wear must reach the dashboard.");
 Assert(TireTemperatureClassifier.Classify(55) == TireTemperatureBand.Cold,
     "Cold tires must use the cold visual band.");
 Assert(TireTemperatureClassifier.Classify(74) == TireTemperatureBand.Warming,
