@@ -99,6 +99,22 @@ var timedStrategy = timedTracker.Update(nextLapSnapshot with { Session = timedSe
 Assert(timedFlags.MaximumLaps == 0, "Timed sessions must hide the unlimited-lap sentinel.");
 Assert(timedStrategy.EstimatedLapsToFinish == 30, "Timed fuel projection must use time and lap pace.");
 Assert(timedStrategy.RequiredFuelLiters == 77.5, "Timed projection must remain within a realistic range.");
+
+var energyTracker = new FuelStrategyTracker();
+_ = energyTracker.Update(raceSnapshot with
+{
+    Player = player with { FuelLiters = 40, VirtualEnergy = 1 },
+});
+var energyStrategy = energyTracker.Update(nextLapSnapshot with
+{
+    Player = player with { FuelLiters = 37.5, VirtualEnergy = 0.92 },
+});
+Assert(
+    Math.Abs(energyStrategy.AverageVirtualEnergyFractionPerLap - 0.08) < 0.0001,
+    "Virtual Energy use must be sampled per lap.");
+Assert(
+    Math.Abs(energyStrategy.EstimatedVirtualEnergyRangeLaps - 11.5) < 0.0001,
+    "Virtual Energy range must use its rolling consumption.");
 Console.WriteLine("Widget state checks passed.");
 return 0;
 
