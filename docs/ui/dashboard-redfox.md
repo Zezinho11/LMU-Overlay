@@ -40,11 +40,16 @@ Thresholds must later become configurable per car.
 Use the existing `AbsActive` and `TractionControlActive` values. Never infer an
 activation that the official telemetry does not report.
 
-### Reference-only fields
+### Additional official fields
 
-Oil temperature/pressure, water temperature/pressure, brake bias, time of day,
-and predicted lap time may be added only after their official LMU API fields
-and semantics are verified. Until then, omit them instead of showing invented
+- Engine oil temperature.
+- Engine water temperature.
+- Front brake bias, derived from the API's documented rear-brake fraction.
+- Current, last, and best lap times.
+
+Oil and water pressure, time of day, and predicted lap time remain
+reference-only. They may be added only after their official LMU API fields and
+semantics are verified. Until then, omit them instead of showing invented
 values.
 
 ## Layout behavior
