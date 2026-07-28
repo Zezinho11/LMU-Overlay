@@ -32,7 +32,8 @@ var player = new LmuPlayerTelemetry(
     SpeedLimiterActive: false,
     LapInvalidated: false,
     AbsActive: true,
-    TractionControlActive: false);
+    TractionControlActive: false,
+    TireTemperatures: new LmuWheelTemperatures(82, 84, 78, 79));
 var snapshot = new LmuTelemetrySnapshot(
     LmuConnectionState.Connected, 14000, 1, 1, 1, 1, null, player,
     Array.Empty<LmuVehicleStanding>(), DateTimeOffset.UtcNow, string.Empty);
