@@ -38,6 +38,11 @@
   spacious 2x2 tire-temperature block.
 - Narrowed Live Standings into a rail-free vertical tower and replaced car
   outlines with compact three-letter manufacturer badges.
+- Removed the redundant Live Standings branding header and connected each
+  manufacturer badge to the official per-vehicle telemetry model and brand
+  color, with a neutral unknown fallback.
+- Lifted the dashboard tire-temperature label above the 2x2 readings to prevent
+  overlap with the front tire values.
 
 All notable changes will be documented here.
 
