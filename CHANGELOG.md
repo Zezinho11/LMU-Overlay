@@ -27,6 +27,9 @@
   dashboard scaling, Bahnschrift typography, and a nearly opaque background.
 - Added the first widget configuration window with independent visibility and
   opacity controls, live apply, persistence, and layout restore.
+- Added named layout profiles with live switching, create, duplicate, rename,
+  guarded deletion, backward-compatible migration, and portable JSON
+  import/export.
 
 All notable changes will be documented here.
 
