@@ -15,6 +15,7 @@ public partial class App
     };
 
     private OverlayWindow? _overlay;
+    private OverlayToolbarWindow? _toolbar;
     private ConfigurationWindow? _configurationWindow;
     private WinForms.NotifyIcon? _trayIcon;
     private TelemetryRuntime? _telemetryRuntime;
@@ -24,6 +25,7 @@ public partial class App
     {
         base.OnStartup(e);
         _overlay = new OverlayWindow(new LayoutStore());
+        _toolbar = new OverlayToolbarWindow(_overlay, ShowConfiguration);
         _telemetryRuntime = new TelemetryRuntime(
             () => new LmuSharedMemoryReader(),
             TimeSpan.FromMilliseconds(50),
@@ -58,6 +60,7 @@ public partial class App
     private void SetEditMode(bool enabled)
     {
         _overlay?.SetEditMode(enabled);
+        _toolbar?.SyncFromOverlay();
     }
 
     private void ShowConfiguration()
@@ -108,10 +111,12 @@ public partial class App
         if (gameBounds is null)
         {
             _overlay.SetGameAvailable(false);
+            _toolbar?.SetGameAvailable(false);
             return;
         }
 
         _overlay.UpdateFrame(gameBounds.Value, snapshot);
+        _toolbar?.UpdateForGame(gameBounds.Value);
     }
 
     private void ExitApplication()
@@ -125,6 +130,7 @@ public partial class App
         _timer.Stop();
         _telemetryRuntime?.DisposeAsync().AsTask().GetAwaiter().GetResult();
         _configurationWindow?.Close();
+        _toolbar?.Close();
         _overlay?.Close();
         if (_trayIcon is not null)
         {

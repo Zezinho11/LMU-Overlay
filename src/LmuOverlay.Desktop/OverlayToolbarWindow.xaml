@@ -1,0 +1,82 @@
+<Window x:Class="LmuOverlay.Desktop.OverlayToolbarWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Width="520" Height="48"
+        WindowStyle="None"
+        ResizeMode="NoResize"
+        AllowsTransparency="True"
+        Background="Transparent"
+        Topmost="True"
+        ShowInTaskbar="False"
+        ShowActivated="False">
+    <Border CornerRadius="7"
+            Background="#F20A0F1A"
+            BorderBrush="#FF42D3A6"
+            BorderThickness="1">
+        <Grid Margin="5">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="42" />
+                <ColumnDefinition Width="164" />
+                <ColumnDefinition Width="8" />
+                <ColumnDefinition Width="94" />
+                <ColumnDefinition Width="86" />
+                <ColumnDefinition Width="106" />
+            </Grid.ColumnDefinitions>
+            <Border Grid.Column="0"
+                    Background="#FF182331"
+                    CornerRadius="4"
+                    Cursor="SizeAll"
+                    MouseLeftButtonDown="DragHandleMouseLeftButtonDown"
+                    ToolTip="Arrastar barra">
+                <TextBlock Text="RFX"
+                           Foreground="#FF42D3A6"
+                           FontFamily="Bahnschrift"
+                           FontWeight="Bold"
+                           FontSize="11"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center" />
+            </Border>
+            <ComboBox x:Name="ProfileSelector"
+                      Grid.Column="1"
+                      Margin="6,0,0,0"
+                      Padding="7,3"
+                      VerticalContentAlignment="Center"
+                      SelectionChanged="ProfileSelectionChanged"
+                      ToolTip="Perfil de layout ativo" />
+            <Button Grid.Column="3"
+                    Content="AJUSTES"
+                    Click="SettingsClicked"
+                    Background="#FF202B3A"
+                    BorderBrush="#FF526277"
+                    Foreground="White"
+                    FontFamily="Bahnschrift"
+                    FontWeight="SemiBold"
+                    FontSize="10"
+                    ToolTip="Abrir configuração completa" />
+            <Button x:Name="EditButton"
+                    Grid.Column="4"
+                    Margin="5,0,0,0"
+                    Content="EDITAR"
+                    Click="EditClicked"
+                    Background="#FF202B3A"
+                    BorderBrush="#FF526277"
+                    Foreground="White"
+                    FontFamily="Bahnschrift"
+                    FontWeight="Bold"
+                    FontSize="10"
+                    ToolTip="Liberar movimento e redimensionamento" />
+            <Button x:Name="LockButton"
+                    Grid.Column="5"
+                    Margin="5,0,0,0"
+                    Content="TRAVADO"
+                    Click="LockClicked"
+                    Background="#FF125B4A"
+                    BorderBrush="#FF42D3A6"
+                    Foreground="White"
+                    FontFamily="Bahnschrift"
+                    FontWeight="Bold"
+                    FontSize="10"
+                    ToolTip="Travar o overlay e impedir alterações acidentais" />
+        </Grid>
+    </Border>
+</Window>
