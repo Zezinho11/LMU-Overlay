@@ -129,6 +129,12 @@ Require(
     Math.Abs(battery - 0.65) < 0.0001,
     "Battery fraction");
 
+WriteInt32(data, LmuApiLayoutV1.SessionMaximumLapsOffset, int.MaxValue);
+var timedSnapshot = LmuSnapshotParser.ParseTelemetry(data);
+var timedMetrics = LmuTelemetryMetricsCalculator.Calculate(timedSnapshot);
+Require(timedSnapshot.Session?.MaximumLaps == 0, "Unlimited lap sentinel normalization");
+Require(timedMetrics.LapsRemaining is null, "Timed session must not expose fake laps remaining");
+
 var probe = LmuSnapshotParser.Parse(data);
 Require(probe.GameVersion == "14000", "Probe game version");
 Require(probe.PlayerVehicleName == expected.PlayerVehicleName, "Probe player vehicle");
