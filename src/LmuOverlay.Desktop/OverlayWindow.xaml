@@ -197,6 +197,7 @@
                             BorderBrush="#FFE1972F" BorderThickness="1">
                         <Grid>
                             <Border Height="16" VerticalAlignment="Top"
+                                    Margin="0,-13,0,0" Panel.ZIndex="2"
                                     Background="#FFD78421">
                                 <TextBlock Text="TYRE TEMP" Foreground="White"
                                            FontSize="9" HorizontalAlignment="Center"
@@ -263,38 +264,10 @@
                 <Viewbox Stretch="Fill">
                     <Grid Width="260" Height="410" Background="#F5070B18">
                         <Grid.RowDefinitions>
-                            <RowDefinition Height="48" />
                             <RowDefinition Height="22" />
                             <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
-                        <Border Grid.Row="0" Background="#FF080D2B"
-                                BorderThickness="0">
-                            <Grid Margin="9,5">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <StackPanel>
-                                    <TextBlock Text="REDFOX"
-                                               FontFamily="Bahnschrift"
-                                               FontWeight="Bold" FontSize="15"
-                                               Foreground="White" />
-                                    <TextBlock x:Name="StandingsTitleText"
-                                               Text="LIVE STANDINGS"
-                                               FontFamily="Bahnschrift"
-                                               FontWeight="SemiBold" FontSize="9"
-                                               Foreground="#FF5AD8FF" />
-                                </StackPanel>
-                                <TextBlock x:Name="StandingsSubtitleText"
-                                           Grid.Column="1"
-                                           Text="NO DATA"
-                                           VerticalAlignment="Center"
-                                           FontFamily="Bahnschrift"
-                                           FontSize="8"
-                                           Foreground="#FF9BA9B8" />
-                            </Grid>
-                        </Border>
-                        <Grid Grid.Row="1" Background="#FF17213B">
+                        <Grid Grid.Row="0" Background="#FF17213B">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="28" />
                                 <ColumnDefinition Width="38" />
@@ -321,7 +294,7 @@
                                 </Style>
                             </Grid.Resources>
                         </Grid>
-                        <StackPanel x:Name="StandingsRows" Grid.Row="2" />
+                        <StackPanel x:Name="StandingsRows" Grid.Row="1" />
                     </Grid>
                 </Viewbox>
                 <primitives:Thumb x:Name="LiveStandingsResizeThumb" Tag="LiveStandingsWidget"

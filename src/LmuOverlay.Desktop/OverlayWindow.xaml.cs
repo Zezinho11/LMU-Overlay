@@ -338,13 +338,6 @@ public partial class OverlayWindow : Window
     private void UpdateStandings(LiveStandingsWidgetState standings)
     {
         StandingsRows.Children.Clear();
-        StandingsTitleText.Text = string.IsNullOrWhiteSpace(standings.PlayerClass)
-            ? "LIVE STANDINGS"
-            : standings.PlayerClass.ToUpperInvariant();
-        var visibleCars = standings.Classes.Sum(item => item.Rows.Count);
-        StandingsSubtitleText.Text = visibleCars > 0
-            ? $"{visibleCars} CARS"
-            : "NO DATA";
 
         foreach (var category in standings.Classes)
         {
@@ -411,7 +404,7 @@ public partial class OverlayWindow : Window
             11);
         var manufacturerBadge = new Border
         {
-            Background = CarIconBrush(row.VehicleName),
+            Background = CarIconBrush(row.VehicleModel),
             Width = 32,
             Height = 17,
             CornerRadius = new CornerRadius(2),
@@ -419,7 +412,7 @@ public partial class OverlayWindow : Window
             VerticalAlignment = VerticalAlignment.Center,
             Child = new TextBlock
             {
-                Text = ManufacturerAbbreviation(row.VehicleName),
+                Text = ManufacturerAbbreviation(row.VehicleModel),
                 Foreground = System.Windows.Media.Brushes.White,
                 FontFamily = new System.Windows.Media.FontFamily("Bahnschrift"),
                 FontWeight = FontWeights.Bold,
@@ -566,8 +559,7 @@ public partial class OverlayWindow : Window
             _ when name.Contains("LEXUS", StringComparison.Ordinal) => "LEX",
             _ when name.Contains("LAMBORGHINI", StringComparison.Ordinal) => "LAM",
             _ when name.Contains("PEUGEOT", StringComparison.Ordinal) => "PEU",
-            _ => new string(name.Where(char.IsLetterOrDigit).Take(3).ToArray())
-                .PadRight(3, '-'),
+            _ => "---",
         };
     }
 
