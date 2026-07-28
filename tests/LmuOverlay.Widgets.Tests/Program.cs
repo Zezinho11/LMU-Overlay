@@ -85,7 +85,8 @@ var standings = new[]
 var session = new LmuSessionSnapshot(
     "Spa", 10, LmuSessionKind.Race, LmuGamePhase.FullCourseYellow,
     120, 3720, 20, 7004, true, "Player",
-    new LmuWeatherSnapshot(0.2, 0, 21, 29, new LmuVector3(0, 0, 0), 0, 0));
+    new LmuWeatherSnapshot(
+        0.2, 0, 21, 29, new LmuVector3(0, 0, 0), 0, 0, 0.05, 3));
 var raceSnapshot = snapshot with { Session = session, Standings = standings };
 var raceDashboard = EssentialWidgetStateFactory.CreateDashboard(raceSnapshot);
 var liveStandings = EssentialWidgetStateFactory.CreateLiveStandings(raceSnapshot);
@@ -102,6 +103,12 @@ Assert(relative.Rows[1].ClassAbbreviation == "HYP",
 Assert(relative.Rows[1].CarNumber == "6",
     "Relative must use only explicit official race numbers.");
 Assert(sessionFlags.FlagName == "YELLOW", "FCY must produce a yellow flag state.");
+Assert(sessionFlags.TrackGripName == "HEAVY",
+    "Official RealRoad level 3 must render as heavy grip.");
+Assert(sessionFlags.WeatherCondition == WeatherConditionKind.PartlyCloudy,
+    "Low cloud cover without rain must render as partly cloudy.");
+Assert(sessionFlags.AveragePathWetness == 0.05,
+    "Average official path wetness must reach the session widget.");
 Assert(sessionFlags.RemainingSeconds == 3600, "Remaining session time must be derived.");
 Assert(raceDashboard.CurrentLapTimeSeconds == 120, "Current lap time must be derived.");
 Assert(raceDashboard.LastLapTimeSeconds == 121, "Last lap time must be preserved.");
@@ -191,6 +198,23 @@ var timedStrategy = timedTracker.Update(nextLapSnapshot with { Session = timedSe
 Assert(timedFlags.MaximumLaps == 0, "Timed sessions must hide the unlimited-lap sentinel.");
 Assert(timedStrategy.EstimatedLapsToFinish == 30, "Timed fuel projection must use time and lap pace.");
 Assert(timedStrategy.RequiredFuelLiters == 77.5, "Timed projection must remain within a realistic range.");
+
+var rainSession = session with
+{
+    GamePhase = LmuGamePhase.Stopped,
+    Weather = session.Weather with
+    {
+        Cloudiness = 0.95,
+        RainIntensity = 0.8,
+        AveragePathWetness = 0.7,
+    },
+};
+var rainFlags = EssentialWidgetStateFactory.CreateSessionFlags(
+    raceSnapshot with { Session = rainSession });
+Assert(rainFlags.FlagName == "RED",
+    "A stopped race phase must produce the red flag card.");
+Assert(rainFlags.WeatherCondition == WeatherConditionKind.HeavyRain,
+    "High official rain intensity must produce the heavy-rain icon state.");
 
 var energyTracker = new FuelStrategyTracker();
 _ = energyTracker.Update(raceSnapshot with
