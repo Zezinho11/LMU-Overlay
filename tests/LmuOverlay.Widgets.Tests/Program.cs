@@ -62,6 +62,16 @@ Assert(dashboard.TractionControlLevel == 4, "TC level must reach the dashboard."
 Assert(dashboard.TractionControlSlipLevel == 7, "TC slip must reach the dashboard.");
 Assert(dashboard.TractionControlCutLevel == 3, "TC cut must reach the dashboard.");
 Assert(dashboard.AbsLevel == 6, "ABS level must reach the dashboard.");
+Assert(TireTemperatureClassifier.Classify(55) == TireTemperatureBand.Cold,
+    "Cold tires must use the cold visual band.");
+Assert(TireTemperatureClassifier.Classify(74) == TireTemperatureBand.Warming,
+    "Warming tires must use the transitional visual band.");
+Assert(TireTemperatureClassifier.Classify(82) == TireTemperatureBand.Optimal,
+    "Normal operating temperatures must use the optimal visual band.");
+Assert(TireTemperatureClassifier.Classify(105) == TireTemperatureBand.Hot,
+    "Hot tires must use the warning visual band.");
+Assert(TireTemperatureClassifier.Classify(120) == TireTemperatureBand.Critical,
+    "Critical tire temperatures must use the critical visual band.");
 Assert(inputs.Throttle == 1 && inputs.Brake == 0, "Pedal inputs must be clamped.");
 Assert(inputs.Steering == 1, "Steering must be clamped.");
 
