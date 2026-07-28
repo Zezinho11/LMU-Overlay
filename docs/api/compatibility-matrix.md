@@ -25,6 +25,9 @@ Packing is 4 bytes. The shared object is 324,820 bytes and supports 104 vehicles
 | Track name | 1,632 | 64 |
 | Session code | 1,696 | 4 |
 | Scored vehicle count | 1,736 | 4 |
+| Average path wetness | 1,964 | 8 |
+| Track grip level | 1,981 | 1 |
+| Cloud coverage | 1,982 | 1 |
 | Vehicle scoring array | 2,192 | 584 per vehicle |
 | Telemetry block | 128,464 | 196,356 |
 | Active vehicle count | 128,464 | 1 |
@@ -38,7 +41,7 @@ Packing is 4 bytes. The shared object is 324,820 bytes and supports 104 vehicles
 | Group | Bound data |
 |---|---|
 | Session | elapsed/end time, maximum laps, lap length, phase, realtime state |
-| Weather | cloud, rain, ambient/track temperatures, wind, path wetness |
+| Weather/RealRoad | cloud, rain, ambient/track temperatures, wind, min/max/average path wetness, track grip level |
 | Player | lap, speed, gear/RPM, inputs, fuel, battery/SoC, regen, virtual energy |
 | Driver aids | limiter, ABS, TC, invalid-lap state |
 | Standings | position, laps, sector, lap distance/times, gaps, class |

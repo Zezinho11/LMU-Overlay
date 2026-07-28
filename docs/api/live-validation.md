@@ -27,3 +27,18 @@ The validation exposed a case where `LMU_Data` was connected but the launching
 session could not expose the LMU window handle. The host now falls back to the
 primary screen bounds in that condition. It still does not open a game process
 handle, install a graphics hook, or change the read-only safety boundary.
+
+## 2026-07-28 — RealRoad and weather panel
+
+A fresh read-only snapshot from the live Spa session validated the newly bound
+official scoring fields:
+
+- track grip level: `2` (`MEDIUM`);
+- cloud darkness: `0`;
+- rain intensity: `0`;
+- average path wetness: `0`;
+- ambient temperature: `15 C`;
+- track temperature: approximately `31.7 C`.
+
+The values were coherent with the visible dry, clear session and confirm the
+derived offsets for average path wetness and `mTrackGripLevel`.
