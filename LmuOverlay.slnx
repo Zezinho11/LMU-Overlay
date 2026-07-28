@@ -2,11 +2,13 @@
   <Folder Name="/src/">
     <Project Path="src/LmuOverlay.Contracts/LmuOverlay.Contracts.csproj" />
     <Project Path="src/LmuOverlay.Core/LmuOverlay.Core.csproj" />
+    <Project Path="src/LmuOverlay.Desktop/LmuOverlay.Desktop.csproj" />
     <Project Path="src/LmuOverlay.Domain/LmuOverlay.Domain.csproj" />
     <Project Path="src/LmuOverlay.LmuSharedMemory/LmuOverlay.LmuSharedMemory.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/LmuOverlay.Core.Tests/LmuOverlay.Core.Tests.csproj" />
+    <Project Path="tests/LmuOverlay.Desktop.Tests/LmuOverlay.Desktop.Tests.csproj" />
     <Project Path="tests/LmuOverlay.Domain.Tests/LmuOverlay.Domain.Tests.csproj" />
     <Project Path="tests/LmuOverlay.LmuSharedMemory.Tests/LmuOverlay.LmuSharedMemory.Tests.csproj" />
   </Folder>

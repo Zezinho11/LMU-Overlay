@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- Added the first functional desktop overlay vertical slice.
+- Added LMU window alignment, transparent click-through race mode, and tray
+  controls.
+- Added freely movable and resizable diagnostic telemetry widget with normalized
+  persisted placement and off-screen clamping.
+- Added desktop layout tests and user documentation.
+
 All notable changes will be documented here.
 
 ## Unreleased

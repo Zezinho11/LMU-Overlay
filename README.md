@@ -77,6 +77,13 @@ Desktop and VR are separate presentation hosts over the same widget model. The
 SteamVR route uses the documented overlay API; OpenXR remains an optional future
 adapter. See the project master plan alongside this repository.
 
+## Desktop prototype
+
+Phase 2 now includes a compilable Windows desktop vertical slice with one live
+diagnostic widget, LMU-window alignment, auto-hide, tray controls, free movement,
+corner resizing, normalized layout persistence, and a locked click-through race
+mode. See [the desktop quick start](docs/desktop/quick-start.md).
+
 ## Legal note
 
 Le Mans Ultimate, Studio 397, Steam, SteamVR, and Easy Anti-Cheat are trademarks
