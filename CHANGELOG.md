@@ -25,6 +25,8 @@
   engine temperatures, fuel, delta, position, and tire temperatures.
 - Added the official TC, TC Slip, TC Cut, and ABS setup levels, uniform
   dashboard scaling, Bahnschrift typography, and a nearly opaque background.
+- Added the first widget configuration window with independent visibility and
+  opacity controls, live apply, persistence, and layout restore.
 
 All notable changes will be documented here.
 
