@@ -95,6 +95,29 @@ try
     Assert(migratedTower.Width == 0.16, "The old wide standings layout must migrate.");
     Assert(migratedTower.X == 0.81, "The narrow timing tower must remain right aligned.");
 
+    var fuelPanelPath = Path.Combine(root, "layout-v5.json");
+    var versionFiveProfile = LayoutProfile.Default with
+    {
+        SchemaVersion = 5,
+        FuelStrategy = new WidgetPlacement(
+            0.025, 0.38, 0.22, 0.16, 1, 0.92, true),
+    };
+    File.WriteAllText(fuelPanelPath, JsonSerializer.Serialize(new
+    {
+        SchemaVersion = 1,
+        ActiveProfile = "Legacy Fuel",
+        Profiles = new Dictionary<string, LayoutProfile>
+        {
+            ["Legacy Fuel"] = versionFiveProfile,
+        },
+    }));
+    var fuelPanelStore = new LayoutStore(fuelPanelPath);
+    var migratedFuelPanel = fuelPanelStore.Load().FuelStrategy;
+    Assert(migratedFuelPanel.Width == 0.30,
+        "The old fuel widget must migrate to the strategy-table width.");
+    Assert(migratedFuelPanel.Height == 0.25,
+        "The old fuel widget must migrate to the strategy-table height.");
+
     File.WriteAllText(path, "{broken");
     var corruptStore = new LayoutStore(path);
     Assert(corruptStore.Load() == LayoutProfile.Default, "Corrupt profiles must be recoverable.");
