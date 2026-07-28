@@ -4,7 +4,9 @@ using LmuOverlay.Domain;
 using LmuOverlay.LmuSharedMemory;
 
 var data = new byte[LmuApiLayoutV1.ObjectSize];
-WriteText(data, LmuApiLayoutV1.GameVersionOffset, "1.2");
+BinaryPrimitives.WriteInt32LittleEndian(
+    data.AsSpan(LmuApiLayoutV1.GameVersionOffset, sizeof(int)),
+    14_000);
 WriteText(data, LmuApiLayoutV1.TrackNameOffset, "Le Mans");
 BinaryPrimitives.WriteInt32LittleEndian(
     data.AsSpan(LmuApiLayoutV1.SessionCodeOffset, sizeof(int)),
@@ -22,7 +24,7 @@ WriteText(
 
 var snapshot = LmuSnapshotParser.Parse(data);
 Require(snapshot.State == LmuConnectionState.Connected, "Connected state");
-Require(snapshot.GameVersion == "1.2", "Game version");
+Require(snapshot.GameVersion == "14000", "Game version");
 Require(snapshot.TrackName == "Le Mans", "Track name");
 Require(snapshot.SessionCode == 10, "Session code");
 Require(snapshot.PlayerVehicleName == "Porsche 963", "Player vehicle");
