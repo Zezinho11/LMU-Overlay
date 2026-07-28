@@ -12,6 +12,9 @@ public sealed record FuelStrategyWidgetState(
     int EstimatedLapsToFinish,
     double RequiredFuelLiters,
     double FuelMarginLiters,
+    double VirtualEnergyFraction,
+    double AverageVirtualEnergyFractionPerLap,
+    double EstimatedVirtualEnergyRangeLaps,
     string Status);
 
 public sealed class FuelStrategyTracker
@@ -20,11 +23,14 @@ public sealed class FuelStrategyTracker
     private const double ReserveLaps = 1;
 
     private readonly Queue<double> _samples = new();
+    private readonly Queue<double> _virtualEnergySamples = new();
     private string _trackName = string.Empty;
     private int _sessionCode = int.MinValue;
     private int _lastCompletedLaps = -1;
     private double _lapStartFuel;
     private double _previousFuel;
+    private double _lapStartVirtualEnergy;
+    private double _previousVirtualEnergy;
 
     public FuelStrategyWidgetState Update(LmuTelemetrySnapshot snapshot)
     {
@@ -43,9 +49,17 @@ public sealed class FuelStrategyTracker
         }
 
         var refueled = player.FuelLiters > _previousFuel + 0.5;
+        var virtualEnergy = NormalizeVirtualEnergy(player.VirtualEnergy);
+        var virtualEnergyRefilled =
+            virtualEnergy > _previousVirtualEnergy + 0.005;
         if (refueled)
         {
             _lapStartFuel = player.FuelLiters;
+        }
+
+        if (virtualEnergyRefilled)
+        {
+            _lapStartVirtualEnergy = virtualEnergy;
         }
 
         if (completedLaps > _lastCompletedLaps)
@@ -62,12 +76,29 @@ public sealed class FuelStrategyTracker
                 }
             }
 
+            var virtualEnergyUsed = _lapStartVirtualEnergy - virtualEnergy;
+            if (!virtualEnergyRefilled &&
+                virtualEnergyUsed > 0.0001 &&
+                virtualEnergyUsed <= 1)
+            {
+                _virtualEnergySamples.Enqueue(virtualEnergyUsed);
+                while (_virtualEnergySamples.Count > MaximumSamples)
+                {
+                    _virtualEnergySamples.Dequeue();
+                }
+            }
+
             _lapStartFuel = player.FuelLiters;
+            _lapStartVirtualEnergy = virtualEnergy;
             _lastCompletedLaps = completedLaps;
         }
 
         _previousFuel = player.FuelLiters;
+        _previousVirtualEnergy = virtualEnergy;
         var average = _samples.Count > 0 ? _samples.Average() : 0;
+        var virtualEnergyAverage = _virtualEnergySamples.Count > 0
+            ? _virtualEnergySamples.Average()
+            : 0;
         var lapsToFinish = EstimateLapsToFinish(session, playerStanding, completedLaps);
         var required = average > 0
             ? average * (lapsToFinish + ReserveLaps)
@@ -91,6 +122,9 @@ public sealed class FuelStrategyTracker
             lapsToFinish,
             required,
             margin,
+            virtualEnergy,
+            virtualEnergyAverage,
+            virtualEnergyAverage > 0 ? virtualEnergy / virtualEnergyAverage : 0,
             status);
     }
 
@@ -105,12 +139,18 @@ public sealed class FuelStrategyTracker
         double fuelLiters)
     {
         _samples.Clear();
+        _virtualEnergySamples.Clear();
         _trackName = session.TrackName;
         _sessionCode = session.SessionCode;
         _lastCompletedLaps = completedLaps;
         _lapStartFuel = fuelLiters;
         _previousFuel = fuelLiters;
+        _lapStartVirtualEnergy = 0;
+        _previousVirtualEnergy = 0;
     }
+
+    private static double NormalizeVirtualEnergy(double value) =>
+        double.IsFinite(value) ? Math.Clamp(value, 0, 1) : 0;
 
     private static int EstimateLapsToFinish(
         LmuSessionSnapshot session,
@@ -134,5 +174,5 @@ public sealed class FuelStrategyTracker
     }
 
     private static FuelStrategyWidgetState Unavailable() => new(
-        false, true, 0, 0, 0, 0, 0, 0, 0, "NO DATA");
+        false, true, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "NO DATA");
 }
