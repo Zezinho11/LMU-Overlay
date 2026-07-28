@@ -1,6 +1,6 @@
 # Desktop prototype quick start
 
-The Phase 2 desktop prototype is an external Windows application. It never
+The desktop overlay is an external Windows application. It never
 injects into LMU, installs a graphics hook, opens an LMU process handle, or
 writes to game memory.
 
@@ -11,6 +11,9 @@ writes to game memory.
 3. Start Le Mans Ultimate normally.
 4. The overlay aligns itself to the LMU client area and displays live shared
    memory telemetry when the map is available.
+
+For a public release, extract the self-contained Windows x64 ZIP and run
+`LmuOverlay.Desktop.exe`. A separate .NET installation is not required.
 
 The application lives in the Windows notification area. It automatically hides
 when both the LMU window and telemetry are unavailable. If telemetry is connected
@@ -34,13 +37,15 @@ The normalized layout is stored at:
 Normalized geometry preserves placement across common resolution changes and
 is clamped to keep the widget visible.
 
-## Current vertical-slice scope
+## Current scope
 
-- one live diagnostic widget;
+- RedFox dashboard, Live Standings, Relative, Fuel & Virtual Energy strategy,
+  inputs, and session/weather/flags;
 - transparent, topmost external overlay;
 - LMU client-area tracking and auto-hide;
 - free movement, corner resizing, edge snap, reset, and persistence;
 - explicit edit and locked click-through modes;
-- reconnect when LMU shared memory becomes available.
+- background polling and automatic reconnect when LMU shared memory becomes
+  available.
 
-Visual polish and the complete widget set remain later Phase 2/3 work.
+Extended live-race scenario validation and SteamVR remain future work.
