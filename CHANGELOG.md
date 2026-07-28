@@ -56,6 +56,10 @@
 - Added four tire-shaped dashboard indicators beside FL/FR/RL/RR temperatures,
   with independent cold, warming, optimal, hot, and critical colors driven by
   official carcass telemetry.
+- Rebuilt Session/Flags as a matching three-card panel with official
+  Green/Light/Medium/Heavy/Saturated RealRoad grip, intensity-aware weather
+  icons, rain and path wetness, separate temperatures, and full-color
+  green/yellow/red flag cards.
 
 All notable changes will be documented here.
 
