@@ -69,6 +69,9 @@
   buffer, saving target, pit countdown/lap, fuel-to-add amount, and confidence.
 - Added reproducible self-contained Windows x64 packaging, SHA-256 checksums,
   GitHub Actions artifacts, and tag-driven public GitHub Releases.
+- Added official per-wheel tire wear to the normalized telemetry model and
+  displayed independent FL/FR/RL/RR accumulated-wear percentages beside the
+  temperature-colored tire icons on the RedFox dashboard.
 
 All notable changes will be documented here.
 
