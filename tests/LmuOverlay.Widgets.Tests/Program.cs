@@ -14,6 +14,9 @@ var player = new LmuPlayerTelemetry(
     MaximumGears: 6,
     EngineRpm: 9500,
     EngineMaximumRpm: 9000,
+    EngineWaterTemperatureCelsius: 78,
+    EngineOilTemperatureCelsius: 92,
+    RearBrakeBiasFraction: 0.43,
     SpeedKilometersPerHour: 250,
     Throttle: 1.2,
     Brake: -0.1,
@@ -43,6 +46,10 @@ var inputs = EssentialWidgetStateFactory.CreateInputs(snapshot);
 
 Assert(dashboard.Gear == "R", "Reverse gear must be renderer-independent.");
 Assert(dashboard.EngineRpmFraction == 1, "RPM fraction must be clamped.");
+Assert(dashboard.EngineWaterTemperatureCelsius == 78, "Water temperature must reach the dashboard.");
+Assert(dashboard.EngineOilTemperatureCelsius == 92, "Oil temperature must reach the dashboard.");
+Assert(dashboard.RearBrakeBiasFraction == 0.43, "Brake bias must reach the dashboard.");
+Assert(dashboard.AbsActive, "ABS activation must reach the dashboard.");
 Assert(inputs.Throttle == 1 && inputs.Brake == 0, "Pedal inputs must be clamped.");
 Assert(inputs.Steering == 1, "Steering must be clamped.");
 
@@ -57,6 +64,7 @@ var session = new LmuSessionSnapshot(
     120, 3720, 20, 7004, true, "Player",
     new LmuWeatherSnapshot(0.2, 0, 21, 29, new LmuVector3(0, 0, 0), 0, 0));
 var raceSnapshot = snapshot with { Session = session, Standings = standings };
+var raceDashboard = EssentialWidgetStateFactory.CreateDashboard(raceSnapshot);
 var relative = EssentialWidgetStateFactory.CreateRelative(raceSnapshot);
 var sessionFlags = EssentialWidgetStateFactory.CreateSessionFlags(raceSnapshot);
 
@@ -65,6 +73,9 @@ Assert(relative.Rows[0].RelativeGapSeconds == -3.2, "Relative gaps must be playe
 Assert(relative.Rows[2].IsInPitLane, "Relative must preserve pit state.");
 Assert(sessionFlags.FlagName == "YELLOW", "FCY must produce a yellow flag state.");
 Assert(sessionFlags.RemainingSeconds == 3600, "Remaining session time must be derived.");
+Assert(raceDashboard.CurrentLapTimeSeconds == 120, "Current lap time must be derived.");
+Assert(raceDashboard.LastLapTimeSeconds == 121, "Last lap time must be preserved.");
+Assert(raceDashboard.BestLapTimeSeconds == 120, "Best lap time must be preserved.");
 
 var fuelTracker = new FuelStrategyTracker();
 var learning = fuelTracker.Update(raceSnapshot);
