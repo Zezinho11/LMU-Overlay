@@ -133,6 +133,9 @@ Require(snapshot.Player?.TireTemperatures.FrontLeftCelsius == 80, "Front-left ti
 Require(snapshot.Player?.TireTemperatures.RearRightCelsius == 83, "Rear-right tire temperature");
 Require(snapshot.Standings.Count == 1, "Standings count");
 Require(snapshot.Standings[0].DriverName == "Fixture Driver", "Driver name");
+Require(
+    snapshot.Standings[0].VehicleModel == "Porsche 963 963",
+    "Standing vehicle model must be joined from telemetry by vehicle id");
 Require(snapshot.Standings[0].FuelFraction == 128d / 255d, "Scoring fuel fraction");
 
 var metrics = LmuTelemetryMetricsCalculator.Calculate(snapshot);
