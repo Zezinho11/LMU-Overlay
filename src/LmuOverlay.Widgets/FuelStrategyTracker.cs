@@ -117,7 +117,7 @@ public sealed class FuelStrategyTracker
         LmuVehicleStanding? playerStanding,
         int completedLaps)
     {
-        if (session.MaximumLaps > 0)
+        if (LmuSessionLimits.HasFiniteLapLimit(session.MaximumLaps))
         {
             return Math.Max(0, session.MaximumLaps - completedLaps);
         }

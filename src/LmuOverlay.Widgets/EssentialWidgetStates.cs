@@ -210,7 +210,7 @@ public static class EssentialWidgetStateFactory
                 ? Math.Max(0, session.EndElapsedTime - session.CurrentElapsedTime)
                 : 0,
             playerStanding?.CompletedLaps ?? snapshot.Player?.LapNumber ?? 0,
-            session.MaximumLaps,
+            LmuSessionLimits.NormalizeMaximumLaps(session.MaximumLaps),
             session.Weather.AmbientTemperatureCelsius,
             session.Weather.TrackTemperatureCelsius);
     }
