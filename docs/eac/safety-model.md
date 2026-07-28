@@ -1,0 +1,40 @@
+# EAC safety model
+
+## Goal
+
+Minimize interaction with both Le Mans Ultimate and Easy Anti-Cheat by treating
+the official LMU shared-memory interface as the only game-data boundary.
+
+## Allowed interaction
+
+- Open the named Windows mapping `LMU_Data`.
+- Request `MemoryMappedFileRights.Read` only.
+- Copy documented telemetry into application-owned memory.
+- Render in a separate top-level desktop window.
+- In VR, submit application-owned textures through SteamVR's documented
+  `IVROverlay` API.
+
+## Forbidden interaction
+
+- DLL injection or code execution inside LMU/EAC processes.
+- Graphics API, window procedure, or function hooking.
+- `ReadProcessMemory`, `WriteProcessMemory`, process handles, or memory scanning.
+- Shared-memory writes, even if the official sample demonstrates a write lock.
+- Input automation, macros, packet interception, game-file patching, or EAC
+  detection/evasion.
+- Loading arbitrary native extensions into the trusted runtime.
+
+## Enforcement
+
+- The source adapter explicitly opens the map with read rights.
+- The adapter interface exposes snapshots, not writable mapped memory.
+- CI tests parser behavior without requiring the game.
+- Dependency and release review checks the forbidden-interaction list.
+- Compatibility is re-evaluated for every LMU header hash and major renderer or
+  SteamVR change.
+
+## Residual risk
+
+EAC policy and detection behavior can change. A read-only external overlay reduces
+risk but does not constitute approval by Epic Games or Studio 397. Distribution
+must include a safe mode and a kill switch for integrations found incompatible.
