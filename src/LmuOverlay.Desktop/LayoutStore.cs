@@ -65,18 +65,21 @@ public sealed class LayoutStore
 
     private static LayoutProfile Sanitize(LayoutProfile profile)
     {
-        var item = profile.Diagnostic;
         return profile with
         {
-            Diagnostic = item with
-            {
-                X = Math.Clamp(item.X, 0, 0.95),
-                Y = Math.Clamp(item.Y, 0, 0.95),
-                Width = Math.Clamp(item.Width, 0.08, 1),
-                Height = Math.Clamp(item.Height, 0.08, 1),
-                Scale = Math.Clamp(item.Scale, 0.5, 2),
-                Opacity = Math.Clamp(item.Opacity, 0.2, 1),
-            },
+            Diagnostic = SanitizePlacement(profile.Diagnostic),
+            Inputs = SanitizePlacement(profile.Inputs),
+            LiveStandings = SanitizePlacement(profile.LiveStandings),
         };
     }
+
+    private static WidgetPlacement SanitizePlacement(WidgetPlacement item) => item with
+    {
+        X = Math.Clamp(item.X, 0, 0.95),
+        Y = Math.Clamp(item.Y, 0, 0.95),
+        Width = Math.Clamp(item.Width, 0.08, 1),
+        Height = Math.Clamp(item.Height, 0.08, 1),
+        Scale = Math.Clamp(item.Scale, 0.5, 2),
+        Opacity = Math.Clamp(item.Opacity, 0.2, 1),
+    };
 }

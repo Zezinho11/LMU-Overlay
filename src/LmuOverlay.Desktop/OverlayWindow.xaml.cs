@@ -57,6 +57,7 @@ public partial class OverlayWindow : Window
         InputsText.Text = inputs.Available
             ? $"THR {inputs.Throttle:P0}  BRK {inputs.Brake:P0}  STR {inputs.Steering:P0}"
             : "THR --  BRK --  STR --";
+        UpdateStandings(EssentialWidgetStateFactory.CreateLiveStandings(snapshot));
 
         SetGameAvailable(connected || IsEditMode);
     }
@@ -121,11 +122,64 @@ public partial class OverlayWindow : Window
             item.Y * ActualHeight,
             0,
             Math.Max(0, ActualHeight - DiagnosticWidget.Height)));
+        ApplyPlacement(InputsWidget, _profile.Inputs, 170, 70);
+        ApplyPlacement(LiveStandingsWidget, _profile.LiveStandings, 220, 150);
+    }
+
+    private void ApplyPlacement(
+        FrameworkElement element,
+        WidgetPlacement placement,
+        double minimumWidth,
+        double minimumHeight)
+    {
+        element.Visibility = placement.Visible ? Visibility.Visible : Visibility.Collapsed;
+        element.Opacity = placement.Opacity;
+        element.Width = Math.Max(minimumWidth, placement.Width * ActualWidth);
+        element.Height = Math.Max(minimumHeight, placement.Height * ActualHeight);
+        Canvas.SetLeft(element, Math.Clamp(
+            placement.X * ActualWidth, 0, Math.Max(0, ActualWidth - element.Width)));
+        Canvas.SetTop(element, Math.Clamp(
+            placement.Y * ActualHeight, 0, Math.Max(0, ActualHeight - element.Height)));
+    }
+
+    private void UpdateStandings(LiveStandingsWidgetState standings)
+    {
+        StandingsRows.Children.Clear();
+        foreach (var category in standings.Classes)
+        {
+            StandingsRows.Children.Add(new TextBlock
+            {
+                Text = category.ClassName,
+                Foreground = category.IsPlayerClass
+                    ? System.Windows.Media.Brushes.Orange
+                    : System.Windows.Media.Brushes.LightGray,
+                FontWeight = FontWeights.Bold,
+                Margin = new Thickness(0, 3, 0, 1),
+            });
+            foreach (var row in category.Rows)
+            {
+                var pit = row.IsInPitLane ? "  PIT" : string.Empty;
+                var time = row.LastLapTimeSeconds > 0
+                    ? TimeSpan.FromSeconds(row.LastLapTimeSeconds).ToString(@"m\:ss\.fff")
+                    : "--:--.---";
+                StandingsRows.Children.Add(new TextBlock
+                {
+                    Text = $"{row.ClassPosition,2}  {row.DriverName}  {time}{pit}",
+                    Foreground = row.IsPlayer
+                        ? System.Windows.Media.Brushes.White
+                        : System.Windows.Media.Brushes.Gainsboro,
+                    FontWeight = row.IsPlayer ? FontWeights.Bold : FontWeights.Normal,
+                    TextTrimming = TextTrimming.CharacterEllipsis,
+                });
+            }
+        }
     }
 
     private void WidgetMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        if (!IsEditMode || e.OriginalSource == ResizeThumb)
+        if (!IsEditMode ||
+            e.OriginalSource is DependencyObject source &&
+            FindVisualAncestor<System.Windows.Controls.Primitives.Thumb>(source) is not null)
         {
             return;
         }
@@ -222,6 +276,22 @@ public partial class OverlayWindow : Window
         }
 
         return Math.Abs(value - end) <= SnapDistance ? end : value;
+    }
+
+    private static T? FindVisualAncestor<T>(DependencyObject? source)
+        where T : DependencyObject
+    {
+        while (source is not null)
+        {
+            if (source is T match)
+            {
+                return match;
+            }
+
+            source = System.Windows.Media.VisualTreeHelper.GetParent(source);
+        }
+
+        return null;
     }
 
     private void ApplyInteractionStyle()
