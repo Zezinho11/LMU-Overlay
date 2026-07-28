@@ -5,14 +5,15 @@
 - [x] Verify official LMU shared-memory headers and provenance.
 - [x] Establish the no-injection, read-only EAC safety boundary.
 - [x] Create the solution, contracts, bindings, parser, probe, tests, and CI.
-- [ ] Validate the probe in live menu/session transitions.
+- [x] Validate the probe against a live LMU session.
 
-## Phase 1 — telemetry core
+## Phase 1 — telemetry core (current)
 
-- Complete typed bindings for telemetry, scoring, rules, weather, strategy, and
-  pit state.
-- Add immutable normalized snapshots, update scheduling, derived metrics, replay
-  fixtures, structured logging, and a compatibility gate.
+- [x] Add typed telemetry, scoring, weather, energy, flag, and pit-state bindings.
+- [x] Add immutable normalized snapshots and bounded coherent reads.
+- [x] Add update scheduling and derived HUD metrics.
+- [x] Add an anonymized replay fixture and compatibility evidence.
+- [ ] Expand into rules streams and stateful fuel/stint strategy in Phase 4.
 
 ## Phase 2 — desktop vertical slice
 
