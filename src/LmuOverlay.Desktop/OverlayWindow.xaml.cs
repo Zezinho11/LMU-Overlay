@@ -182,24 +182,28 @@ public partial class OverlayWindow : Window
             FrontLeftTireText,
             "FL",
             tire.FrontLeftCelsius,
+            dashboard.TireWear.FrontLeftFraction,
             dashboard.Available);
         UpdateTireReading(
             FrontRightTireIcon,
             FrontRightTireText,
             "FR",
             tire.FrontRightCelsius,
+            dashboard.TireWear.FrontRightFraction,
             dashboard.Available);
         UpdateTireReading(
             RearLeftTireIcon,
             RearLeftTireText,
             "RL",
             tire.RearLeftCelsius,
+            dashboard.TireWear.RearLeftFraction,
             dashboard.Available);
         UpdateTireReading(
             RearRightTireIcon,
             RearRightTireText,
             "RR",
             tire.RearRightCelsius,
+            dashboard.TireWear.RearRightFraction,
             dashboard.Available);
         UpdateShiftLights(dashboard.Available ? dashboard.EngineRpmFraction : 0);
         TcLevelText.Text = FormatControlLevel(
@@ -258,11 +262,12 @@ public partial class OverlayWindow : Window
         TextBlock text,
         string label,
         double temperatureCelsius,
+        double wearFraction,
         bool available)
     {
         text.Text = available
-            ? $"{label} {temperatureCelsius:0}°"
-            : $"{label} --°";
+            ? $"{label} {temperatureCelsius:0}° · D {wearFraction:P0}"
+            : $"{label} --° · D --%";
         icon.Background = available
             ? TireTemperatureClassifier.Classify(temperatureCelsius) switch
             {

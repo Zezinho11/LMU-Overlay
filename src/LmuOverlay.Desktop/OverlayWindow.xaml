@@ -199,7 +199,7 @@
                             <Border Height="16" VerticalAlignment="Top"
                                     Margin="0,-13,0,0" Panel.ZIndex="2"
                                     Background="#FFD78421">
-                                <TextBlock Text="TYRE TEMP" Foreground="White"
+                                <TextBlock Text="TYRE TEMP / WEAR" Foreground="White"
                                            FontSize="9" HorizontalAlignment="Center"
                                            VerticalAlignment="Center" />
                             </Border>
@@ -224,8 +224,8 @@
                                                    VerticalAlignment="Center" />
                                     </Grid>
                                     <TextBlock x:Name="FrontLeftTireText"
-                                               Text="FL --°" Foreground="#FFE7EAEC"
-                                               FontSize="13" FontWeight="SemiBold"
+                                               Text="FL --° · D --%" Foreground="#FFE7EAEC"
+                                               FontSize="11" FontWeight="SemiBold"
                                                Margin="5,0,0,0" />
                                 </StackPanel>
                                 <StackPanel Grid.Row="0" Grid.Column="1"
@@ -240,8 +240,8 @@
                                                    VerticalAlignment="Center" />
                                     </Grid>
                                     <TextBlock x:Name="FrontRightTireText"
-                                               Text="FR --°" Foreground="#FFE7EAEC"
-                                               FontSize="13" FontWeight="SemiBold"
+                                               Text="FR --° · D --%" Foreground="#FFE7EAEC"
+                                               FontSize="11" FontWeight="SemiBold"
                                                Margin="5,0,0,0" />
                                 </StackPanel>
                                 <StackPanel Grid.Row="1" Grid.Column="0"
@@ -256,8 +256,8 @@
                                                    VerticalAlignment="Center" />
                                     </Grid>
                                     <TextBlock x:Name="RearLeftTireText"
-                                               Text="RL --°" Foreground="#FFE7EAEC"
-                                               FontSize="13" FontWeight="SemiBold"
+                                               Text="RL --° · D --%" Foreground="#FFE7EAEC"
+                                               FontSize="11" FontWeight="SemiBold"
                                                Margin="5,0,0,0" />
                                 </StackPanel>
                                 <StackPanel Grid.Row="1" Grid.Column="1"
@@ -272,8 +272,8 @@
                                                    VerticalAlignment="Center" />
                                     </Grid>
                                     <TextBlock x:Name="RearRightTireText"
-                                               Text="RR --°" Foreground="#FFE7EAEC"
-                                               FontSize="13" FontWeight="SemiBold"
+                                               Text="RR --° · D --%" Foreground="#FFE7EAEC"
+                                               FontSize="11" FontWeight="SemiBold"
                                                Margin="5,0,0,0" />
                                 </StackPanel>
                             </Grid>
