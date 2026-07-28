@@ -18,8 +18,14 @@
 ## Phase 2 — desktop vertical slice
 
 - Build the external transparent click-through Windows host.
-- Add layout profiles, scaling, theme tokens, and the first widgets: relative,
-  standings, fuel/energy, tires/brakes, track map, flags, and stint timing.
+- Add an explicit edit mode in which every widget can be freely moved and
+  resized, plus a locked race mode that is fully click-through.
+- Add optional snapping to screen edges, corners, a grid, and nearby widgets.
+- Persist position, size, scale, opacity, visibility, and lock state per layout
+  profile, monitor, resolution, and DPI.
+- Recover off-screen widgets after monitor, resolution, DPI, or game display
+  mode changes.
+- Add layout profiles, theme tokens, and the first diagnostic widget.
 - Establish frame-time, allocation, and idle-CPU budgets.
 
 ## Phase 3 — product coverage
