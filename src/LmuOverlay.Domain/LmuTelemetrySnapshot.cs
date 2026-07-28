@@ -97,13 +97,20 @@ public sealed record LmuPlayerTelemetry(
     int TractionControlCutMaximum,
     int AbsLevel,
     int AbsMaximum,
-    LmuWheelTemperatures TireTemperatures);
+    LmuWheelTemperatures TireTemperatures,
+    LmuWheelWear TireWear);
 
 public sealed record LmuWheelTemperatures(
     double FrontLeftCelsius,
     double FrontRightCelsius,
     double RearLeftCelsius,
     double RearRightCelsius);
+
+public sealed record LmuWheelWear(
+    double FrontLeftFraction,
+    double FrontRightFraction,
+    double RearLeftFraction,
+    double RearRightFraction);
 
 public sealed record LmuVehicleStanding(
     int VehicleId,
