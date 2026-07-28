@@ -32,7 +32,7 @@ public static class LmuTelemetryMetricsCalculator
             session.EndElapsedTime > session.CurrentElapsedTime
                 ? session.EndElapsedTime - session.CurrentElapsedTime
                 : null,
-            session.MaximumLaps > 0
+            LmuSessionLimits.HasFiniteLapLimit(session.MaximumLaps)
                 ? Math.Max(0, session.MaximumLaps - player.LapNumber)
                 : null,
             session.CurrentElapsedTime >= player.LapStartElapsedTime
