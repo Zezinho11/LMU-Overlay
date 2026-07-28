@@ -68,7 +68,8 @@ Assert(inputs.Steering == 1, "Steering must be clamped.");
 var standings = new[]
 {
     Standing(1, "Leader", 1, 0, false, false),
-    Standing(2, "Player", 2, 3.2, true, false),
+    Standing(2, "John Suzuki", 2, 3.2, true, false,
+        vehicleName: "Porsche 963 #6"),
     Standing(3, "Pitting", 3, 5.7, false, true),
 };
 var session = new LmuSessionSnapshot(
@@ -84,6 +85,12 @@ var sessionFlags = EssentialWidgetStateFactory.CreateSessionFlags(raceSnapshot);
 Assert(relative.Rows.Count == 3, "Relative must include cars around the player.");
 Assert(relative.Rows[0].RelativeGapSeconds == -3.2, "Relative gaps must be player-relative.");
 Assert(relative.Rows[2].IsInPitLane, "Relative must preserve pit state.");
+Assert(relative.Rows[1].DriverDisplayName == "J Suzuki",
+    "Relative must expose a compact driver display name.");
+Assert(relative.Rows[1].ClassAbbreviation == "HYP",
+    "Relative must expose a compact multiclass badge.");
+Assert(relative.Rows[1].CarNumber == "6",
+    "Relative must use only explicit official race numbers.");
 Assert(sessionFlags.FlagName == "YELLOW", "FCY must produce a yellow flag state.");
 Assert(sessionFlags.RemainingSeconds == 3600, "Remaining session time must be derived.");
 Assert(raceDashboard.CurrentLapTimeSeconds == 120, "Current lap time must be derived.");
