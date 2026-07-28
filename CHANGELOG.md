@@ -11,6 +11,9 @@
 - Added a primary-screen fallback when telemetry is connected but the LMU
   window handle is unavailable.
 - Validated the first live desktop render over an active Spa session.
+- Added independent, movable, resizable, and persistent Relative and
+  Session/Flags widgets.
+- Added renderer-independent session, weather, race-phase, and flag state.
 
 All notable changes will be documented here.
 
