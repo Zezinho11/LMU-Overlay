@@ -158,6 +158,10 @@ Assert(learning.Learning, "Fuel strategy must learn before the first completed l
 Assert(strategy.AverageConsumptionLitersPerLap == 2.5, "Fuel use must be sampled per lap.");
 Assert(strategy.EstimatedLapsToFinish == 15, "Remaining laps must use session length.");
 Assert(strategy.RequiredFuelLiters == 40, "Fuel need must include a one-lap reserve.");
+Assert(strategy.EstimatedRangeTimeSeconds == strategy.EstimatedRangeLaps * 121,
+    "Fuel range time must use the latest valid lap.");
+Assert(strategy.EstimatedTimeToFinishSeconds == 15 * 121,
+    "Finish time must use the same reference lap.");
 Assert(strategy.Status == "SHORT", "Negative fuel margin must be highlighted.");
 Assert(refueled.Samples == 1, "Refueling must not be recorded as negative consumption.");
 
@@ -186,6 +190,12 @@ Assert(
 Assert(
     Math.Abs(energyStrategy.EstimatedVirtualEnergyRangeLaps - 11.5) < 0.0001,
     "Virtual Energy range must use its rolling consumption.");
+Assert(
+    Math.Abs(energyStrategy.RequiredVirtualEnergyFraction - 1.28) < 0.0001,
+    "Virtual Energy finish need must include the reserve lap.");
+Assert(
+    Math.Abs(energyStrategy.VirtualEnergyMarginFraction + 0.36) < 0.0001,
+    "Virtual Energy margin must compare current energy with finish need.");
 Console.WriteLine("Widget state checks passed.");
 return 0;
 
