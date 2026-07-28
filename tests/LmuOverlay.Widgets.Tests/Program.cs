@@ -91,6 +91,8 @@ Assert(raceDashboard.LastLapTimeSeconds == 121, "Last lap time must be preserved
 Assert(raceDashboard.BestLapTimeSeconds == 120, "Best lap time must be preserved.");
 Assert(liveStandings.Classes[0].Rows[0].DriverAbbreviation == "LEA",
     "Standings must expose compact driver abbreviations.");
+Assert(liveStandings.Classes[0].Rows[0].VehicleModel == "Porsche 963",
+    "Standings must preserve the telemetry vehicle model for manufacturer badges.");
 
 var deepField = Enumerable.Range(1, 15)
     .Select(position => Standing(
@@ -174,7 +176,7 @@ static LmuVehicleStanding Standing(
     bool isInPits,
     int completedLaps = 4,
     string vehicleName = "Car") => new(
-        id, driver, vehicleName, "Hypercar", position, completedLaps, 1, 100,
+        id, driver, vehicleName, "Porsche 963", "Hypercar", position, completedLaps, 1, 100,
         120, 121, 1, 0, gap, 0, 0, 0, isPlayer, isInPits,
         isInPits ? LmuPitState.Entering : LmuPitState.None,
         0, false, false, 0.5, false);
