@@ -16,9 +16,9 @@ The widget displays one section per vehicle class in a WEC-style timing tower:
   class order;
 - every other class shows only its current leader;
 - the player's row receives a persistent highlight;
-- every row shows class position, a car silhouette, an explicit race number
-  when available, a three-character driver abbreviation, last lap, interval
-  to the previous car, and pit-lane state;
+- every row shows class position, a three-character manufacturer badge, an
+  explicit race number when available, a three-character driver abbreviation,
+  last lap, interval to the previous car, and pit-lane state;
 - compact non-player-class leaders always show their time and pit indicator.
 
 The player's class appears first. Other classes follow in a stable order so the
@@ -33,8 +33,12 @@ vehicle is reported in pits or has a non-`None` pit state.
 If a time or interval is unavailable, the widget renders a neutral placeholder
 rather than inventing a value. Car numbers are extracted only from an explicit
 `#number` in the official vehicle name; the runtime vehicle ID is never
-misrepresented as a race number. The code-native silhouette uses manufacturer
-color recognition and falls back to a neutral color.
+misrepresented as a race number. Manufacturer badges use a known three-letter
+code and brand color, with a neutral three-character fallback.
+
+The timing tower uses a narrow 260x410 vertical design surface without side
+rails or a horizontal footer. Existing version-4 layouts using the former wide
+default are migrated to the narrow right-aligned footprint.
 
 ## Layout and configuration
 
