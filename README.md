@@ -3,8 +3,8 @@
 Extensible telemetry overlay for **Le Mans Ultimate**, designed around the game's
 official shared-memory interface and a strict anti-cheat-safe boundary.
 
-> Project status: Phase 0 / API probe. This repository does not yet provide an
-> end-user overlay.
+> Project status: Phase 1 / normalized telemetry core. This repository does not
+> yet provide an end-user overlay.
 
 ## Safety boundary
 
@@ -16,13 +16,16 @@ memory. See [the complete safety model](docs/eac/safety-model.md).
 No software can promise future EAC allow-list status. Every release must be
 revalidated after LMU, EAC, SteamVR, or overlay changes.
 
-## Phase 0 deliverables
+## Current capabilities
 
 - Typed domain and telemetry-source boundary.
 - Derived LMU shared-memory layout constants.
 - Read-only, coherent snapshot reader.
 - Minimal JSON compatibility probe.
-- Parser tests and Windows CI.
+- Normalized session, player, standings, weather, inputs, fuel, hybrid-energy,
+  gap, flag, and pit-state snapshots.
+- Derived HUD metrics and an asynchronous polling service.
+- Reproducible anonymized fixture, parser checks, and Windows CI.
 - Header provenance and compatibility matrix without redistributing proprietary
   Studio 397 files.
 
@@ -40,7 +43,7 @@ Start LMU, enter a session, then:
 dotnet run --project tools/LmuOverlay.LmuProbe
 ```
 
-The probe prints a JSON snapshot and returns:
+The probe prints the complete normalized snapshot plus derived metrics and returns:
 
 - `0`: compatible live snapshot;
 - `1`: LMU unavailable, access denied, incompatible, or unstable snapshot;
@@ -51,6 +54,7 @@ The probe prints a JSON snapshot and returns:
 ```powershell
 dotnet restore
 dotnet build --no-restore --configuration Release
+dotnet run --no-build --configuration Release --project tests/LmuOverlay.Core.Tests
 dotnet run --no-build --configuration Release --project tests/LmuOverlay.Domain.Tests
 dotnet run --no-build --configuration Release --project tests/LmuOverlay.LmuSharedMemory.Tests
 ```
