@@ -33,6 +33,20 @@ Packing is 4 bytes. The shared object is 324,820 bytes and supports 104 vehicles
 | Vehicle telemetry array | 128,468 | 1,888 per vehicle |
 | Vehicle name within telemetry item | item + 32 | 64 |
 
+## Phase 1 binding coverage
+
+| Group | Bound data |
+|---|---|
+| Session | elapsed/end time, maximum laps, lap length, phase, realtime state |
+| Weather | cloud, rain, ambient/track temperatures, wind, path wetness |
+| Player | lap, speed, gear/RPM, inputs, fuel, battery/SoC, regen, virtual energy |
+| Driver aids | limiter, ABS, TC, invalid-lap state |
+| Standings | position, laps, sector, lap distance/times, gaps, class |
+| Race state | pit state, flags, yellow, garage, DRS, penalties |
+
+The parser exposes only normalized immutable records. Raw offsets remain internal
+to the LMU adapter.
+
 ## Compatibility policy
 
 1. Record installed header hashes before updating bindings.
@@ -43,3 +57,5 @@ Packing is 4 bytes. The shared object is 324,820 bytes and supports 104 vehicles
    practice, qualifying, race, replay, and session transitions.
 
 Unknown layouts fail closed as `IncompatibleLayout` or `InvalidData`.
+
+See [live validation evidence](live-validation.md).
