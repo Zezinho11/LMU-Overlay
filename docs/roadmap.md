@@ -32,6 +32,8 @@
 
 - Add the remaining non-streamer LMU Drive-style race, strategy, input,
   weather, incident, and session widgets.
+- Add multiclass live standings: full player-class field and compact leaders
+  with timing and pit state for every other class.
 - Add configuration UX, profile import/export, localization, diagnostics, and
   signed packaging/update foundations.
 
