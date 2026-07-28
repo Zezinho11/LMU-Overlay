@@ -72,6 +72,7 @@ public sealed class LayoutStore
             LiveStandings = SanitizePlacement(profile.LiveStandings),
             Relative = SanitizePlacement(profile.Relative),
             SessionFlags = SanitizePlacement(profile.SessionFlags),
+            FuelStrategy = SanitizePlacement(profile.FuelStrategy),
         };
     }
 

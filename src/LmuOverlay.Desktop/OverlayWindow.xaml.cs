@@ -17,6 +17,7 @@ public partial class OverlayWindow : Window
     private const double SnapDistance = 12;
 
     private readonly LayoutStore _layoutStore;
+    private readonly FuelStrategyTracker _fuelStrategyTracker = new();
     private LayoutProfile _profile;
     private System.Windows.Point _dragStart;
     private double _dragLeft;
@@ -72,6 +73,7 @@ public partial class OverlayWindow : Window
         UpdateStandings(EssentialWidgetStateFactory.CreateLiveStandings(snapshot));
         UpdateRelative(EssentialWidgetStateFactory.CreateRelative(snapshot));
         UpdateSessionFlags(EssentialWidgetStateFactory.CreateSessionFlags(snapshot));
+        UpdateFuelStrategy(_fuelStrategyTracker.Update(snapshot));
 
         SetGameAvailable(connected || IsEditMode);
     }
@@ -96,6 +98,7 @@ public partial class OverlayWindow : Window
         LiveStandingsResizeThumb.Visibility = enabled ? Visibility.Visible : Visibility.Collapsed;
         RelativeResizeThumb.Visibility = enabled ? Visibility.Visible : Visibility.Collapsed;
         SessionFlagsResizeThumb.Visibility = enabled ? Visibility.Visible : Visibility.Collapsed;
+        FuelStrategyResizeThumb.Visibility = enabled ? Visibility.Visible : Visibility.Collapsed;
         EditHint.Visibility = enabled ? Visibility.Visible : Visibility.Collapsed;
         var borderBrush = enabled
             ? System.Windows.Media.Brushes.Orange
@@ -106,6 +109,7 @@ public partial class OverlayWindow : Window
         LiveStandingsWidget.BorderBrush = borderBrush;
         RelativeWidget.BorderBrush = borderBrush;
         SessionFlagsWidget.BorderBrush = borderBrush;
+        FuelStrategyWidget.BorderBrush = borderBrush;
         ApplyInteractionStyle();
         if (enabled && _lastGameBounds.Width > 0)
         {
@@ -149,6 +153,7 @@ public partial class OverlayWindow : Window
         ApplyPlacement(LiveStandingsWidget, _profile.LiveStandings, 220, 150);
         ApplyPlacement(RelativeWidget, _profile.Relative, 220, 130);
         ApplyPlacement(SessionFlagsWidget, _profile.SessionFlags, 220, 70);
+        ApplyPlacement(FuelStrategyWidget, _profile.FuelStrategy, 190, 105);
     }
 
     private void ApplyPlacement(
@@ -272,6 +277,41 @@ public partial class OverlayWindow : Window
             $"TRACK {state.TrackTemperatureCelsius:0}°";
     }
 
+    private void UpdateFuelStrategy(FuelStrategyWidgetState state)
+    {
+        if (!state.Available)
+        {
+            FuelStatusText.Text = "NO DATA";
+            FuelMainText.Text = "--.- L  •  --.- L/LAP";
+            FuelProjectionText.Text = "RANGE --.-  •  NEED --.- L";
+            FuelMarginText.Text = "MARGIN --.- L";
+            return;
+        }
+
+        FuelStatusText.Text = state.Status;
+        FuelStatusText.Foreground = state.Status switch
+        {
+            "SHORT" => System.Windows.Media.Brushes.OrangeRed,
+            "MARGINAL" => System.Windows.Media.Brushes.Gold,
+            "GOOD" => System.Windows.Media.Brushes.LimeGreen,
+            _ => System.Windows.Media.Brushes.LightGray,
+        };
+        FuelMainText.Text = state.Learning
+            ? $"{state.FuelLiters:0.0} L  •  LEARNING"
+            : $"{state.FuelLiters:0.0} L  •  " +
+              $"{state.AverageConsumptionLitersPerLap:0.00} L/LAP";
+        FuelProjectionText.Text = state.Learning
+            ? "Complete a lap to calculate"
+            : $"RANGE {state.EstimatedRangeLaps:0.0}  •  " +
+              $"NEED {state.RequiredFuelLiters:0.0} L ({state.EstimatedLapsToFinish} laps)";
+        FuelMarginText.Text = state.Learning
+            ? "MARGIN --.- L"
+            : $"MARGIN {state.FuelMarginLiters:+0.0;-0.0;0.0} L";
+        FuelMarginText.Foreground = state.FuelMarginLiters < 0
+            ? System.Windows.Media.Brushes.OrangeRed
+            : System.Windows.Media.Brushes.LimeGreen;
+    }
+
     private void WidgetMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (!IsEditMode ||
@@ -375,6 +415,9 @@ public partial class OverlayWindow : Window
             SessionFlags = CapturePlacement(
                 SessionFlagsWidget,
                 _profile.SessionFlags),
+            FuelStrategy = CapturePlacement(
+                FuelStrategyWidget,
+                _profile.FuelStrategy),
         };
         _layoutStore.Save(_profile);
     }
