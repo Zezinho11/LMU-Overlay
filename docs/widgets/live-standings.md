@@ -9,9 +9,10 @@ without copying proprietary visual assets.
 
 The widget displays one section per vehicle class in a WEC-style timing tower:
 
-- the complete widget is capped at ten visible cars;
-- the player's class uses the remaining row budget after compact leaders from
-  other classes are included;
+- the complete widget dynamically fits thirteen or fourteen visible cars,
+  depending on how many class bands are required;
+- the player's class fills every row left after compact leaders from the other
+  two race classes are included;
 - P1 remains fixed while a moving window follows the player up and down the
   class order;
 - every other class shows only its current leader;
@@ -57,8 +58,8 @@ configuration will include:
 
 ## Acceptance checks
 
-1. The tower contains at most ten cars and always includes the class P1 and
-   player.
+1. The tower fills its vertical design surface without overflowing and always
+   includes the player's class P1 and player.
 2. Every other class contains exactly its leader.
 3. Pit entry and exit update without rebuilding the complete overlay.
 4. Missing timing values never appear as valid zero times.
