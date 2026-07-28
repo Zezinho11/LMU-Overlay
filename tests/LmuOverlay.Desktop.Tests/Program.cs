@@ -13,7 +13,9 @@ try
         LayoutProfile.CurrentSchemaVersion,
         new WidgetPlacement(-2, 4, 0.01, 5, 8, -1, true),
         LayoutProfile.Default.Inputs,
-        LayoutProfile.Default.LiveStandings);
+        LayoutProfile.Default.LiveStandings,
+        LayoutProfile.Default.Relative,
+        LayoutProfile.Default.SessionFlags);
     store.Save(requested);
     var loaded = store.Load();
 
