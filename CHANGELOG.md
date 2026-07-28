@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.0-preview.1 - 2026-07-28
 
 - Added the first functional desktop overlay vertical slice.
 - Added LMU window alignment, transparent click-through race mode, and tray
@@ -72,12 +72,11 @@
 - Added official per-wheel tire wear to the normalized telemetry model and
   displayed independent FL/FR/RL/RR accumulated-wear percentages beside the
   temperature-colored tire icons on the RedFox dashboard.
+- Added a compact always-interactive RFX toolbar with direct profile switching,
+  configuration access, edit mode, explicit layout locking, drag repositioning,
+  locked-state feedback, and safe clamping after game-resolution changes.
 
-All notable changes will be documented here.
-
-## Unreleased
-
-### Added
+### Foundation
 
 - Initial .NET 10 solution structure.
 - Read-only LMU shared-memory adapter and compatibility probe.
