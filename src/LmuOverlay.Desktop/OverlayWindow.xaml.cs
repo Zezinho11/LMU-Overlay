@@ -29,6 +29,10 @@ public partial class OverlayWindow : Window
         Brush(32, 42, 51);
     private static readonly System.Windows.Media.Brush IndicatorTextOffBrush =
         Brush(120, 135, 149);
+    private static readonly System.Windows.Media.Brush IndicatorEnabledBrush =
+        Brush(15, 55, 48);
+    private static readonly System.Windows.Media.Brush IndicatorEnabledTextBrush =
+        Brush(66, 211, 166);
     private static readonly System.Windows.Media.Brush IndicatorActiveBrush =
         Brush(255, 135, 40);
 
@@ -112,8 +116,28 @@ public partial class OverlayWindow : Window
               $"RL {tire.RearLeftCelsius:0}°  RR {tire.RearRightCelsius:0}°"
             : "FL --°  FR --°  RL --°  RR --°";
         UpdateShiftLights(dashboard.Available ? dashboard.EngineRpmFraction : 0);
-        UpdateIndicator(AbsIndicator, AbsIndicatorText, dashboard.AbsActive);
-        UpdateIndicator(TcIndicator, TcIndicatorText, dashboard.TractionControlActive);
+        TcLevelText.Text = FormatControlLevel(
+            dashboard.TractionControlLevel,
+            dashboard.TractionControlMaximum);
+        TcSlipLevelText.Text = FormatControlLevel(
+            dashboard.TractionControlSlipLevel,
+            dashboard.TractionControlSlipMaximum);
+        TcCutLevelText.Text = FormatControlLevel(
+            dashboard.TractionControlCutLevel,
+            dashboard.TractionControlCutMaximum);
+        AbsLevelText.Text = FormatControlLevel(
+            dashboard.AbsLevel,
+            dashboard.AbsMaximum);
+        UpdateIndicator(
+            AbsIndicator,
+            AbsIndicatorText,
+            dashboard.AbsLevel > 0,
+            dashboard.AbsActive);
+        UpdateIndicator(
+            TcIndicator,
+            TcIndicatorText,
+            dashboard.TractionControlLevel > 0,
+            dashboard.TractionControlActive);
         InputsText.Text = inputs.Available
             ? $"THR {inputs.Throttle:P0}  BRK {inputs.Brake:P0}  STR {inputs.Steering:P0}"
             : "THR --  BRK --  STR --";
@@ -146,13 +170,25 @@ public partial class OverlayWindow : Window
     private static void UpdateIndicator(
         Border indicator,
         TextBlock label,
+        bool configured,
         bool active)
     {
-        indicator.Background = active ? IndicatorActiveBrush : IndicatorOffBrush;
+        indicator.Background = active
+            ? IndicatorActiveBrush
+            : configured
+                ? IndicatorEnabledBrush
+                : IndicatorOffBrush;
         label.Foreground = active
             ? System.Windows.Media.Brushes.White
-            : IndicatorTextOffBrush;
+            : configured
+                ? IndicatorEnabledTextBrush
+                : IndicatorTextOffBrush;
     }
+
+    private static string FormatControlLevel(int value, int maximum) =>
+        maximum > 0
+            ? value.ToString(System.Globalization.CultureInfo.InvariantCulture)
+            : "--";
 
     private static string FormatLapTime(double seconds) =>
         seconds > 0 && double.IsFinite(seconds)

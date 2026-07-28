@@ -15,13 +15,15 @@
                 MinHeight="220"
                 Padding="10"
                 CornerRadius="12"
-                Background="#EE080D12"
+                Background="#FC04070A"
                 BorderBrush="#FF42D3A6"
                 BorderThickness="1"
                 MouseLeftButtonDown="WidgetMouseLeftButtonDown"
                 MouseMove="WidgetMouseMove"
                 MouseLeftButtonUp="WidgetMouseLeftButtonUp">
             <Grid>
+                <Viewbox Stretch="Uniform" StretchDirection="Both">
+                    <Grid Width="720" Height="300" TextElement.FontFamily="Bahnschrift">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
@@ -92,18 +94,52 @@
                                    Foreground="#FFD2D9E0" FontSize="11" Margin="0,3,0,0" />
                         <TextBlock x:Name="BestLapText" Text="BEST --:--.---"
                                    Foreground="#FF42D3A6" FontSize="11" Margin="0,2,0,0" />
-                        <StackPanel Orientation="Horizontal" Margin="0,7,0,0">
-                            <Border x:Name="AbsIndicator" Padding="7,3" CornerRadius="3"
-                                    Background="#FF202A33" Margin="0,0,5,0">
-                                <TextBlock x:Name="AbsIndicatorText" Text="ABS" Foreground="#FF788795"
-                                           FontWeight="Bold" FontSize="11" />
+                        <primitives:UniformGrid Columns="4" Margin="0,8,0,0">
+                            <Border x:Name="TcIndicator" Padding="5,4" CornerRadius="3"
+                                    Background="#FF202A33" Margin="0,0,3,0">
+                                <StackPanel>
+                                    <TextBlock x:Name="TcIndicatorText" Text="TC"
+                                               Foreground="#FF788795" FontWeight="Bold"
+                                               FontSize="9" HorizontalAlignment="Center" />
+                                    <TextBlock x:Name="TcLevelText" Text="--"
+                                               Foreground="White" FontWeight="Bold"
+                                               FontSize="15" HorizontalAlignment="Center" />
+                                </StackPanel>
                             </Border>
-                            <Border x:Name="TcIndicator" Padding="7,3" CornerRadius="3"
+                            <Border Padding="5,4" CornerRadius="3"
+                                    Background="#FF202A33" Margin="0,0,3,0">
+                                <StackPanel>
+                                    <TextBlock Text="SLIP" Foreground="#FF788795"
+                                               FontWeight="Bold" FontSize="9"
+                                               HorizontalAlignment="Center" />
+                                    <TextBlock x:Name="TcSlipLevelText" Text="--"
+                                               Foreground="White" FontWeight="Bold"
+                                               FontSize="15" HorizontalAlignment="Center" />
+                                </StackPanel>
+                            </Border>
+                            <Border Padding="5,4" CornerRadius="3"
+                                    Background="#FF202A33" Margin="0,0,3,0">
+                                <StackPanel>
+                                    <TextBlock Text="CUT" Foreground="#FF788795"
+                                               FontWeight="Bold" FontSize="9"
+                                               HorizontalAlignment="Center" />
+                                    <TextBlock x:Name="TcCutLevelText" Text="--"
+                                               Foreground="White" FontWeight="Bold"
+                                               FontSize="15" HorizontalAlignment="Center" />
+                                </StackPanel>
+                            </Border>
+                            <Border x:Name="AbsIndicator" Padding="5,4" CornerRadius="3"
                                     Background="#FF202A33">
-                                <TextBlock x:Name="TcIndicatorText" Text="TC" Foreground="#FF788795"
-                                           FontWeight="Bold" FontSize="11" />
+                                <StackPanel>
+                                    <TextBlock x:Name="AbsIndicatorText" Text="ABS"
+                                               Foreground="#FF788795" FontWeight="Bold"
+                                               FontSize="9" HorizontalAlignment="Center" />
+                                    <TextBlock x:Name="AbsLevelText" Text="--"
+                                               Foreground="White" FontWeight="Bold"
+                                               FontSize="15" HorizontalAlignment="Center" />
+                                </StackPanel>
                             </Border>
-                        </StackPanel>
+                        </primitives:UniformGrid>
                         <TextBlock x:Name="EngineTempsText" Text="OIL --°  WATER --°"
                                    Foreground="#FFD2D9E0" FontSize="10" Margin="0,6,0,0" />
                     </StackPanel>
@@ -116,7 +152,9 @@
                                Foreground="#FFFFCA6A" FontSize="9"
                                Visibility="Collapsed" />
                 </DockPanel>
-                <primitives:Thumb x:Name="ResizeThumb" Grid.RowSpan="4"
+                    </Grid>
+                </Viewbox>
+                <primitives:Thumb x:Name="ResizeThumb"
                                   Tag="DiagnosticWidget"
                                   Width="18" Height="18"
                                   Panel.ZIndex="10"
