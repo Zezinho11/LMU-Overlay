@@ -314,7 +314,7 @@ public partial class OverlayWindow : Window
             Math.Max(0, ActualHeight - DiagnosticWidget.Height)));
         ApplyPlacement(InputsWidget, _profile.Inputs, 170, 70);
         ApplyPlacement(LiveStandingsWidget, _profile.LiveStandings, 220, 150);
-        ApplyPlacement(RelativeWidget, _profile.Relative, 220, 130);
+        ApplyPlacement(RelativeWidget, _profile.Relative, 140, 240);
         ApplyPlacement(SessionFlagsWidget, _profile.SessionFlags, 220, 70);
         ApplyPlacement(FuelStrategyWidget, _profile.FuelStrategy, 300, 190);
     }
@@ -570,39 +570,162 @@ public partial class OverlayWindow : Window
         {
             RelativeRows.Children.Add(new TextBlock
             {
-                Text = "Waiting for player standings",
+                Text = "WAITING FOR PLAYER",
                 Foreground = System.Windows.Media.Brushes.LightGray,
+                FontFamily = new System.Windows.Media.FontFamily("Bahnschrift"),
+                FontWeight = FontWeights.SemiBold,
+                FontSize = 11,
+                Height = 40,
+                Margin = new Thickness(10, 0, 0, 0),
+                VerticalAlignment = VerticalAlignment.Center,
             });
             return;
         }
 
-        foreach (var row in relative.Rows)
+        for (var index = 0; index < relative.Rows.Count; index++)
         {
-            var gap = row.RelativeLaps switch
-            {
-                > 0 => $"+{row.RelativeLaps}L",
-                < 0 => $"{row.RelativeLaps}L",
-                _ when row.IsPlayer => "0.000",
-                _ when double.IsFinite(row.RelativeGapSeconds) =>
-                    row.RelativeGapSeconds.ToString("+0.000;-0.000;0.000"),
-                _ => "--.---",
-            };
-            var pit = row.IsInPitLane ? "  PIT" : string.Empty;
-            RelativeRows.Children.Add(new TextBlock
-            {
-                Text = $"{row.OverallPosition,2}  {row.DriverName}  [{row.VehicleClass}]  {gap}{pit}",
-                Foreground = row.IsPlayer
-                    ? System.Windows.Media.Brushes.White
-                    : System.Windows.Media.Brushes.Gainsboro,
-                Background = row.IsPlayer
-                    ? new System.Windows.Media.SolidColorBrush(
-                        System.Windows.Media.Color.FromArgb(80, 66, 211, 166))
-                    : System.Windows.Media.Brushes.Transparent,
-                FontWeight = row.IsPlayer ? FontWeights.Bold : FontWeights.Normal,
-                TextTrimming = TextTrimming.CharacterEllipsis,
-            });
+            RelativeRows.Children.Add(CreateRelativeRow(relative.Rows[index], index));
         }
     }
+
+    private static Grid CreateRelativeRow(RelativeRowState row, int rowIndex)
+    {
+        var playerBackground = Brush(216, 221, 232);
+        var darkText = Brush(24, 31, 44);
+        var foreground = row.IsPlayer
+            ? darkText
+            : System.Windows.Media.Brushes.White;
+        var classBrush = RelativeClassBrush(row.ClassAbbreviation);
+        var grid = new Grid
+        {
+            Height = 40,
+            Background = row.IsPlayer
+                ? playerBackground
+                : rowIndex % 2 == 0
+                    ? Brush(17, 25, 43)
+                    : Brush(24, 33, 54),
+            ToolTip =
+                $"P{row.OverallPosition} · {row.DriverName} · {row.VehicleClass}",
+        };
+        foreach (var width in new[] { 36d, 40d })
+        {
+            grid.ColumnDefinitions.Add(new ColumnDefinition
+            {
+                Width = new GridLength(width),
+            });
+        }
+
+        grid.ColumnDefinitions.Add(new ColumnDefinition());
+        grid.ColumnDefinitions.Add(new ColumnDefinition
+        {
+            Width = new GridLength(62),
+        });
+
+        var numberBadge = new Border
+        {
+            Width = 30,
+            Height = 25,
+            CornerRadius = new CornerRadius(3, 0, 0, 3),
+            Background = classBrush,
+            HorizontalAlignment = System.Windows.HorizontalAlignment.Right,
+            VerticalAlignment = VerticalAlignment.Center,
+            Child = new TextBlock
+            {
+                Text = row.CarNumber,
+                Foreground = System.Windows.Media.Brushes.White,
+                FontFamily = new System.Windows.Media.FontFamily("Bahnschrift"),
+                FontWeight = FontWeights.Bold,
+                FontSize = 12,
+                HorizontalAlignment = System.Windows.HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+            },
+        };
+        Grid.SetColumn(numberBadge, 0);
+        grid.Children.Add(numberBadge);
+
+        var classBadge = new Border
+        {
+            Width = 36,
+            Height = 25,
+            CornerRadius = new CornerRadius(0, 3, 3, 0),
+            Background = System.Windows.Media.Brushes.White,
+            HorizontalAlignment = System.Windows.HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Center,
+            Child = new TextBlock
+            {
+                Text = row.ClassAbbreviation,
+                Foreground = classBrush,
+                FontFamily = new System.Windows.Media.FontFamily("Bahnschrift"),
+                FontWeight = FontWeights.Bold,
+                FontSize = 10,
+                HorizontalAlignment = System.Windows.HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+            },
+        };
+        Grid.SetColumn(classBadge, 1);
+        grid.Children.Add(classBadge);
+
+        var driver = new TextBlock
+        {
+            Text = row.DriverDisplayName,
+            Foreground = foreground,
+            FontFamily = new System.Windows.Media.FontFamily("Bahnschrift"),
+            FontWeight = FontWeights.Bold,
+            FontSize = 12,
+            TextTrimming = TextTrimming.CharacterEllipsis,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(5, 0, 3, 0),
+        };
+        Grid.SetColumn(driver, 2);
+        grid.Children.Add(driver);
+
+        var gap = new TextBlock
+        {
+            Text = FormatRelativeGap(row),
+            Foreground = row.IsInPitLane
+                ? row.IsPlayer
+                    ? darkText
+                    : System.Windows.Media.Brushes.Orange
+                : foreground,
+            FontFamily = new System.Windows.Media.FontFamily("Bahnschrift"),
+            FontWeight = FontWeights.Bold,
+            FontSize = 12,
+            HorizontalAlignment = System.Windows.HorizontalAlignment.Right,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(0, 0, 8, 0),
+        };
+        Grid.SetColumn(gap, 3);
+        grid.Children.Add(gap);
+        return grid;
+    }
+
+    private static string FormatRelativeGap(RelativeRowState row)
+    {
+        if (row.IsInPitLane)
+        {
+            return "PIT";
+        }
+
+        return row.RelativeLaps switch
+        {
+            > 0 => $"+{row.RelativeLaps}L",
+            < 0 => $"{row.RelativeLaps}L",
+            _ when row.IsPlayer => "0.0",
+            _ when double.IsFinite(row.RelativeGapSeconds) =>
+                row.RelativeGapSeconds.ToString("+0.0;-0.0;0.0"),
+            _ => "--.-",
+        };
+    }
+
+    private static System.Windows.Media.Brush RelativeClassBrush(
+        string classAbbreviation) =>
+        classAbbreviation switch
+        {
+            "GT3" => Brush(0, 225, 112),
+            "HYP" => Brush(244, 32, 55),
+            "P2" => Brush(45, 123, 225),
+            _ => Brush(125, 141, 160),
+        };
 
     private void UpdateSessionFlags(SessionFlagsWidgetState state)
     {

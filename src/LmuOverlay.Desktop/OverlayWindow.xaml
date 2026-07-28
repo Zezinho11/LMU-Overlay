@@ -306,17 +306,34 @@
                                   DragCompleted="ResizeThumbDragCompleted" />
             </Grid>
         </Border>
-        <Border x:Name="RelativeWidget" Padding="10" CornerRadius="8"
-                Background="#DD101820" BorderBrush="#FF42D3A6" BorderThickness="1"
+        <Border x:Name="RelativeWidget" Padding="0" CornerRadius="4"
+                Background="#F5070B18" BorderThickness="0"
                 MouseLeftButtonDown="WidgetMouseLeftButtonDown"
                 MouseMove="WidgetMouseMove"
                 MouseLeftButtonUp="WidgetMouseLeftButtonUp">
             <Grid>
-                <StackPanel>
-                    <TextBlock Text="RELATIVE" Foreground="#FF42D3A6"
-                               FontWeight="Bold" FontSize="11" />
-                    <StackPanel x:Name="RelativeRows" Margin="0,6,0,0" />
-                </StackPanel>
+                <Viewbox Stretch="Fill">
+                    <Grid Width="260" Height="410" Background="#F5070B18">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="34" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <Border Grid.Row="0" Background="#FF1B2441">
+                            <Grid Margin="10,0">
+                                <TextBlock Text="RELATIVE" Foreground="White"
+                                           FontFamily="Bahnschrift"
+                                           FontWeight="Bold" FontSize="14"
+                                           VerticalAlignment="Center" />
+                                <TextBlock Text="GAP" Foreground="#FF91A0B7"
+                                           FontFamily="Bahnschrift"
+                                           FontWeight="Bold" FontSize="9"
+                                           HorizontalAlignment="Right"
+                                           VerticalAlignment="Center" />
+                            </Grid>
+                        </Border>
+                        <StackPanel x:Name="RelativeRows" Grid.Row="1" />
+                    </Grid>
+                </Viewbox>
                 <primitives:Thumb x:Name="RelativeResizeThumb" Tag="RelativeWidget"
                                   Width="18" Height="18" Panel.ZIndex="10"
                                   HorizontalAlignment="Right" VerticalAlignment="Bottom"

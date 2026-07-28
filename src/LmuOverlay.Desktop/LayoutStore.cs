@@ -364,13 +364,28 @@ public sealed class LayoutStore
             };
         }
 
+        var relative = SanitizePlacement(profile.Relative);
+        if (profile.SchemaVersion < 7 &&
+            Math.Abs(relative.Width - 0.28) < 0.001 &&
+            Math.Abs(relative.Height - 0.28) < 0.001)
+        {
+            relative = relative with
+            {
+                X = 0.64,
+                Y = 0.05,
+                Width = 0.16,
+                Height = 0.40,
+                Opacity = Math.Max(0.96, relative.Opacity),
+            };
+        }
+
         return profile with
         {
             SchemaVersion = LayoutProfile.CurrentSchemaVersion,
             Diagnostic = SanitizePlacement(profile.Diagnostic),
             Inputs = SanitizePlacement(profile.Inputs),
             LiveStandings = liveStandings,
-            Relative = SanitizePlacement(profile.Relative),
+            Relative = relative,
             SessionFlags = SanitizePlacement(profile.SessionFlags),
             FuelStrategy = fuelStrategy,
         };
