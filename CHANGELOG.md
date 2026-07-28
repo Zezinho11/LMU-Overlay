@@ -50,6 +50,9 @@
   in-car menu, showing Fuel and Virtual Energy together with current levels,
   per-lap usage, range in laps and minutes, finish need, margins, samples, and
   reserve.
+- Rebuilt Relative as a 260x410 timing tower matching Live Standings, with a
+  centered nine-car window, explicit race numbers, compact driver names,
+  colored GT3/Hypercar/LMP2 badges, player highlight, lap gaps, and pit state.
 
 All notable changes will be documented here.
 
