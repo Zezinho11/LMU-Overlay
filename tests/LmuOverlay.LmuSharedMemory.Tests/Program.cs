@@ -77,6 +77,16 @@ WriteSingle(data, telemetry + LmuApiLayoutV1.TelemetryGapToCarAheadOffset, 1.2f)
 WriteSingle(data, telemetry + LmuApiLayoutV1.TelemetryGapToCarBehindOffset, 0.8f);
 WriteInt32(data, telemetry + LmuApiLayoutV1.TelemetryCurrentSectorOffset, 1);
 data[telemetry + LmuApiLayoutV1.TelemetryTractionControlActiveOffset] = 1;
+for (var wheel = 0; wheel < 4; wheel++)
+{
+    WriteDouble(
+        data,
+        telemetry +
+        LmuApiLayoutV1.TelemetryWheelArrayOffset +
+        (wheel * LmuApiLayoutV1.TelemetryWheelSize) +
+        LmuApiLayoutV1.TelemetryWheelCarcassTemperatureOffset,
+        353.15 + wheel);
+}
 
 var expectedPath = Path.Combine(
     AppContext.BaseDirectory,
@@ -101,6 +111,8 @@ Require(snapshot.Player?.Position == 1, "Player position");
 Require(snapshot.Player?.Gear == 4, "Gear");
 Require(snapshot.Player?.SpeedKilometersPerHour == expected.SpeedKilometersPerHour, "Speed");
 Require(snapshot.Player?.FuelLiters == 50, "Fuel");
+Require(snapshot.Player?.TireTemperatures.FrontLeftCelsius == 80, "Front-left tire temperature");
+Require(snapshot.Player?.TireTemperatures.RearRightCelsius == 83, "Rear-right tire temperature");
 Require(snapshot.Standings.Count == 1, "Standings count");
 Require(snapshot.Standings[0].DriverName == "Fixture Driver", "Driver name");
 Require(snapshot.Standings[0].FuelFraction == 128d / 255d, "Scoring fuel fraction");
