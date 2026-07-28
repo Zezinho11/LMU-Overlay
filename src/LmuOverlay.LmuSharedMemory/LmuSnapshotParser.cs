@@ -1,4 +1,5 @@
 using System.Buffers.Binary;
+using System.Globalization;
 using System.Text;
 using LmuOverlay.Domain;
 
@@ -33,7 +34,7 @@ public static class LmuSnapshotParser
         {
             return new(
                 LmuConnectionState.InvalidData,
-                ReadNullTerminatedUtf8(data, LmuApiLayoutV1.GameVersionOffset, LmuApiLayoutV1.GameVersionLength),
+                ReadGameVersion(data),
                 string.Empty,
                 0,
                 string.Empty,
@@ -56,7 +57,7 @@ public static class LmuSnapshotParser
 
         return new(
             LmuConnectionState.Connected,
-            ReadNullTerminatedUtf8(data, LmuApiLayoutV1.GameVersionOffset, LmuApiLayoutV1.GameVersionLength),
+            ReadGameVersion(data),
             ReadNullTerminatedUtf8(data, LmuApiLayoutV1.TrackNameOffset, LmuApiLayoutV1.TrackNameLength),
             ReadInt32(data, LmuApiLayoutV1.SessionCodeOffset),
             playerVehicleName,
@@ -69,6 +70,10 @@ public static class LmuSnapshotParser
 
     private static int ReadInt32(ReadOnlySpan<byte> data, int offset) =>
         BinaryPrimitives.ReadInt32LittleEndian(data.Slice(offset, sizeof(int)));
+
+    private static string ReadGameVersion(ReadOnlySpan<byte> data) =>
+        ReadInt32(data, LmuApiLayoutV1.GameVersionOffset)
+            .ToString(CultureInfo.InvariantCulture);
 
     private static string ReadNullTerminatedUtf8(ReadOnlySpan<byte> data, int offset, int length)
     {
