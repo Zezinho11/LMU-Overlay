@@ -10,6 +10,8 @@ namespace LmuOverlay.LmuSharedMemory;
 public sealed class LmuSharedMemoryReader : ILmuTelemetrySource
 {
     private readonly MemoryMappedFile? _map;
+    private readonly MemoryMappedViewAccessor? _view;
+    private readonly byte[] _buffer = new byte[LmuApiLayoutV1.ObjectSize];
     private readonly LmuConnectionState? _startupFailureState;
     private readonly string _startupFailureDetail = string.Empty;
 
@@ -20,6 +22,10 @@ public sealed class LmuSharedMemoryReader : ILmuTelemetrySource
             _map = MemoryMappedFile.OpenExisting(
                 LmuApiLayoutV1.MapName,
                 MemoryMappedFileRights.Read);
+            _view = _map.CreateViewAccessor(
+                0,
+                LmuApiLayoutV1.ObjectSize,
+                MemoryMappedFileAccess.Read);
         }
         catch (FileNotFoundException)
         {
@@ -68,35 +74,36 @@ public sealed class LmuSharedMemoryReader : ILmuTelemetrySource
                 "LMU shared-memory map was not opened.");
         }
 
-        using var view = _map.CreateViewAccessor(
-            0,
-            LmuApiLayoutV1.ObjectSize,
-            MemoryMappedFileAccess.Read);
+        if (_view is null)
+        {
+            return LmuTelemetrySnapshot.Unavailable(
+                LmuConnectionState.Disconnected,
+                "LMU shared-memory view was not opened.");
+        }
 
-        var buffer = new byte[LmuApiLayoutV1.ObjectSize];
         for (var attempt = 0; attempt < 3; attempt++)
         {
-            var scoringBefore = view.ReadUInt32(
+            var scoringBefore = _view.ReadUInt32(
                 LmuApiLayoutV1.EventOffset(LmuApiLayoutV1.ScoringUpdateEventIndex));
-            var telemetryBefore = view.ReadUInt32(
+            var telemetryBefore = _view.ReadUInt32(
                 LmuApiLayoutV1.EventOffset(LmuApiLayoutV1.TelemetryUpdateEventIndex));
 
-            var bytesRead = view.ReadArray(0, buffer, 0, buffer.Length);
-            if (bytesRead != buffer.Length)
+            var bytesRead = _view.ReadArray(0, _buffer, 0, _buffer.Length);
+            if (bytesRead != _buffer.Length)
             {
                 return LmuTelemetrySnapshot.Unavailable(
                     LmuConnectionState.IncompatibleLayout,
-                    $"Expected {buffer.Length} bytes, read {bytesRead}.");
+                    $"Expected {_buffer.Length} bytes, read {bytesRead}.");
             }
 
-            var scoringAfter = view.ReadUInt32(
+            var scoringAfter = _view.ReadUInt32(
                 LmuApiLayoutV1.EventOffset(LmuApiLayoutV1.ScoringUpdateEventIndex));
-            var telemetryAfter = view.ReadUInt32(
+            var telemetryAfter = _view.ReadUInt32(
                 LmuApiLayoutV1.EventOffset(LmuApiLayoutV1.TelemetryUpdateEventIndex));
 
             if (scoringBefore == scoringAfter && telemetryBefore == telemetryAfter)
             {
-                return LmuSnapshotParser.ParseTelemetry(buffer);
+                return LmuSnapshotParser.ParseTelemetry(_buffer);
             }
         }
 
@@ -105,5 +112,9 @@ public sealed class LmuSharedMemoryReader : ILmuTelemetrySource
             "LMU updated the snapshot during three consecutive read attempts.");
     }
 
-    public void Dispose() => _map?.Dispose();
+    public void Dispose()
+    {
+        _view?.Dispose();
+        _map?.Dispose();
+    }
 }
