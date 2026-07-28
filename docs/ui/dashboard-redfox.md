@@ -15,7 +15,7 @@ The supplied motorsport display is a layout reference, not an asset to copy.
 2. Large centered gear.
 3. Speed, lap, session state, and current lap time around the gear.
 4. Delta and predicted/best time where the official telemetry supports them.
-5. Four tire temperatures in a compact 2x2 block.
+5. Four tire temperatures and wear percentages in a compact 2x2 block.
 6. Fuel and the existing strategy projection.
 7. ABS and traction-control indicators with clear inactive, armed, and active
    states.
@@ -23,7 +23,8 @@ The supplied motorsport display is a layout reference, not an asset to copy.
 ## Existing data to preserve
 
 - Speed, gear, RPM, position, lap, fuel, and delta.
-- Front-left, front-right, rear-left, and rear-right tire temperatures.
+- Front-left, front-right, rear-left, and rear-right tire temperatures and
+  accumulated wear.
 - Track/session context.
 - Throttle, brake, and steering remain available in their independent widget.
 
@@ -77,3 +78,7 @@ values.
   below 115 C, and critical at or above 115 C. Keep this classification in the
   renderer-independent widgets layer so future per-car thresholds and SteamVR
   rendering can reuse it.
+- Render the official per-wheel `mWear` fraction beside each temperature as
+  accumulated wear from 0% to 100%. Do not infer remaining life or grip loss:
+  the LMU header explicitly states that wear is not necessarily proportional
+  to grip loss.
