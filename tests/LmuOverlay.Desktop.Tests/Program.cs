@@ -11,7 +11,9 @@ try
 
     var requested = new LayoutProfile(
         LayoutProfile.CurrentSchemaVersion,
-        new WidgetPlacement(-2, 4, 0.01, 5, 8, -1, true));
+        new WidgetPlacement(-2, 4, 0.01, 5, 8, -1, true),
+        LayoutProfile.Default.Inputs,
+        LayoutProfile.Default.LiveStandings);
     store.Save(requested);
     var loaded = store.Load();
 
