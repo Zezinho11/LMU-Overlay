@@ -22,6 +22,7 @@ public partial class OverlayWindow : Window
     private double _dragLeft;
     private double _dragTop;
     private bool _dragging;
+    private FrameworkElement? _activeWidget;
     private Rect _lastGameBounds;
 
     public OverlayWindow(LayoutStore layoutStore)
@@ -42,7 +43,10 @@ public partial class OverlayWindow : Window
         Top = gameBounds.Top;
         Width = gameBounds.Width;
         Height = gameBounds.Height;
-        ApplyProfile();
+        if (!IsEditMode)
+        {
+            ApplyProfile();
+        }
 
         var connected = snapshot.State == LmuConnectionState.Connected;
         ConnectionText.Text = connected ? "CONECTADO" : snapshot.State.ToString().ToUpperInvariant();
@@ -78,6 +82,8 @@ public partial class OverlayWindow : Window
     {
         IsEditMode = enabled;
         ResizeThumb.Visibility = enabled ? Visibility.Visible : Visibility.Collapsed;
+        InputsResizeThumb.Visibility = enabled ? Visibility.Visible : Visibility.Collapsed;
+        LiveStandingsResizeThumb.Visibility = enabled ? Visibility.Visible : Visibility.Collapsed;
         EditHint.Visibility = enabled ? Visibility.Visible : Visibility.Collapsed;
         DiagnosticWidget.BorderBrush = enabled
             ? System.Windows.Media.Brushes.Orange
@@ -184,17 +190,23 @@ public partial class OverlayWindow : Window
             return;
         }
 
+        if (sender is not FrameworkElement widget)
+        {
+            return;
+        }
+
         _dragging = true;
+        _activeWidget = widget;
         _dragStart = e.GetPosition(OverlayCanvas);
-        _dragLeft = Canvas.GetLeft(DiagnosticWidget);
-        _dragTop = Canvas.GetTop(DiagnosticWidget);
-        DiagnosticWidget.CaptureMouse();
+        _dragLeft = Canvas.GetLeft(widget);
+        _dragTop = Canvas.GetTop(widget);
+        widget.CaptureMouse();
         e.Handled = true;
     }
 
     private void WidgetMouseMove(object sender, System.Windows.Input.MouseEventArgs e)
     {
-        if (!_dragging || !IsEditMode)
+        if (!_dragging || !IsEditMode || _activeWidget is null)
         {
             return;
         }
@@ -202,14 +214,14 @@ public partial class OverlayWindow : Window
         var position = e.GetPosition(OverlayCanvas);
         var left = _dragLeft + position.X - _dragStart.X;
         var top = _dragTop + position.Y - _dragStart.Y;
-        Canvas.SetLeft(DiagnosticWidget, Snap(
-            Math.Clamp(left, 0, Math.Max(0, ActualWidth - DiagnosticWidget.ActualWidth)),
+        Canvas.SetLeft(_activeWidget, Snap(
+            Math.Clamp(left, 0, Math.Max(0, ActualWidth - _activeWidget.ActualWidth)),
             0,
-            Math.Max(0, ActualWidth - DiagnosticWidget.ActualWidth)));
-        Canvas.SetTop(DiagnosticWidget, Snap(
-            Math.Clamp(top, 0, Math.Max(0, ActualHeight - DiagnosticWidget.ActualHeight)),
+            Math.Max(0, ActualWidth - _activeWidget.ActualWidth)));
+        Canvas.SetTop(_activeWidget, Snap(
+            Math.Clamp(top, 0, Math.Max(0, ActualHeight - _activeWidget.ActualHeight)),
             0,
-            Math.Max(0, ActualHeight - DiagnosticWidget.ActualHeight)));
+            Math.Max(0, ActualHeight - _activeWidget.ActualHeight)));
     }
 
     private void WidgetMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
@@ -220,7 +232,8 @@ public partial class OverlayWindow : Window
         }
 
         _dragging = false;
-        DiagnosticWidget.ReleaseMouseCapture();
+        _activeWidget?.ReleaseMouseCapture();
+        _activeWidget = null;
         SaveProfile();
         e.Handled = true;
     }
@@ -229,19 +242,24 @@ public partial class OverlayWindow : Window
         object sender,
         System.Windows.Controls.Primitives.DragDeltaEventArgs e)
     {
-        if (!IsEditMode)
+        if (!IsEditMode ||
+            sender is not System.Windows.Controls.Primitives.Thumb thumb ||
+            thumb.Tag is not string widgetName ||
+            FindName(widgetName) is not FrameworkElement widget)
         {
             return;
         }
 
-        DiagnosticWidget.Width = Math.Clamp(
-            DiagnosticWidget.ActualWidth + e.HorizontalChange,
-            DiagnosticWidget.MinWidth,
-            Math.Max(DiagnosticWidget.MinWidth, ActualWidth - Canvas.GetLeft(DiagnosticWidget)));
-        DiagnosticWidget.Height = Math.Clamp(
-            DiagnosticWidget.ActualHeight + e.VerticalChange,
-            DiagnosticWidget.MinHeight,
-            Math.Max(DiagnosticWidget.MinHeight, ActualHeight - Canvas.GetTop(DiagnosticWidget)));
+        var minimumWidth = widget.MinWidth > 0 ? widget.MinWidth : 120;
+        var minimumHeight = widget.MinHeight > 0 ? widget.MinHeight : 60;
+        widget.Width = Math.Clamp(
+            widget.ActualWidth + e.HorizontalChange,
+            minimumWidth,
+            Math.Max(minimumWidth, ActualWidth - Canvas.GetLeft(widget)));
+        widget.Height = Math.Clamp(
+            widget.ActualHeight + e.VerticalChange,
+            minimumHeight,
+            Math.Max(minimumHeight, ActualHeight - Canvas.GetTop(widget)));
     }
 
     private void ResizeThumbDragCompleted(
@@ -257,16 +275,24 @@ public partial class OverlayWindow : Window
 
         _profile = _profile with
         {
-            Diagnostic = _profile.Diagnostic with
-            {
-                X = Canvas.GetLeft(DiagnosticWidget) / ActualWidth,
-                Y = Canvas.GetTop(DiagnosticWidget) / ActualHeight,
-                Width = DiagnosticWidget.ActualWidth / ActualWidth,
-                Height = DiagnosticWidget.ActualHeight / ActualHeight,
-            },
+            Diagnostic = CapturePlacement(DiagnosticWidget, _profile.Diagnostic),
+            Inputs = CapturePlacement(InputsWidget, _profile.Inputs),
+            LiveStandings = CapturePlacement(
+                LiveStandingsWidget,
+                _profile.LiveStandings),
         };
         _layoutStore.Save(_profile);
     }
+
+    private WidgetPlacement CapturePlacement(
+        FrameworkElement element,
+        WidgetPlacement current) => current with
+    {
+        X = Canvas.GetLeft(element) / ActualWidth,
+        Y = Canvas.GetTop(element) / ActualHeight,
+        Width = element.ActualWidth / ActualWidth,
+        Height = element.ActualHeight / ActualHeight,
+    };
 
     private static double Snap(double value, double start, double end)
     {

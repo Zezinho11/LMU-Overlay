@@ -46,6 +46,7 @@
                            Foreground="#FFFFCA6A" FontSize="9"
                            Visibility="Collapsed" />
                 <primitives:Thumb x:Name="ResizeThumb" Grid.RowSpan="3"
+                                  Tag="DiagnosticWidget"
                                   Width="18" Height="18"
                                   Panel.ZIndex="10"
                                   HorizontalAlignment="Right"
@@ -58,20 +59,44 @@
             </Grid>
         </Border>
         <Border x:Name="InputsWidget" Padding="10" CornerRadius="8"
-                Background="#DD101820" BorderBrush="#FF42D3A6" BorderThickness="1">
-            <StackPanel>
-                <TextBlock Text="INPUTS" Foreground="#FF42D3A6" FontWeight="Bold" FontSize="11" />
-                <TextBlock x:Name="InputsText" Text="THR --  BRK --  STR --"
-                           Foreground="White" FontSize="12" Margin="0,6,0,0" />
-            </StackPanel>
+                Background="#DD101820" BorderBrush="#FF42D3A6" BorderThickness="1"
+                MouseLeftButtonDown="WidgetMouseLeftButtonDown"
+                MouseMove="WidgetMouseMove"
+                MouseLeftButtonUp="WidgetMouseLeftButtonUp">
+            <Grid>
+                <StackPanel>
+                    <TextBlock Text="INPUTS" Foreground="#FF42D3A6" FontWeight="Bold" FontSize="11" />
+                    <TextBlock x:Name="InputsText" Text="THR --  BRK --  STR --"
+                               Foreground="White" FontSize="12" Margin="0,6,0,0" />
+                </StackPanel>
+                <primitives:Thumb x:Name="InputsResizeThumb" Tag="InputsWidget"
+                                  Width="18" Height="18" Panel.ZIndex="10"
+                                  HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                  Cursor="SizeNWSE" Background="#FFFFCA6A"
+                                  Visibility="Collapsed"
+                                  DragDelta="ResizeThumbDragDelta"
+                                  DragCompleted="ResizeThumbDragCompleted" />
+            </Grid>
         </Border>
         <Border x:Name="LiveStandingsWidget" Padding="10" CornerRadius="8"
-                Background="#DD101820" BorderBrush="#FF42D3A6" BorderThickness="1">
-            <StackPanel>
-                <TextBlock Text="LIVE STANDINGS" Foreground="#FF42D3A6"
-                           FontWeight="Bold" FontSize="11" />
-                <StackPanel x:Name="StandingsRows" Margin="0,6,0,0" />
-            </StackPanel>
+                Background="#DD101820" BorderBrush="#FF42D3A6" BorderThickness="1"
+                MouseLeftButtonDown="WidgetMouseLeftButtonDown"
+                MouseMove="WidgetMouseMove"
+                MouseLeftButtonUp="WidgetMouseLeftButtonUp">
+            <Grid>
+                <StackPanel>
+                    <TextBlock Text="LIVE STANDINGS" Foreground="#FF42D3A6"
+                               FontWeight="Bold" FontSize="11" />
+                    <StackPanel x:Name="StandingsRows" Margin="0,6,0,0" />
+                </StackPanel>
+                <primitives:Thumb x:Name="LiveStandingsResizeThumb" Tag="LiveStandingsWidget"
+                                  Width="18" Height="18" Panel.ZIndex="10"
+                                  HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                  Cursor="SizeNWSE" Background="#FFFFCA6A"
+                                  Visibility="Collapsed"
+                                  DragDelta="ResizeThumbDragDelta"
+                                  DragCompleted="ResizeThumbDragCompleted" />
+            </Grid>
         </Border>
     </Canvas>
 </Window>
