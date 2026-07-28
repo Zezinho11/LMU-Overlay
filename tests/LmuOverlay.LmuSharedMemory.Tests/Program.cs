@@ -97,6 +97,13 @@ for (var wheel = 0; wheel < 4; wheel++)
         telemetry +
         LmuApiLayoutV1.TelemetryWheelArrayOffset +
         (wheel * LmuApiLayoutV1.TelemetryWheelSize) +
+        LmuApiLayoutV1.TelemetryWheelWearOffset,
+        0.1 + (wheel * 0.05));
+    WriteDouble(
+        data,
+        telemetry +
+        LmuApiLayoutV1.TelemetryWheelArrayOffset +
+        (wheel * LmuApiLayoutV1.TelemetryWheelSize) +
         LmuApiLayoutV1.TelemetryWheelCarcassTemperatureOffset,
         353.15 + wheel);
 }
@@ -135,6 +142,10 @@ Require(snapshot.Player?.TractionControlCutLevel == 3, "TC cut level");
 Require(snapshot.Player?.AbsLevel == 6, "ABS level");
 Require(snapshot.Player?.TireTemperatures.FrontLeftCelsius == 80, "Front-left tire temperature");
 Require(snapshot.Player?.TireTemperatures.RearRightCelsius == 83, "Rear-right tire temperature");
+Require(snapshot.Player?.TireWear.FrontLeftFraction == 0.1, "Front-left tire wear");
+Require(
+    Math.Abs((snapshot.Player?.TireWear.RearRightFraction ?? 0) - 0.25) < 0.0001,
+    "Rear-right tire wear");
 Require(snapshot.Standings.Count == 1, "Standings count");
 Require(snapshot.Standings[0].DriverName == "Fixture Driver", "Driver name");
 Require(
