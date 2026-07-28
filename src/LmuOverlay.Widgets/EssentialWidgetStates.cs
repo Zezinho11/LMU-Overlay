@@ -90,6 +90,11 @@ public sealed record SessionFlagsWidgetState(
 
 public static class EssentialWidgetStateFactory
 {
+    private const int LiveStandingsContentHeight = 388;
+    private const int LiveStandingsClassHeaderHeight = 18;
+    private const int LiveStandingsRowHeight = 25;
+    private const int MaximumOtherClasses = 2;
+
     public static DashboardWidgetState CreateDashboard(LmuTelemetrySnapshot snapshot)
     {
         if (snapshot.Player is not { } player)
@@ -180,13 +185,18 @@ public static class EssentialWidgetStateFactory
                     group.Key,
                     playerClass,
                     StringComparison.OrdinalIgnoreCase))
-                .Take(8))
+                .Take(MaximumOtherClasses))
             .ToArray();
         var otherClassCount = selectedGroups.Count(group => !string.Equals(
             group.Key,
             playerClass,
             StringComparison.OrdinalIgnoreCase));
-        var playerClassLimit = Math.Max(2, 10 - Math.Min(otherClassCount, 8));
+        var visibleCarCapacity = Math.Max(
+            2,
+            (LiveStandingsContentHeight -
+             (selectedGroups.Length * LiveStandingsClassHeaderHeight)) /
+            LiveStandingsRowHeight);
+        var playerClassLimit = Math.Max(2, visibleCarCapacity - otherClassCount);
 
         var classes = selectedGroups
             .Select(group =>
