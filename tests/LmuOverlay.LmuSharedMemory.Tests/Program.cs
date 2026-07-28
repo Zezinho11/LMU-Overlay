@@ -80,6 +80,14 @@ WriteSingle(data, telemetry + LmuApiLayoutV1.TelemetryGapToCarAheadOffset, 1.2f)
 WriteSingle(data, telemetry + LmuApiLayoutV1.TelemetryGapToCarBehindOffset, 0.8f);
 WriteInt32(data, telemetry + LmuApiLayoutV1.TelemetryCurrentSectorOffset, 1);
 data[telemetry + LmuApiLayoutV1.TelemetryTractionControlActiveOffset] = 1;
+data[telemetry + LmuApiLayoutV1.TelemetryTractionControlLevelOffset] = 4;
+data[telemetry + LmuApiLayoutV1.TelemetryTractionControlMaximumOffset] = 12;
+data[telemetry + LmuApiLayoutV1.TelemetryTractionControlSlipLevelOffset] = 7;
+data[telemetry + LmuApiLayoutV1.TelemetryTractionControlSlipMaximumOffset] = 12;
+data[telemetry + LmuApiLayoutV1.TelemetryTractionControlCutLevelOffset] = 3;
+data[telemetry + LmuApiLayoutV1.TelemetryTractionControlCutMaximumOffset] = 12;
+data[telemetry + LmuApiLayoutV1.TelemetryAbsLevelOffset] = 6;
+data[telemetry + LmuApiLayoutV1.TelemetryAbsMaximumOffset] = 12;
 for (var wheel = 0; wheel < 4; wheel++)
 {
     WriteDouble(
@@ -117,6 +125,10 @@ Require(snapshot.Player?.FuelLiters == 50, "Fuel");
 Require(snapshot.Player?.EngineWaterTemperatureCelsius == 78, "Water temperature");
 Require(snapshot.Player?.EngineOilTemperatureCelsius == 92, "Oil temperature");
 Require(snapshot.Player?.RearBrakeBiasFraction == 0.43, "Rear brake bias");
+Require(snapshot.Player?.TractionControlLevel == 4, "TC level");
+Require(snapshot.Player?.TractionControlSlipLevel == 7, "TC slip level");
+Require(snapshot.Player?.TractionControlCutLevel == 3, "TC cut level");
+Require(snapshot.Player?.AbsLevel == 6, "ABS level");
 Require(snapshot.Player?.TireTemperatures.FrontLeftCelsius == 80, "Front-left tire temperature");
 Require(snapshot.Player?.TireTemperatures.RearRightCelsius == 83, "Rear-right tire temperature");
 Require(snapshot.Standings.Count == 1, "Standings count");
