@@ -50,7 +50,9 @@ public sealed record LmuWeatherSnapshot(
     double TrackTemperatureCelsius,
     LmuVector3 WindMetersPerSecond,
     double MinimumPathWetness,
-    double MaximumPathWetness);
+    double MaximumPathWetness,
+    double AveragePathWetness,
+    int TrackGripLevel);
 
 public sealed record LmuPlayerTelemetry(
     int VehicleId,
