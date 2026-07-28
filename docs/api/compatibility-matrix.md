@@ -20,7 +20,7 @@ Packing is 4 bytes. The shared object is 324,820 bytes and supports 104 vehicles
 | Field | Absolute offset | Size/stride |
 |---|---:|---:|
 | Update events | 0 | 16 × 4 |
-| Game version | 64 | 4 |
+| Game version (`long`, numeric) | 64 | 4 |
 | Scoring block | 1,632 | 126,832 |
 | Track name | 1,632 | 64 |
 | Session code | 1,696 | 4 |
