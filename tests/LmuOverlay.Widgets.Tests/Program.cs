@@ -36,6 +36,14 @@ var player = new LmuPlayerTelemetry(
     LapInvalidated: false,
     AbsActive: true,
     TractionControlActive: false,
+    TractionControlLevel: 4,
+    TractionControlMaximum: 12,
+    TractionControlSlipLevel: 7,
+    TractionControlSlipMaximum: 12,
+    TractionControlCutLevel: 3,
+    TractionControlCutMaximum: 12,
+    AbsLevel: 6,
+    AbsMaximum: 12,
     TireTemperatures: new LmuWheelTemperatures(82, 84, 78, 79));
 var snapshot = new LmuTelemetrySnapshot(
     LmuConnectionState.Connected, 14000, 1, 1, 1, 1, null, player,
@@ -50,6 +58,10 @@ Assert(dashboard.EngineWaterTemperatureCelsius == 78, "Water temperature must re
 Assert(dashboard.EngineOilTemperatureCelsius == 92, "Oil temperature must reach the dashboard.");
 Assert(dashboard.RearBrakeBiasFraction == 0.43, "Brake bias must reach the dashboard.");
 Assert(dashboard.AbsActive, "ABS activation must reach the dashboard.");
+Assert(dashboard.TractionControlLevel == 4, "TC level must reach the dashboard.");
+Assert(dashboard.TractionControlSlipLevel == 7, "TC slip must reach the dashboard.");
+Assert(dashboard.TractionControlCutLevel == 3, "TC cut must reach the dashboard.");
+Assert(dashboard.AbsLevel == 6, "ABS level must reach the dashboard.");
 Assert(inputs.Throttle == 1 && inputs.Brake == 0, "Pedal inputs must be clamped.");
 Assert(inputs.Steering == 1, "Steering must be clamped.");
 
