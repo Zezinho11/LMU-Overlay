@@ -37,8 +37,10 @@ Thresholds must later become configurable per car.
 
 ### ABS and traction control
 
-Use the existing `AbsActive` and `TractionControlActive` values. Never infer an
-activation that the official telemetry does not report.
+Display the four official setup levels: primary TC, TC Slip, TC Cut, and ABS.
+An available non-zero level uses the enabled color, while the existing
+`AbsActive` and `TractionControlActive` values use a brighter actuation color.
+Never infer an activation that the official telemetry does not report.
 
 ### Additional official fields
 
@@ -57,5 +59,8 @@ values.
 - Keep the dashboard as one independent movable and resizable box.
 - Scale typography, indicators, and spacing with the box while preserving
   minimum readable sizes.
+- Render the content on a fixed 720x300 design surface inside a uniform scaler,
+  so arbitrary box sizes do not distort spacing or typography.
+- Use a nearly opaque black background to cover the vehicle's original display.
 - Continue to support click-through race mode and the persistent edit mode.
 - Keep the renderer-independent state reusable by the future SteamVR host.
