@@ -83,7 +83,14 @@ public sealed record LmuPlayerTelemetry(
     bool SpeedLimiterActive,
     bool LapInvalidated,
     bool AbsActive,
-    bool TractionControlActive);
+    bool TractionControlActive,
+    LmuWheelTemperatures TireTemperatures);
+
+public sealed record LmuWheelTemperatures(
+    double FrontLeftCelsius,
+    double FrontRightCelsius,
+    double RearLeftCelsius,
+    double RearRightCelsius);
 
 public sealed record LmuVehicleStanding(
     int VehicleId,
