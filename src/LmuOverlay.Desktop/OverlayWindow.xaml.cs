@@ -35,8 +35,6 @@ public partial class OverlayWindow : Window
         Brush(66, 211, 166);
     private static readonly System.Windows.Media.Brush IndicatorActiveBrush =
         Brush(255, 135, 40);
-    private static readonly System.Windows.Media.Geometry StandingsCarGeometry =
-        CreateCarGeometry();
 
     private readonly LayoutStore _layoutStore;
     private readonly FuelStrategyTracker _fuelStrategyTracker = new();
@@ -150,9 +148,9 @@ public partial class OverlayWindow : Window
             : "OIL --°  WATER --°";
         var tire = dashboard.TireTemperatures;
         TiresText.Text = dashboard.Available
-            ? $"FL {tire.FrontLeftCelsius:0}°  FR {tire.FrontRightCelsius:0}°  " +
-              $"RL {tire.RearLeftCelsius:0}°  RR {tire.RearRightCelsius:0}°"
-            : "FL --°  FR --°  RL --°  RR --°";
+            ? $"FL {tire.FrontLeftCelsius:0}°       FR {tire.FrontRightCelsius:0}°\n" +
+              $"RL {tire.RearLeftCelsius:0}°       RR {tire.RearRightCelsius:0}°"
+            : "FL --°       FR --°\nRL --°       RR --°";
         UpdateShiftLights(dashboard.Available ? dashboard.EngineRpmFraction : 0);
         TcLevelText.Text = FormatControlLevel(
             dashboard.TractionControlLevel,
@@ -392,7 +390,7 @@ public partial class OverlayWindow : Window
                     : Brush(19, 27, 49),
             ToolTip = $"{row.DriverName} · {row.VehicleName}",
         };
-        foreach (var width in new[] { 30d, 35d, 38d, 48d, 100d })
+        foreach (var width in new[] { 28d, 38d, 32d, 40d, 72d })
         {
             grid.ColumnDefinitions.Add(new ColumnDefinition
             {
@@ -411,39 +409,48 @@ public partial class OverlayWindow : Window
                 : System.Windows.Media.Brushes.White,
             FontWeights.Bold,
             11);
-        var carIcon = new System.Windows.Shapes.Path
+        var manufacturerBadge = new Border
         {
-            Data = StandingsCarGeometry,
-            Fill = CarIconBrush(row.VehicleName),
-            Width = 25,
-            Height = 13,
-            Stretch = System.Windows.Media.Stretch.Fill,
+            Background = CarIconBrush(row.VehicleName),
+            Width = 32,
+            Height = 17,
+            CornerRadius = new CornerRadius(2),
             HorizontalAlignment = System.Windows.HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center,
+            Child = new TextBlock
+            {
+                Text = ManufacturerAbbreviation(row.VehicleName),
+                Foreground = System.Windows.Media.Brushes.White,
+                FontFamily = new System.Windows.Media.FontFamily("Bahnschrift"),
+                FontWeight = FontWeights.Bold,
+                FontSize = 8,
+                HorizontalAlignment = System.Windows.HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+            },
         };
-        Grid.SetColumn(carIcon, 1);
-        grid.Children.Add(carIcon);
+        Grid.SetColumn(manufacturerBadge, 1);
+        grid.Children.Add(manufacturerBadge);
         AddStandingsText(
             grid,
             row.CarNumber,
             2,
             System.Windows.Media.Brushes.White,
             FontWeights.Bold,
-            10);
+            9);
         AddStandingsText(
             grid,
             row.DriverAbbreviation,
             3,
             System.Windows.Media.Brushes.White,
             FontWeights.Bold,
-            10);
+            9);
         AddStandingsText(
             grid,
             FormatLapTime(row.LastLapTimeSeconds),
             4,
             System.Windows.Media.Brushes.Gainsboro,
             FontWeights.SemiBold,
-            10);
+            9);
         AddStandingsText(
             grid,
             FormatStandingsInterval(row),
@@ -452,9 +459,9 @@ public partial class OverlayWindow : Window
                 ? System.Windows.Media.Brushes.Orange
                 : System.Windows.Media.Brushes.Gainsboro,
             FontWeights.SemiBold,
-            10,
+            9,
             System.Windows.HorizontalAlignment.Right,
-            new Thickness(0, 0, 8, 0));
+            new Thickness(0, 0, 4, 0));
         return grid;
     }
 
@@ -514,7 +521,7 @@ public partial class OverlayWindow : Window
             _ when name.Contains("FERRARI", StringComparison.Ordinal) =>
                 Brush(238, 37, 48),
             _ when name.Contains("PORSCHE", StringComparison.Ordinal) =>
-                Brush(245, 245, 245),
+                Brush(95, 108, 118),
             _ when name.Contains("BMW", StringComparison.Ordinal) =>
                 Brush(45, 123, 225),
             _ when name.Contains("CADILLAC", StringComparison.Ordinal) =>
@@ -531,17 +538,37 @@ public partial class OverlayWindow : Window
                 Brush(255, 125, 20),
             _ when name.Contains("FORD", StringComparison.Ordinal) =>
                 Brush(35, 105, 190),
+            _ when name.Contains("LEXUS", StringComparison.Ordinal) =>
+                Brush(78, 85, 92),
+            _ when name.Contains("LAMBORGHINI", StringComparison.Ordinal) =>
+                Brush(174, 145, 25),
+            _ when name.Contains("PEUGEOT", StringComparison.Ordinal) =>
+                Brush(54, 68, 82),
             _ => Brush(135, 151, 168),
         };
     }
 
-    private static System.Windows.Media.Geometry CreateCarGeometry()
+    private static string ManufacturerAbbreviation(string vehicleName)
     {
-        var geometry = System.Windows.Media.Geometry.Parse(
-            "M 1,7 L 4,3 L 10,2 L 13,0 L 20,0 L 23,2 L 29,3 L 32,7 " +
-            "L 29,11 L 23,11 L 21,9 L 12,9 L 10,11 L 4,11 Z");
-        geometry.Freeze();
-        return geometry;
+        var name = vehicleName.ToUpperInvariant();
+        return name switch
+        {
+            _ when name.Contains("PORSCHE", StringComparison.Ordinal) => "POR",
+            _ when name.Contains("FERRARI", StringComparison.Ordinal) => "FER",
+            _ when name.Contains("BMW", StringComparison.Ordinal) => "BMW",
+            _ when name.Contains("CADILLAC", StringComparison.Ordinal) => "CAD",
+            _ when name.Contains("ALPINE", StringComparison.Ordinal) => "ALP",
+            _ when name.Contains("TOYOTA", StringComparison.Ordinal) => "TOY",
+            _ when name.Contains("ASTON", StringComparison.Ordinal) => "AST",
+            _ when name.Contains("CORVETTE", StringComparison.Ordinal) => "COR",
+            _ when name.Contains("MCLAREN", StringComparison.Ordinal) => "MCL",
+            _ when name.Contains("FORD", StringComparison.Ordinal) => "FOR",
+            _ when name.Contains("LEXUS", StringComparison.Ordinal) => "LEX",
+            _ when name.Contains("LAMBORGHINI", StringComparison.Ordinal) => "LAM",
+            _ when name.Contains("PEUGEOT", StringComparison.Ordinal) => "PEU",
+            _ => new string(name.Where(char.IsLetterOrDigit).Take(3).ToArray())
+                .PadRight(3, '-'),
+        };
     }
 
     private void UpdateRelative(RelativeWidgetState relative)

@@ -337,12 +337,26 @@ public sealed class LayoutStore
 
     private static LayoutProfile Sanitize(LayoutProfile profile)
     {
+        var liveStandings = SanitizePlacement(profile.LiveStandings);
+        if (profile.SchemaVersion < 5 &&
+            Math.Abs(liveStandings.Width - 0.25) < 0.001)
+        {
+            liveStandings = liveStandings with
+            {
+                X = Math.Abs(liveStandings.X - 0.72) < 0.001
+                    ? 0.81
+                    : liveStandings.X,
+                Width = 0.16,
+                Opacity = Math.Max(0.96, liveStandings.Opacity),
+            };
+        }
+
         return profile with
         {
             SchemaVersion = LayoutProfile.CurrentSchemaVersion,
             Diagnostic = SanitizePlacement(profile.Diagnostic),
             Inputs = SanitizePlacement(profile.Inputs),
-            LiveStandings = SanitizePlacement(profile.LiveStandings),
+            LiveStandings = liveStandings,
             Relative = SanitizePlacement(profile.Relative),
             SessionFlags = SanitizePlacement(profile.SessionFlags),
             FuelStrategy = SanitizePlacement(profile.FuelStrategy),

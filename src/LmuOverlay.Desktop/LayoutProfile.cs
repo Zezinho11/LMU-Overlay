@@ -9,13 +9,13 @@ public sealed record LayoutProfile(
     WidgetPlacement SessionFlags,
     WidgetPlacement FuelStrategy)
 {
-    public const int CurrentSchemaVersion = 4;
+    public const int CurrentSchemaVersion = 5;
 
     public static LayoutProfile Default => new(
         CurrentSchemaVersion,
         new WidgetPlacement(0.025, 0.05, 0.22, 0.18, 1, 0.92, true),
         new WidgetPlacement(0.025, 0.25, 0.22, 0.10, 1, 0.92, true),
-        new WidgetPlacement(0.72, 0.05, 0.25, 0.40, 1, 0.92, true),
+        new WidgetPlacement(0.81, 0.05, 0.16, 0.40, 1, 0.96, true),
         new WidgetPlacement(0.36, 0.58, 0.28, 0.28, 1, 0.92, true),
         new WidgetPlacement(0.36, 0.05, 0.28, 0.12, 1, 0.92, true),
         new WidgetPlacement(0.025, 0.38, 0.22, 0.16, 1, 0.92, true));
