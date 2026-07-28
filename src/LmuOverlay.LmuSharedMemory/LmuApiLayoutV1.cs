@@ -19,10 +19,55 @@ public static class LmuApiLayoutV1
     public const int TrackNameOffset = ScoringOffset;
     public const int TrackNameLength = 64;
     public const int SessionCodeOffset = ScoringOffset + 64;
+    public const int SessionCurrentElapsedTimeOffset = ScoringOffset + 68;
+    public const int SessionEndElapsedTimeOffset = ScoringOffset + 76;
+    public const int SessionMaximumLapsOffset = ScoringOffset + 84;
+    public const int SessionLapLengthOffset = ScoringOffset + 88;
     public const int ScoredVehiclesOffset = ScoringOffset + 104;
+    public const int GamePhaseOffset = ScoringOffset + 108;
+    public const int YellowFlagStateOffset = ScoringOffset + 109;
+    public const int SectorFlagsOffset = ScoringOffset + 110;
+    public const int IsRealtimeOffset = ScoringOffset + 115;
+    public const int PlayerNameOffset = ScoringOffset + 116;
+    public const int PlayerNameLength = 32;
+    public const int CloudinessOffset = ScoringOffset + 212;
+    public const int RainIntensityOffset = ScoringOffset + 220;
+    public const int AmbientTemperatureOffset = ScoringOffset + 228;
+    public const int TrackTemperatureOffset = ScoringOffset + 236;
+    public const int WindOffset = ScoringOffset + 244;
+    public const int MinimumPathWetnessOffset = ScoringOffset + 268;
+    public const int MaximumPathWetnessOffset = ScoringOffset + 276;
     public const int VehicleScoringArrayOffset = ScoringOffset + 560;
     public const int VehicleScoringSize = 584;
+
+    public const int ScoringVehicleIdOffset = 0;
+    public const int ScoringDriverNameOffset = 4;
+    public const int ScoringDriverNameLength = 32;
+    public const int ScoringVehicleNameOffset = 36;
+    public const int ScoringVehicleNameLength = 64;
+    public const int ScoringCompletedLapsOffset = 100;
+    public const int ScoringSectorOffset = 102;
+    public const int ScoringLapDistanceOffset = 104;
+    public const int ScoringBestLapTimeOffset = 144;
+    public const int ScoringLastLapTimeOffset = 168;
+    public const int ScoringPitStopsOffset = 192;
+    public const int ScoringPenaltiesOffset = 194;
     public const int VehicleScoringIsPlayerOffset = 196;
+    public const int ScoringInPitsOffset = 198;
+    public const int ScoringPositionOffset = 199;
+    public const int ScoringVehicleClassOffset = 200;
+    public const int ScoringVehicleClassLength = 32;
+    public const int ScoringGapToNextOffset = 232;
+    public const int ScoringLapsBehindNextOffset = 240;
+    public const int ScoringGapToLeaderOffset = 244;
+    public const int ScoringLapsBehindLeaderOffset = 252;
+    public const int ScoringLapStartElapsedTimeOffset = 256;
+    public const int ScoringPitStateOffset = 457;
+    public const int ScoringFlagOffset = 504;
+    public const int ScoringUnderYellowOffset = 505;
+    public const int ScoringInGarageOffset = 507;
+    public const int ScoringFuelFractionOffset = 578;
+    public const int ScoringDrsActiveOffset = 579;
 
     public const int TelemetryOffset = 128_464;
     public const int ActiveVehiclesOffset = TelemetryOffset;
@@ -32,9 +77,42 @@ public static class LmuApiLayoutV1
     public const int VehicleTelemetrySize = 1_888;
     public const int VehicleNameOffset = 32;
     public const int VehicleNameLength = 64;
+    public const int TelemetryVehicleIdOffset = 0;
+    public const int TelemetryElapsedTimeOffset = 12;
+    public const int TelemetryLapNumberOffset = 20;
+    public const int TelemetryLapStartElapsedTimeOffset = 24;
+    public const int TelemetryLocalVelocityOffset = 184;
+    public const int TelemetryGearOffset = 352;
+    public const int TelemetryEngineRpmOffset = 356;
+    public const int TelemetryThrottleOffset = 388;
+    public const int TelemetryBrakeOffset = 396;
+    public const int TelemetrySteeringOffset = 404;
+    public const int TelemetryClutchOffset = 412;
+    public const int TelemetryFuelOffset = 524;
+    public const int TelemetryEngineMaximumRpmOffset = 532;
+    public const int TelemetryCurrentSectorOffset = 600;
+    public const int TelemetryMaximumGearsOffset = 605;
+    public const int TelemetryFuelCapacityOffset = 608;
+    public const int TelemetryDeltaBestOffset = 696;
+    public const int TelemetryBatteryChargeOffset = 704;
+    public const int TelemetryLapInvalidatedOffset = 745;
+    public const int TelemetryAbsActiveOffset = 746;
+    public const int TelemetryTractionControlActiveOffset = 747;
+    public const int TelemetrySpeedLimiterActiveOffset = 748;
+    public const int TelemetryRegenerationOffset = 768;
+    public const int TelemetryStateOfChargeOffset = 772;
+    public const int TelemetryVirtualEnergyOffset = 776;
+    public const int TelemetryGapToCarAheadOffset = 780;
+    public const int TelemetryGapToCarBehindOffset = 784;
+    public const int TelemetryVehicleModelOffset = 796;
+    public const int TelemetryVehicleModelLength = 30;
+    public const int TelemetryVehicleClassOffset = 826;
 
     public static int EventOffset(int eventIndex) => eventIndex * EventSize;
 
     public static int VehicleTelemetryOffset(int vehicleIndex) =>
         VehicleTelemetryArrayOffset + (vehicleIndex * VehicleTelemetrySize);
+
+    public static int VehicleScoringOffset(int vehicleIndex) =>
+        VehicleScoringArrayOffset + (vehicleIndex * VehicleScoringSize);
 }

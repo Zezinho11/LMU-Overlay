@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.IO.MemoryMappedFiles;
 using System.Runtime.Versioning;
 using LmuOverlay.Contracts;
@@ -9,7 +10,8 @@ namespace LmuOverlay.LmuSharedMemory;
 public sealed class LmuSharedMemoryReader : ILmuTelemetrySource
 {
     private readonly MemoryMappedFile? _map;
-    private readonly LmuProbeSnapshot? _startupFailure;
+    private readonly LmuConnectionState? _startupFailureState;
+    private readonly string _startupFailureDetail = string.Empty;
 
     public LmuSharedMemoryReader()
     {
@@ -21,35 +23,49 @@ public sealed class LmuSharedMemoryReader : ILmuTelemetrySource
         }
         catch (FileNotFoundException)
         {
-            _startupFailure = LmuProbeSnapshot.Disconnected(
-                "LMU_Data is unavailable. Start Le Mans Ultimate and enable its shared-memory plugin.");
+            _startupFailureState = LmuConnectionState.Disconnected;
+            _startupFailureDetail =
+                "LMU_Data is unavailable. Start Le Mans Ultimate and enable its shared-memory plugin.";
         }
         catch (UnauthorizedAccessException)
         {
-            _startupFailure = new(
-                LmuConnectionState.AccessDenied,
-                string.Empty,
-                string.Empty,
-                0,
-                string.Empty,
-                0,
-                0,
-                false,
-                DateTimeOffset.UtcNow,
-                "Windows denied read-only access to LMU_Data.");
+            _startupFailureState = LmuConnectionState.AccessDenied;
+            _startupFailureDetail = "Windows denied read-only access to LMU_Data.";
         }
     }
 
     public LmuProbeSnapshot ReadProbeSnapshot()
     {
-        if (_startupFailure is not null)
+        var snapshot = ReadTelemetrySnapshot();
+        return new(
+            snapshot.State,
+            snapshot.GameVersion == 0
+                ? string.Empty
+                : snapshot.GameVersion.ToString(CultureInfo.InvariantCulture),
+            snapshot.Session?.TrackName ?? string.Empty,
+            snapshot.Session?.SessionCode ?? 0,
+            snapshot.Player?.VehicleName ?? string.Empty,
+            snapshot.ActiveVehicles,
+            snapshot.ScoredVehicles,
+            snapshot.Player is not null,
+            snapshot.CapturedAt,
+            snapshot.Detail);
+    }
+
+    public LmuTelemetrySnapshot ReadTelemetrySnapshot()
+    {
+        if (_startupFailureState is { } startupState)
         {
-            return _startupFailure with { CapturedAt = DateTimeOffset.UtcNow };
+            return LmuTelemetrySnapshot.Unavailable(
+                startupState,
+                _startupFailureDetail);
         }
 
         if (_map is null)
         {
-            return LmuProbeSnapshot.Disconnected("LMU shared-memory map was not opened.");
+            return LmuTelemetrySnapshot.Unavailable(
+                LmuConnectionState.Disconnected,
+                "LMU shared-memory map was not opened.");
         }
 
         using var view = _map.CreateViewAccessor(
@@ -68,16 +84,8 @@ public sealed class LmuSharedMemoryReader : ILmuTelemetrySource
             var bytesRead = view.ReadArray(0, buffer, 0, buffer.Length);
             if (bytesRead != buffer.Length)
             {
-                return new(
+                return LmuTelemetrySnapshot.Unavailable(
                     LmuConnectionState.IncompatibleLayout,
-                    string.Empty,
-                    string.Empty,
-                    0,
-                    string.Empty,
-                    0,
-                    0,
-                    false,
-                    DateTimeOffset.UtcNow,
                     $"Expected {buffer.Length} bytes, read {bytesRead}.");
             }
 
@@ -88,20 +96,12 @@ public sealed class LmuSharedMemoryReader : ILmuTelemetrySource
 
             if (scoringBefore == scoringAfter && telemetryBefore == telemetryAfter)
             {
-                return LmuSnapshotParser.Parse(buffer);
+                return LmuSnapshotParser.ParseTelemetry(buffer);
             }
         }
 
-        return new(
+        return LmuTelemetrySnapshot.Unavailable(
             LmuConnectionState.InvalidData,
-            string.Empty,
-            string.Empty,
-            0,
-            string.Empty,
-            0,
-            0,
-            false,
-            DateTimeOffset.UtcNow,
             "LMU updated the snapshot during three consecutive read attempts.");
     }
 
