@@ -15,7 +15,8 @@ try
         LayoutProfile.Default.Inputs,
         LayoutProfile.Default.LiveStandings,
         LayoutProfile.Default.Relative,
-        LayoutProfile.Default.SessionFlags);
+        LayoutProfile.Default.SessionFlags,
+        LayoutProfile.Default.FuelStrategy);
     store.Save(requested);
     var loaded = store.Load();
 
