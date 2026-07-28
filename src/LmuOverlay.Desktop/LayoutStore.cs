@@ -70,6 +70,8 @@ public sealed class LayoutStore
             Diagnostic = SanitizePlacement(profile.Diagnostic),
             Inputs = SanitizePlacement(profile.Inputs),
             LiveStandings = SanitizePlacement(profile.LiveStandings),
+            Relative = SanitizePlacement(profile.Relative),
+            SessionFlags = SanitizePlacement(profile.SessionFlags),
         };
     }
 

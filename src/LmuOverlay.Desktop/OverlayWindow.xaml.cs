@@ -70,6 +70,8 @@ public partial class OverlayWindow : Window
             ? $"THR {inputs.Throttle:P0}  BRK {inputs.Brake:P0}  STR {inputs.Steering:P0}"
             : "THR --  BRK --  STR --";
         UpdateStandings(EssentialWidgetStateFactory.CreateLiveStandings(snapshot));
+        UpdateRelative(EssentialWidgetStateFactory.CreateRelative(snapshot));
+        UpdateSessionFlags(EssentialWidgetStateFactory.CreateSessionFlags(snapshot));
 
         SetGameAvailable(connected || IsEditMode);
     }
@@ -92,11 +94,18 @@ public partial class OverlayWindow : Window
         ResizeThumb.Visibility = enabled ? Visibility.Visible : Visibility.Collapsed;
         InputsResizeThumb.Visibility = enabled ? Visibility.Visible : Visibility.Collapsed;
         LiveStandingsResizeThumb.Visibility = enabled ? Visibility.Visible : Visibility.Collapsed;
+        RelativeResizeThumb.Visibility = enabled ? Visibility.Visible : Visibility.Collapsed;
+        SessionFlagsResizeThumb.Visibility = enabled ? Visibility.Visible : Visibility.Collapsed;
         EditHint.Visibility = enabled ? Visibility.Visible : Visibility.Collapsed;
-        DiagnosticWidget.BorderBrush = enabled
+        var borderBrush = enabled
             ? System.Windows.Media.Brushes.Orange
             : new System.Windows.Media.SolidColorBrush(
                 System.Windows.Media.Color.FromRgb(66, 211, 166));
+        DiagnosticWidget.BorderBrush = borderBrush;
+        InputsWidget.BorderBrush = borderBrush;
+        LiveStandingsWidget.BorderBrush = borderBrush;
+        RelativeWidget.BorderBrush = borderBrush;
+        SessionFlagsWidget.BorderBrush = borderBrush;
         ApplyInteractionStyle();
         if (enabled && _lastGameBounds.Width > 0)
         {
@@ -138,6 +147,8 @@ public partial class OverlayWindow : Window
             Math.Max(0, ActualHeight - DiagnosticWidget.Height)));
         ApplyPlacement(InputsWidget, _profile.Inputs, 170, 70);
         ApplyPlacement(LiveStandingsWidget, _profile.LiveStandings, 220, 150);
+        ApplyPlacement(RelativeWidget, _profile.Relative, 220, 130);
+        ApplyPlacement(SessionFlagsWidget, _profile.SessionFlags, 220, 70);
     }
 
     private void ApplyPlacement(
@@ -187,6 +198,78 @@ public partial class OverlayWindow : Window
                 });
             }
         }
+    }
+
+    private void UpdateRelative(RelativeWidgetState relative)
+    {
+        RelativeRows.Children.Clear();
+        if (relative.Rows.Count == 0)
+        {
+            RelativeRows.Children.Add(new TextBlock
+            {
+                Text = "Waiting for player standings",
+                Foreground = System.Windows.Media.Brushes.LightGray,
+            });
+            return;
+        }
+
+        foreach (var row in relative.Rows)
+        {
+            var gap = row.RelativeLaps switch
+            {
+                > 0 => $"+{row.RelativeLaps}L",
+                < 0 => $"{row.RelativeLaps}L",
+                _ when row.IsPlayer => "0.000",
+                _ when double.IsFinite(row.RelativeGapSeconds) =>
+                    row.RelativeGapSeconds.ToString("+0.000;-0.000;0.000"),
+                _ => "--.---",
+            };
+            var pit = row.IsInPitLane ? "  PIT" : string.Empty;
+            RelativeRows.Children.Add(new TextBlock
+            {
+                Text = $"{row.OverallPosition,2}  {row.DriverName}  [{row.VehicleClass}]  {gap}{pit}",
+                Foreground = row.IsPlayer
+                    ? System.Windows.Media.Brushes.White
+                    : System.Windows.Media.Brushes.Gainsboro,
+                Background = row.IsPlayer
+                    ? new System.Windows.Media.SolidColorBrush(
+                        System.Windows.Media.Color.FromArgb(80, 66, 211, 166))
+                    : System.Windows.Media.Brushes.Transparent,
+                FontWeight = row.IsPlayer ? FontWeights.Bold : FontWeights.Normal,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+            });
+        }
+    }
+
+    private void UpdateSessionFlags(SessionFlagsWidgetState state)
+    {
+        if (!state.Available)
+        {
+            SessionNameText.Text = "SESSION";
+            FlagText.Text = "NO DATA";
+            FlagText.Foreground = System.Windows.Media.Brushes.LightGray;
+            SessionDetailText.Text = "--:--  LAP --  AIR --°  TRACK --°";
+            return;
+        }
+
+        SessionNameText.Text = $"{state.SessionName} · {state.PhaseName}";
+        FlagText.Text = state.FlagName;
+        FlagText.Foreground = state.FlagName switch
+        {
+            "YELLOW" => System.Windows.Media.Brushes.Gold,
+            "GREEN" => System.Windows.Media.Brushes.LimeGreen,
+            _ => System.Windows.Media.Brushes.LightGray,
+        };
+        var remaining = state.RemainingSeconds > 0
+            ? TimeSpan.FromSeconds(state.RemainingSeconds).ToString(
+                state.RemainingSeconds >= 3600 ? @"h\:mm\:ss" : @"m\:ss")
+            : "--:--";
+        var lap = state.MaximumLaps > 0
+            ? $"{state.CurrentLap}/{state.MaximumLaps}"
+            : state.CurrentLap.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        SessionDetailText.Text =
+            $"{remaining}  LAP {lap}  AIR {state.AmbientTemperatureCelsius:0}°  " +
+            $"TRACK {state.TrackTemperatureCelsius:0}°";
     }
 
     private void WidgetMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -288,6 +371,10 @@ public partial class OverlayWindow : Window
             LiveStandings = CapturePlacement(
                 LiveStandingsWidget,
                 _profile.LiveStandings),
+            Relative = CapturePlacement(RelativeWidget, _profile.Relative),
+            SessionFlags = CapturePlacement(
+                SessionFlagsWidget,
+                _profile.SessionFlags),
         };
         _layoutStore.Save(_profile);
     }
