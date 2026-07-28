@@ -43,6 +43,9 @@
   color, with a neutral unknown fallback.
 - Lifted the dashboard tire-temperature label above the 2x2 readings to prevent
   overlap with the front tire values.
+- Made Live Standings fill its available vertical space with up to fourteen
+  cars, assigning all spare rows to the player's current race class while
+  retaining compact leaders from the other classes.
 
 All notable changes will be documented here.
 
