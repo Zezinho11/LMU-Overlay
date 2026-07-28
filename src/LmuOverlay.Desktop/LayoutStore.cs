@@ -351,6 +351,19 @@ public sealed class LayoutStore
             };
         }
 
+        var fuelStrategy = SanitizePlacement(profile.FuelStrategy);
+        if (profile.SchemaVersion < 6 &&
+            Math.Abs(fuelStrategy.Width - 0.22) < 0.001 &&
+            Math.Abs(fuelStrategy.Height - 0.16) < 0.001)
+        {
+            fuelStrategy = fuelStrategy with
+            {
+                Width = 0.30,
+                Height = 0.25,
+                Opacity = Math.Max(0.96, fuelStrategy.Opacity),
+            };
+        }
+
         return profile with
         {
             SchemaVersion = LayoutProfile.CurrentSchemaVersion,
@@ -359,7 +372,7 @@ public sealed class LayoutStore
             LiveStandings = liveStandings,
             Relative = SanitizePlacement(profile.Relative),
             SessionFlags = SanitizePlacement(profile.SessionFlags),
-            FuelStrategy = SanitizePlacement(profile.FuelStrategy),
+            FuelStrategy = fuelStrategy,
         };
     }
 

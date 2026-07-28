@@ -316,7 +316,7 @@ public partial class OverlayWindow : Window
         ApplyPlacement(LiveStandingsWidget, _profile.LiveStandings, 220, 150);
         ApplyPlacement(RelativeWidget, _profile.Relative, 220, 130);
         ApplyPlacement(SessionFlagsWidget, _profile.SessionFlags, 220, 70);
-        ApplyPlacement(FuelStrategyWidget, _profile.FuelStrategy, 210, 125);
+        ApplyPlacement(FuelStrategyWidget, _profile.FuelStrategy, 300, 190);
     }
 
     private void ApplyPlacement(
@@ -640,10 +640,20 @@ public partial class OverlayWindow : Window
         if (!state.Available)
         {
             FuelStatusText.Text = "NO DATA";
-            FuelMainText.Text = "FUEL --.- L  •  VE --%";
-            FuelProjectionText.Text = "FUEL --.- L/LAP  •  RANGE --.-";
-            VirtualEnergyText.Text = "VE --.-%/LAP  •  RANGE --.-";
-            FuelMarginText.Text = "NEED --.- L  •  MARGIN --.- L";
+            FuelCurrentText.Text = "--.- L";
+            EnergyCurrentText.Text = "--%";
+            FuelTableCurrentText.Text = "--.- L";
+            FuelUsageText.Text = "--.-- L";
+            FuelRangeText.Text = "--.-";
+            FuelRangeTimeText.Text = "-- MIN";
+            EnergyTableCurrentText.Text = "--%";
+            EnergyUsageText.Text = "--.-%";
+            EnergyRangeText.Text = "--.-";
+            EnergyRangeTimeText.Text = "-- MIN";
+            FinishTargetText.Text = "-- LAPS / -- MIN";
+            FuelFinishText.Text = "--.- L / --.- L";
+            EnergyFinishText.Text = "--% / --%";
+            FuelSamplesText.Text = "WAITING FOR TELEMETRY";
             return;
         }
 
@@ -655,24 +665,56 @@ public partial class OverlayWindow : Window
             "GOOD" => System.Windows.Media.Brushes.LimeGreen,
             _ => System.Windows.Media.Brushes.LightGray,
         };
-        FuelMainText.Text =
-            $"FUEL {state.FuelLiters:0.0} L  •  VE {state.VirtualEnergyFraction:P0}";
-        FuelProjectionText.Text = state.Learning
-            ? "Complete a lap to calculate"
-            : $"FUEL {state.AverageConsumptionLitersPerLap:0.00} L/LAP  •  " +
-              $"RANGE {state.EstimatedRangeLaps:0.0}";
-        VirtualEnergyText.Text = state.AverageVirtualEnergyFractionPerLap > 0
-            ? $"VE {state.AverageVirtualEnergyFractionPerLap:P1}/LAP  •  " +
-              $"RANGE {state.EstimatedVirtualEnergyRangeLaps:0.0}"
-            : "VE LEARNING • COMPLETE A LAP";
-        FuelMarginText.Text = state.Learning
-            ? "NEED --.- L  •  MARGIN --.- L"
-            : $"NEED {state.RequiredFuelLiters:0.0} L  •  " +
-              $"MARGIN {state.FuelMarginLiters:+0.0;-0.0;0.0} L";
-        FuelMarginText.Foreground = state.FuelMarginLiters < 0
+        FuelCurrentText.Text = $"{state.FuelLiters:0.0} L";
+        EnergyCurrentText.Text = $"{state.VirtualEnergyFraction:P0}";
+        FuelTableCurrentText.Text = $"{state.FuelLiters:0.0} L";
+        FuelUsageText.Text = state.Learning
+            ? "LEARNING"
+            : $"{state.AverageConsumptionLitersPerLap:0.00} L";
+        FuelRangeText.Text = state.Learning
+            ? "--.-"
+            : $"{state.EstimatedRangeLaps:0.0}";
+        FuelRangeTimeText.Text = state.Learning
+            ? "-- MIN"
+            : FormatStrategyMinutes(state.EstimatedRangeTimeSeconds);
+        EnergyTableCurrentText.Text = $"{state.VirtualEnergyFraction:P0}";
+        EnergyUsageText.Text = state.AverageVirtualEnergyFractionPerLap > 0
+            ? $"{state.AverageVirtualEnergyFractionPerLap:P1}"
+            : "LEARNING";
+        EnergyRangeText.Text = state.AverageVirtualEnergyFractionPerLap > 0
+            ? $"{state.EstimatedVirtualEnergyRangeLaps:0.0}"
+            : "--.-";
+        EnergyRangeTimeText.Text = state.AverageVirtualEnergyFractionPerLap > 0
+            ? FormatStrategyMinutes(state.EstimatedVirtualEnergyRangeTimeSeconds)
+            : "-- MIN";
+        FinishTargetText.Text =
+            $"{state.EstimatedLapsToFinish} LAPS / " +
+            FormatStrategyMinutes(state.EstimatedTimeToFinishSeconds);
+        FuelFinishText.Text = state.Learning
+            ? "--.- L / --.- L"
+            : $"{state.RequiredFuelLiters:0.0} L / " +
+              $"{state.FuelMarginLiters:+0.0;-0.0;0.0} L";
+        EnergyFinishText.Text = state.AverageVirtualEnergyFractionPerLap > 0
+            ? $"{state.RequiredVirtualEnergyFraction:P0} / " +
+              $"{state.VirtualEnergyMarginFraction:+0.0%;-0.0%;0.0%}"
+            : "--% / --%";
+        FuelFinishText.Foreground = state.FuelMarginLiters < 0
             ? System.Windows.Media.Brushes.OrangeRed
             : System.Windows.Media.Brushes.LimeGreen;
+        EnergyFinishText.Foreground =
+            state.AverageVirtualEnergyFractionPerLap > 0 &&
+            state.VirtualEnergyMarginFraction < 0
+                ? System.Windows.Media.Brushes.OrangeRed
+                : System.Windows.Media.Brushes.LightSkyBlue;
+        FuelSamplesText.Text = state.Learning
+            ? "COMPLETE A LAP TO CALCULATE"
+            : $"ROLLING AVERAGE · {state.Samples}/5 VALID LAPS · 1 LAP RESERVE";
     }
+
+    private static string FormatStrategyMinutes(double seconds) =>
+        seconds > 0 && double.IsFinite(seconds)
+            ? $"{Math.Ceiling(seconds / 60):0} MIN"
+            : "-- MIN";
 
     private void WidgetMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
