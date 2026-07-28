@@ -9,12 +9,17 @@ public sealed record FuelStrategyWidgetState(
     double AverageConsumptionLitersPerLap,
     int Samples,
     double EstimatedRangeLaps,
+    double EstimatedRangeTimeSeconds,
     int EstimatedLapsToFinish,
+    double EstimatedTimeToFinishSeconds,
     double RequiredFuelLiters,
     double FuelMarginLiters,
     double VirtualEnergyFraction,
     double AverageVirtualEnergyFractionPerLap,
     double EstimatedVirtualEnergyRangeLaps,
+    double EstimatedVirtualEnergyRangeTimeSeconds,
+    double RequiredVirtualEnergyFraction,
+    double VirtualEnergyMarginFraction,
     string Status);
 
 public sealed class FuelStrategyTracker
@@ -100,15 +105,31 @@ public sealed class FuelStrategyTracker
             ? _virtualEnergySamples.Average()
             : 0;
         var lapsToFinish = EstimateLapsToFinish(session, playerStanding, completedLaps);
+        var referenceLapSeconds = ReferenceLapSeconds(playerStanding);
         var required = average > 0
             ? average * (lapsToFinish + ReserveLaps)
             : 0;
         var margin = average > 0 ? player.FuelLiters - required : 0;
+        var estimatedRange = average > 0 ? player.FuelLiters / average : 0;
+        var virtualEnergyRange = virtualEnergyAverage > 0
+            ? virtualEnergy / virtualEnergyAverage
+            : 0;
+        var requiredVirtualEnergy = virtualEnergyAverage > 0
+            ? virtualEnergyAverage * (lapsToFinish + ReserveLaps)
+            : 0;
+        var virtualEnergyMargin = virtualEnergyAverage > 0
+            ? virtualEnergy - requiredVirtualEnergy
+            : 0;
+        var virtualEnergyShort = virtualEnergyAverage > 0 &&
+            virtualEnergyMargin < 0;
+        var virtualEnergyMarginal = virtualEnergyAverage > 0 &&
+            virtualEnergyMargin >= 0 &&
+            virtualEnergyMargin < virtualEnergyAverage * 0.5;
         var status = _samples.Count == 0
             ? "LEARNING"
-            : margin < 0
+            : margin < 0 || virtualEnergyShort
                 ? "SHORT"
-                : margin < average * 0.5
+                : margin < average * 0.5 || virtualEnergyMarginal
                     ? "MARGINAL"
                     : "GOOD";
 
@@ -118,13 +139,18 @@ public sealed class FuelStrategyTracker
             player.FuelLiters,
             average,
             _samples.Count,
-            average > 0 ? player.FuelLiters / average : 0,
+            estimatedRange,
+            estimatedRange * referenceLapSeconds,
             lapsToFinish,
+            lapsToFinish * referenceLapSeconds,
             required,
             margin,
             virtualEnergy,
             virtualEnergyAverage,
-            virtualEnergyAverage > 0 ? virtualEnergy / virtualEnergyAverage : 0,
+            virtualEnergyRange,
+            virtualEnergyRange * referenceLapSeconds,
+            requiredVirtualEnergy,
+            virtualEnergyMargin,
             status);
     }
 
@@ -173,6 +199,14 @@ public sealed class FuelStrategyTracker
             : 0;
     }
 
+    private static double ReferenceLapSeconds(LmuVehicleStanding? standing) =>
+        standing?.LastLapTimeSeconds > 0
+            ? standing.LastLapTimeSeconds
+            : standing?.BestLapTimeSeconds > 0
+                ? standing.BestLapTimeSeconds
+                : 0;
+
     private static FuelStrategyWidgetState Unavailable() => new(
-        false, true, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "NO DATA");
+        false, true, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        "NO DATA");
 }
