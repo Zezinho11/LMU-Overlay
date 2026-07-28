@@ -46,6 +46,10 @@
 - Made Live Standings fill its available vertical space with up to fourteen
   cars, assigning all spare rows to the player's current race class while
   retaining compact leaders from the other classes.
+- Rebuilt Fuel Strategy as a single-page race strategy table inspired by LMU's
+  in-car menu, showing Fuel and Virtual Energy together with current levels,
+  per-lap usage, range in laps and minutes, finish need, margins, samples, and
+  reserve.
 
 All notable changes will be documented here.
 
