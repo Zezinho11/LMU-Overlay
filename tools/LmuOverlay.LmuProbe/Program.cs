@@ -10,8 +10,13 @@ if (!OperatingSystem.IsWindows())
 }
 
 using var reader = new LmuSharedMemoryReader();
-var snapshot = reader.ReadProbeSnapshot();
-Console.WriteLine(JsonSerializer.Serialize(snapshot, new JsonSerializerOptions
+var snapshot = reader.ReadTelemetrySnapshot();
+var output = new
+{
+    Snapshot = snapshot,
+    Metrics = LmuTelemetryMetricsCalculator.Calculate(snapshot)
+};
+Console.WriteLine(JsonSerializer.Serialize(output, new JsonSerializerOptions
 {
     WriteIndented = true,
     Converters = { new JsonStringEnumConverter() }
