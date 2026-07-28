@@ -58,6 +58,14 @@ public partial class OverlayWindow : Window
         DetailText.Text = dashboard.Available
             ? $"{dashboard.TrackName} • P{dashboard.Position} • combustível {dashboard.FuelLiters:0.0} L"
             : snapshot.Detail;
+        DeltaText.Text = dashboard.Available
+            ? $"DELTA {dashboard.DeltaBestSeconds:+0.000;-0.000;0.000}"
+            : "DELTA --";
+        var tire = dashboard.TireTemperatures;
+        TiresText.Text = dashboard.Available
+            ? $"FL {tire.FrontLeftCelsius:0}°  FR {tire.FrontRightCelsius:0}°  " +
+              $"RL {tire.RearLeftCelsius:0}°  RR {tire.RearRightCelsius:0}°"
+            : "FL --°  FR --°  RL --°  RR --°";
         InputsText.Text = inputs.Available
             ? $"THR {inputs.Throttle:P0}  BRK {inputs.Brake:P0}  STR {inputs.Steering:P0}"
             : "THR --  BRK --  STR --";

@@ -40,6 +40,12 @@
                     <TextBlock x:Name="DetailText" Text="Abra o Le Mans Ultimate"
                                Foreground="#FFD2D9E0" FontSize="12"
                                TextTrimming="CharacterEllipsis" />
+                    <TextBlock x:Name="DeltaText" Text="DELTA --"
+                               Foreground="#FFFFCA6A" FontSize="13"
+                               FontWeight="Bold" Margin="0,4,0,0" />
+                    <TextBlock x:Name="TiresText" Text="FL --°  FR --°  RL --°  RR --°"
+                               Foreground="#FFD2D9E0" FontSize="11"
+                               Margin="0,3,0,0" />
                 </StackPanel>
                 <TextBlock x:Name="EditHint" Grid.Row="2"
                            Text="ARRASTE • REDIMENSIONE PELO CANTO"
