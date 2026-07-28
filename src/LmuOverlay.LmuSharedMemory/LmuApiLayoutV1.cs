@@ -84,6 +84,8 @@ public static class LmuApiLayoutV1
     public const int TelemetryLocalVelocityOffset = 184;
     public const int TelemetryGearOffset = 352;
     public const int TelemetryEngineRpmOffset = 356;
+    public const int TelemetryEngineWaterTemperatureOffset = 364;
+    public const int TelemetryEngineOilTemperatureOffset = 372;
     public const int TelemetryThrottleOffset = 388;
     public const int TelemetryBrakeOffset = 396;
     public const int TelemetrySteeringOffset = 404;
@@ -93,6 +95,7 @@ public static class LmuApiLayoutV1
     public const int TelemetryCurrentSectorOffset = 600;
     public const int TelemetryMaximumGearsOffset = 605;
     public const int TelemetryFuelCapacityOffset = 608;
+    public const int TelemetryRearBrakeBiasOffset = 664;
     public const int TelemetryDeltaBestOffset = 696;
     public const int TelemetryBatteryChargeOffset = 704;
     public const int TelemetryLapInvalidatedOffset = 745;

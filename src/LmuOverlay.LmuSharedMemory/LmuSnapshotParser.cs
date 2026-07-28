@@ -174,6 +174,13 @@ public static class LmuSnapshotParser
             data[offset + LmuApiLayoutV1.TelemetryMaximumGearsOffset],
             ReadDouble(data, offset + LmuApiLayoutV1.TelemetryEngineRpmOffset),
             ReadDouble(data, offset + LmuApiLayoutV1.TelemetryEngineMaximumRpmOffset),
+            ReadDouble(
+                data,
+                offset + LmuApiLayoutV1.TelemetryEngineWaterTemperatureOffset),
+            ReadDouble(
+                data,
+                offset + LmuApiLayoutV1.TelemetryEngineOilTemperatureOffset),
+            ReadDouble(data, offset + LmuApiLayoutV1.TelemetryRearBrakeBiasOffset),
             velocity.Length * 3.6,
             ReadDouble(data, offset + LmuApiLayoutV1.TelemetryThrottleOffset),
             ReadDouble(data, offset + LmuApiLayoutV1.TelemetryBrakeOffset),
