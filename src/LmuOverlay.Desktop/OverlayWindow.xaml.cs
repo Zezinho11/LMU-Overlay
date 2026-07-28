@@ -47,6 +47,24 @@ public partial class OverlayWindow : Window
         Brush(255, 181, 45);
     private static readonly System.Windows.Media.Brush TireCriticalBrush =
         Brush(244, 53, 68);
+    private static readonly System.Windows.Media.Brush GripGreenBrush =
+        Brush(218, 78, 68);
+    private static readonly System.Windows.Media.Brush GripLightBrush =
+        Brush(232, 135, 50);
+    private static readonly System.Windows.Media.Brush GripMediumBrush =
+        Brush(215, 181, 54);
+    private static readonly System.Windows.Media.Brush GripHeavyBrush =
+        Brush(67, 187, 105);
+    private static readonly System.Windows.Media.Brush GripSaturatedBrush =
+        Brush(31, 185, 169);
+    private static readonly System.Windows.Media.Brush FlagGreenBrush =
+        Brush(23, 133, 74);
+    private static readonly System.Windows.Media.Brush FlagYellowBrush =
+        Brush(184, 142, 25);
+    private static readonly System.Windows.Media.Brush FlagRedBrush =
+        Brush(184, 42, 53);
+    private static readonly System.Windows.Media.Brush NeutralCardBrush =
+        Brush(52, 64, 77);
 
     private readonly LayoutStore _layoutStore;
     private readonly FuelStrategyTracker _fuelStrategyTracker = new();
@@ -370,7 +388,7 @@ public partial class OverlayWindow : Window
         ApplyPlacement(InputsWidget, _profile.Inputs, 170, 70);
         ApplyPlacement(LiveStandingsWidget, _profile.LiveStandings, 220, 150);
         ApplyPlacement(RelativeWidget, _profile.Relative, 140, 240);
-        ApplyPlacement(SessionFlagsWidget, _profile.SessionFlags, 220, 70);
+        ApplyPlacement(SessionFlagsWidget, _profile.SessionFlags, 300, 150);
         ApplyPlacement(FuelStrategyWidget, _profile.FuelStrategy, 300, 190);
     }
 
@@ -787,20 +805,23 @@ public partial class OverlayWindow : Window
         if (!state.Available)
         {
             SessionNameText.Text = "SESSION";
-            FlagText.Text = "NO DATA";
-            FlagText.Foreground = System.Windows.Media.Brushes.LightGray;
-            SessionDetailText.Text = "--:--  LAP --  AIR --°  TRACK --°";
+            SessionMetaText.Text = "--:--  ·  LAP --";
+            GripValueText.Text = "UNKNOWN";
+            GripValueText.Foreground = System.Windows.Media.Brushes.LightGray;
+            GripCard.BorderBrush = NeutralCardBrush;
+            WeatherIconText.Text = "☁";
+            WeatherNameText.Text = "NO DATA";
+            WeatherDetailText.Text = "RAIN --%  ·  WET --%";
+            WeatherCard.BorderBrush = NeutralCardBrush;
+            FlagCardText.Text = "NO DATA";
+            FlagCard.Background = NeutralCardBrush;
+            AmbientTemperatureText.Text = "--°C";
+            TrackTemperatureText.Text = "--°C";
+            WetnessText.Text = "--%";
             return;
         }
 
         SessionNameText.Text = $"{state.SessionName} · {state.PhaseName}";
-        FlagText.Text = state.FlagName;
-        FlagText.Foreground = state.FlagName switch
-        {
-            "YELLOW" => System.Windows.Media.Brushes.Gold,
-            "GREEN" => System.Windows.Media.Brushes.LimeGreen,
-            _ => System.Windows.Media.Brushes.LightGray,
-        };
         var remaining = state.RemainingSeconds > 0
             ? TimeSpan.FromSeconds(state.RemainingSeconds).ToString(
                 state.RemainingSeconds >= 3600 ? @"h\:mm\:ss" : @"m\:ss")
@@ -808,9 +829,63 @@ public partial class OverlayWindow : Window
         var lap = state.MaximumLaps > 0
             ? $"{state.CurrentLap}/{state.MaximumLaps}"
             : state.CurrentLap.ToString(System.Globalization.CultureInfo.InvariantCulture);
-        SessionDetailText.Text =
-            $"{remaining}  LAP {lap}  AIR {state.AmbientTemperatureCelsius:0}°  " +
-            $"TRACK {state.TrackTemperatureCelsius:0}°";
+        SessionMetaText.Text = $"{remaining}  ·  LAP {lap}";
+
+        var gripBrush = state.TrackGripLevel switch
+        {
+            0 => GripGreenBrush,
+            1 => GripLightBrush,
+            2 => GripMediumBrush,
+            3 => GripHeavyBrush,
+            >= 4 => GripSaturatedBrush,
+            _ => NeutralCardBrush,
+        };
+        GripValueText.Text = state.TrackGripName;
+        GripValueText.Foreground = gripBrush;
+        GripCard.BorderBrush = gripBrush;
+
+        WeatherIconText.Text = state.WeatherCondition switch
+        {
+            WeatherConditionKind.Clear => "☀",
+            WeatherConditionKind.PartlyCloudy => "☀☁",
+            WeatherConditionKind.Cloudy => "☁",
+            WeatherConditionKind.Overcast => "☁☁",
+            WeatherConditionKind.LightRain => "☂",
+            WeatherConditionKind.Rain => "☂☂",
+            WeatherConditionKind.HeavyRain => "☔",
+            _ => "☁",
+        };
+        WeatherNameText.Text = state.WeatherName;
+        WeatherDetailText.Text =
+            $"RAIN {state.RainIntensity:P0}  ·  WET {state.AveragePathWetness:P0}";
+        WeatherIconText.Foreground = state.WeatherCondition switch
+        {
+            WeatherConditionKind.Clear => System.Windows.Media.Brushes.Gold,
+            WeatherConditionKind.PartlyCloudy =>
+                System.Windows.Media.Brushes.LightSkyBlue,
+            WeatherConditionKind.Cloudy or WeatherConditionKind.Overcast =>
+                System.Windows.Media.Brushes.LightGray,
+            WeatherConditionKind.LightRain or
+            WeatherConditionKind.Rain or
+            WeatherConditionKind.HeavyRain =>
+                System.Windows.Media.Brushes.DeepSkyBlue,
+            _ => System.Windows.Media.Brushes.LightGray,
+        };
+        WeatherCard.BorderBrush = WeatherIconText.Foreground;
+
+        FlagCardText.Text = state.FlagName;
+        FlagCard.Background = state.FlagName switch
+        {
+            "GREEN" => FlagGreenBrush,
+            "YELLOW" => FlagYellowBrush,
+            "RED" => FlagRedBrush,
+            _ => NeutralCardBrush,
+        };
+        AmbientTemperatureText.Text =
+            $"{state.AmbientTemperatureCelsius:0}°C";
+        TrackTemperatureText.Text =
+            $"{state.TrackTemperatureCelsius:0}°C";
+        WetnessText.Text = $"{state.AveragePathWetness:P0}";
     }
 
     private void UpdateFuelStrategy(FuelStrategyWidgetState state)

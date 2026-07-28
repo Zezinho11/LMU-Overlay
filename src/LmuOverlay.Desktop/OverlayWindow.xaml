@@ -409,24 +409,159 @@
                                   DragCompleted="ResizeThumbDragCompleted" />
             </Grid>
         </Border>
-        <Border x:Name="SessionFlagsWidget" Padding="10" CornerRadius="8"
-                Background="#DD101820" BorderBrush="#FF42D3A6" BorderThickness="1"
+        <Border x:Name="SessionFlagsWidget" Padding="0" CornerRadius="4"
+                Background="#F20A0F1A" BorderBrush="#FF53627B" BorderThickness="1"
                 MouseLeftButtonDown="WidgetMouseLeftButtonDown"
                 MouseMove="WidgetMouseMove"
                 MouseLeftButtonUp="WidgetMouseLeftButtonUp">
             <Grid>
-                <StackPanel>
-                    <DockPanel>
-                        <TextBlock x:Name="SessionNameText" Text="SESSION"
-                                   Foreground="#FF42D3A6" FontWeight="Bold" FontSize="11" />
-                        <TextBlock x:Name="FlagText" Text="NO DATA" DockPanel.Dock="Right"
-                                   HorizontalAlignment="Right" Foreground="#FFAAB7C4"
-                                   FontWeight="Bold" FontSize="11" />
-                    </DockPanel>
-                    <TextBlock x:Name="SessionDetailText"
-                               Text="--:--  LAP --  AIR --°  TRACK --°"
-                               Foreground="White" FontSize="12" Margin="0,6,0,0" />
-                </StackPanel>
+                <Viewbox Stretch="Fill">
+                    <Grid Width="500" Height="190" Background="#F20A0F1A">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="34" />
+                            <RowDefinition Height="108" />
+                            <RowDefinition Height="48" />
+                        </Grid.RowDefinitions>
+                        <Border Grid.Row="0" Background="#FF1B2441">
+                            <Grid Margin="12,0">
+                                <TextBlock x:Name="SessionNameText" Text="SESSION"
+                                           Foreground="White" FontFamily="Bahnschrift"
+                                           FontWeight="Bold" FontSize="13"
+                                           VerticalAlignment="Center" />
+                                <TextBlock x:Name="SessionMetaText"
+                                           Text="--:--  ·  LAP --"
+                                           Foreground="#FFAFBAC9" FontFamily="Bahnschrift"
+                                           FontWeight="SemiBold" FontSize="10"
+                                           HorizontalAlignment="Right"
+                                           VerticalAlignment="Center" />
+                            </Grid>
+                        </Border>
+                        <Grid Grid.Row="1" Margin="10,8,10,6">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="8" />
+                                <ColumnDefinition Width="1.25*" />
+                                <ColumnDefinition Width="8" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Border x:Name="GripCard" Grid.Column="0"
+                                    Background="#FF182131"
+                                    BorderBrush="#FF4B5B72" BorderThickness="1"
+                                    CornerRadius="3">
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Text="TRACK GRIP"
+                                               Foreground="#FFAFBAC9"
+                                               FontFamily="Bahnschrift"
+                                               FontSize="9"
+                                               HorizontalAlignment="Center" />
+                                    <TextBlock x:Name="GripValueText"
+                                               Text="UNKNOWN"
+                                               Foreground="White"
+                                               FontFamily="Bahnschrift"
+                                               FontSize="18" FontWeight="Bold"
+                                               HorizontalAlignment="Center"
+                                               Margin="0,5,0,0" />
+                                    <TextBlock Text="REALROAD"
+                                               Foreground="#FF7E8B9D"
+                                               FontFamily="Bahnschrift"
+                                               FontSize="8"
+                                               HorizontalAlignment="Center" />
+                                </StackPanel>
+                            </Border>
+                            <Border x:Name="WeatherCard" Grid.Column="2"
+                                    Background="#FF182131"
+                                    BorderBrush="#FF4B5B72" BorderThickness="1"
+                                    CornerRadius="3">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="58" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock x:Name="WeatherIconText"
+                                               Text="☁"
+                                               Foreground="#FFB7D8FF"
+                                               FontFamily="Segoe UI Symbol"
+                                               FontSize="31"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center" />
+                                    <StackPanel Grid.Column="1"
+                                                VerticalAlignment="Center">
+                                        <TextBlock Text="WEATHER"
+                                                   Foreground="#FFAFBAC9"
+                                                   FontFamily="Bahnschrift"
+                                                   FontSize="9" />
+                                        <TextBlock x:Name="WeatherNameText"
+                                                   Text="NO DATA"
+                                                   Foreground="White"
+                                                   FontFamily="Bahnschrift"
+                                                   FontSize="14" FontWeight="Bold" />
+                                        <TextBlock x:Name="WeatherDetailText"
+                                                   Text="RAIN --%  ·  WET --%"
+                                                   Foreground="#FF93A4B9"
+                                                   FontFamily="Bahnschrift"
+                                                   FontSize="8" />
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                            <Border x:Name="FlagCard" Grid.Column="4"
+                                    Background="#FF34404D"
+                                    BorderBrush="#FF647386" BorderThickness="1"
+                                    CornerRadius="3">
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Text="FLAG"
+                                               Foreground="#FFD5DCE5"
+                                               FontFamily="Bahnschrift"
+                                               FontSize="9"
+                                               HorizontalAlignment="Center" />
+                                    <TextBlock x:Name="FlagCardText"
+                                               Text="NO DATA"
+                                               Foreground="White"
+                                               FontFamily="Bahnschrift"
+                                               FontSize="18" FontWeight="Bold"
+                                               HorizontalAlignment="Center"
+                                               Margin="0,5,0,0" />
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+                        <Grid Grid.Row="2" Background="#FF111827">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0"
+                                        HorizontalAlignment="Center"
+                                        VerticalAlignment="Center">
+                                <TextBlock Text="AIR" Foreground="#FF8492A6"
+                                           FontFamily="Bahnschrift" FontSize="8" />
+                                <TextBlock x:Name="AmbientTemperatureText"
+                                           Text="--°C" Foreground="White"
+                                           FontFamily="Bahnschrift"
+                                           FontSize="15" FontWeight="Bold" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="1"
+                                        HorizontalAlignment="Center"
+                                        VerticalAlignment="Center">
+                                <TextBlock Text="TRACK" Foreground="#FF8492A6"
+                                           FontFamily="Bahnschrift" FontSize="8" />
+                                <TextBlock x:Name="TrackTemperatureText"
+                                           Text="--°C" Foreground="#FFFFC45A"
+                                           FontFamily="Bahnschrift"
+                                           FontSize="15" FontWeight="Bold" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="2"
+                                        HorizontalAlignment="Center"
+                                        VerticalAlignment="Center">
+                                <TextBlock Text="PATH WETNESS" Foreground="#FF8492A6"
+                                           FontFamily="Bahnschrift" FontSize="8" />
+                                <TextBlock x:Name="WetnessText"
+                                           Text="--%" Foreground="#FF8BC5FF"
+                                           FontFamily="Bahnschrift"
+                                           FontSize="15" FontWeight="Bold" />
+                            </StackPanel>
+                        </Grid>
+                    </Grid>
+                </Viewbox>
                 <primitives:Thumb x:Name="SessionFlagsResizeThumb" Tag="SessionFlagsWidget"
                                   Width="18" Height="18" Panel.ZIndex="10"
                                   HorizontalAlignment="Right" VerticalAlignment="Bottom"

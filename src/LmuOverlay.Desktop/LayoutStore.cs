@@ -379,6 +379,20 @@ public sealed class LayoutStore
             };
         }
 
+        var sessionFlags = SanitizePlacement(profile.SessionFlags);
+        if (profile.SchemaVersion < 8 &&
+            Math.Abs(sessionFlags.Width - 0.28) < 0.001 &&
+            Math.Abs(sessionFlags.Height - 0.12) < 0.001)
+        {
+            sessionFlags = sessionFlags with
+            {
+                X = 0.33,
+                Width = 0.30,
+                Height = 0.18,
+                Opacity = Math.Max(0.96, sessionFlags.Opacity),
+            };
+        }
+
         return profile with
         {
             SchemaVersion = LayoutProfile.CurrentSchemaVersion,
@@ -386,7 +400,7 @@ public sealed class LayoutStore
             Inputs = SanitizePlacement(profile.Inputs),
             LiveStandings = liveStandings,
             Relative = relative,
-            SessionFlags = SanitizePlacement(profile.SessionFlags),
+            SessionFlags = sessionFlags,
             FuelStrategy = fuelStrategy,
         };
     }
