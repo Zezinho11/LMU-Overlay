@@ -107,6 +107,7 @@ public sealed record LmuVehicleStanding(
     int VehicleId,
     string DriverName,
     string VehicleName,
+    string VehicleModel,
     string VehicleClass,
     int Position,
     int CompletedLaps,
