@@ -11,7 +11,9 @@ public sealed record DashboardWidgetState(
     double FuelLiters,
     int Position,
     int LapNumber,
-    string TrackName);
+    string TrackName,
+    double DeltaBestSeconds,
+    LmuWheelTemperatures TireTemperatures);
 
 public sealed record InputsWidgetState(
     bool Available,
@@ -48,7 +50,11 @@ public static class EssentialWidgetStateFactory
     {
         if (snapshot.Player is not { } player)
         {
-            return new(false, 0, "N", 0, 0, 0, 0, 0, snapshot.Session?.TrackName ?? string.Empty);
+            return new(
+                false, 0, "N", 0, 0, 0, 0, 0,
+                snapshot.Session?.TrackName ?? string.Empty,
+                0,
+                new LmuWheelTemperatures(0, 0, 0, 0));
         }
 
         return new(
@@ -62,7 +68,9 @@ public static class EssentialWidgetStateFactory
             player.FuelLiters,
             player.Position,
             player.LapNumber,
-            snapshot.Session?.TrackName ?? string.Empty);
+            snapshot.Session?.TrackName ?? string.Empty,
+            player.DeltaBestSeconds,
+            player.TireTemperatures);
     }
 
     public static InputsWidgetState CreateInputs(LmuTelemetrySnapshot snapshot)
