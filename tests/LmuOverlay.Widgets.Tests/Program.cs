@@ -180,8 +180,20 @@ var refueled = fuelTracker.Update(nextLapSnapshot with
 
 Assert(learning.Learning, "Fuel strategy must learn before the first completed lap.");
 Assert(strategy.AverageConsumptionLitersPerLap == 2.5, "Fuel use must be sampled per lap.");
+Assert(strategy.ProjectedConsumptionLitersPerLap == 2.5,
+    "One valid sample must become the conservative projection baseline.");
 Assert(strategy.EstimatedLapsToFinish == 15, "Remaining laps must use session length.");
 Assert(strategy.RequiredFuelLiters == 40, "Fuel need must include a one-lap reserve.");
+Assert(strategy.SuggestedPitLap == 19,
+    "Pit recommendation must account for usable fuel and the reserve lap.");
+Assert(strategy.LapsUntilPit == 14,
+    "Pit countdown must report the usable stint length.");
+Assert(strategy.FuelToAddLiters == 2.5,
+    "Fuel-to-add must close the projected finish deficit.");
+Assert(strategy.RequiredFuelSavingFraction > 0,
+    "A short strategy must expose the required saving target.");
+Assert(strategy.Confidence == "LOW",
+    "One valid lap must produce low-confidence guidance.");
 Assert(strategy.EstimatedRangeTimeSeconds == strategy.EstimatedRangeLaps * 121,
     "Fuel range time must use the latest valid lap.");
 Assert(strategy.EstimatedTimeToFinishSeconds == 15 * 121,
