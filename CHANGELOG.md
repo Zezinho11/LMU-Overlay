@@ -30,6 +30,9 @@
 - Added named layout profiles with live switching, create, duplicate, rename,
   guarded deletion, backward-compatible migration, and portable JSON
   import/export.
+- Rebuilt Live Standings as a scalable ten-car timing tower with a pinned P1,
+  moving player window, abbreviated driver names, manufacturer-colored car
+  silhouettes, explicit race numbers, last laps, intervals, and pit status.
 
 All notable changes will be documented here.
 
