@@ -21,6 +21,14 @@ public sealed record DashboardWidgetState(
     double RearBrakeBiasFraction,
     bool AbsActive,
     bool TractionControlActive,
+    int TractionControlLevel,
+    int TractionControlMaximum,
+    int TractionControlSlipLevel,
+    int TractionControlSlipMaximum,
+    int TractionControlCutLevel,
+    int TractionControlCutMaximum,
+    int AbsLevel,
+    int AbsMaximum,
     LmuWheelTemperatures TireTemperatures);
 
 public sealed record InputsWidgetState(
@@ -85,6 +93,7 @@ public static class EssentialWidgetStateFactory
                 false, 0, "N", 0, 0, 0, 0, 0,
                 snapshot.Session?.TrackName ?? string.Empty,
                 0, 0, 0, 0, 0, 0, 0, false, false,
+                0, 0, 0, 0, 0, 0, 0, 0,
                 new LmuWheelTemperatures(0, 0, 0, 0));
         }
 
@@ -114,6 +123,14 @@ public static class EssentialWidgetStateFactory
             player.RearBrakeBiasFraction,
             player.AbsActive,
             player.TractionControlActive,
+            player.TractionControlLevel,
+            player.TractionControlMaximum,
+            player.TractionControlSlipLevel,
+            player.TractionControlSlipMaximum,
+            player.TractionControlCutLevel,
+            player.TractionControlCutMaximum,
+            player.AbsLevel,
+            player.AbsMaximum,
             player.TireTemperatures);
     }
 
