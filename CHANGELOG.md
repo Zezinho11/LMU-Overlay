@@ -60,6 +60,15 @@
   Green/Light/Medium/Heavy/Saturated RealRoad grip, intensity-aware weather
   icons, rain and path wetness, separate temperatures, and full-color
   green/yellow/red flag cards.
+- Moved shared-memory acquisition off the WPF render thread into a single-reader
+  telemetry runtime with automatic reconnect, failure isolation, health metrics,
+  and atomic latest-frame publication.
+- Reused the memory-mapped view and byte buffer across reads to remove the
+  largest recurring high-frequency allocations.
+- Advanced Fuel Strategy with recency weighting, a conservative variability
+  buffer, saving target, pit countdown/lap, fuel-to-add amount, and confidence.
+- Added reproducible self-contained Windows x64 packaging, SHA-256 checksums,
+  GitHub Actions artifacts, and tag-driven public GitHub Releases.
 
 All notable changes will be documented here.
 

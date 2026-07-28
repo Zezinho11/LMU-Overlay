@@ -3,8 +3,8 @@
 Extensible telemetry overlay for **Le Mans Ultimate**, designed around the game's
 official shared-memory interface and a strict anti-cheat-safe boundary.
 
-> Project status: Phase 1 / normalized telemetry core. This repository does not
-> yet provide an end-user overlay.
+> Project status: functional desktop preview with public Windows packaging.
+> Extended live-race validation and SteamVR remain planned.
 
 ## Safety boundary
 
@@ -25,9 +25,17 @@ revalidated after LMU, EAC, SteamVR, or overlay changes.
 - Normalized session, player, standings, weather, inputs, fuel, hybrid-energy,
   gap, flag, and pit-state snapshots.
 - Derived HUD metrics and an asynchronous polling service.
+- Background telemetry runtime with automatic reconnect, failure isolation,
+  health counters, and a render-thread-safe latest-frame buffer.
+- Reused shared-memory view and read buffer for stable high-frequency polling.
 - Reproducible anonymized fixture, parser checks, and Windows CI.
 - Header provenance and compatibility matrix without redistributing proprietary
   Studio 397 files.
+- Movable/resizable RedFox dashboard, Live Standings, Relative, Fuel & Virtual
+  Energy strategy, inputs, and session/weather/flag widgets.
+- Weighted race strategy with conservative consumption, fuel saving target,
+  pit-lap recommendation, fuel-to-add amount, reserve, and confidence.
+- Reproducible self-contained Windows x64 ZIP releases with SHA-256 checksums.
 
 ## Prerequisites
 
@@ -77,12 +85,18 @@ Desktop and VR are separate presentation hosts over the same widget model. The
 SteamVR route uses the documented overlay API; OpenXR remains an optional future
 adapter. See the project master plan alongside this repository.
 
-## Desktop prototype
+## Desktop application
 
-Phase 2 now includes a compilable Windows desktop vertical slice with one live
-diagnostic widget, LMU-window alignment, auto-hide, tray controls, free movement,
-corner resizing, normalized layout persistence, and a locked click-through race
-mode. See [the desktop quick start](docs/desktop/quick-start.md).
+The desktop host includes LMU-window alignment, auto-hide, tray controls,
+independent widget movement and resizing, normalized profile persistence, profile
+import/export, and a locked click-through race mode. See
+[the desktop quick start](docs/desktop/quick-start.md).
+
+## Download and release
+
+Tagged releases are published as a self-contained Windows x64 ZIP, so end users
+do not need to install the .NET SDK. Every archive includes a SHA-256 checksum.
+See [the release guide](docs/release.md).
 
 ## Legal note
 
@@ -94,7 +108,7 @@ The installed LMU SDK headers explicitly restrict redistribution. They are not
 present in this repository. Constants here are independently maintained bindings
 derived for interoperability and tied to exact local header hashes.
 
-## License
+## Source license
 
 No open-source license has been selected yet. Until one is added, all rights are
 reserved. Public visibility alone does not grant reuse rights.
