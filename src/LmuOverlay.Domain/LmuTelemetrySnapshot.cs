@@ -87,6 +87,14 @@ public sealed record LmuPlayerTelemetry(
     bool LapInvalidated,
     bool AbsActive,
     bool TractionControlActive,
+    int TractionControlLevel,
+    int TractionControlMaximum,
+    int TractionControlSlipLevel,
+    int TractionControlSlipMaximum,
+    int TractionControlCutLevel,
+    int TractionControlCutMaximum,
+    int AbsLevel,
+    int AbsMaximum,
     LmuWheelTemperatures TireTemperatures);
 
 public sealed record LmuWheelTemperatures(
