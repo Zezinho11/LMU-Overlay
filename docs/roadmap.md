@@ -13,7 +13,8 @@
 - [x] Add immutable normalized snapshots and bounded coherent reads.
 - [x] Add update scheduling and derived HUD metrics.
 - [x] Add an anonymized replay fixture and compatibility evidence.
-- [ ] Expand into rules streams and stateful fuel/stint strategy in Phase 4.
+- [ ] Expand into rules streams and full stint strategy in Phase 4.
+- [x] Add stateful fuel consumption and finish projection.
 
 ## Phase 2 — desktop vertical slice
 
@@ -39,6 +40,7 @@
   with timing and pit state for every other class.
 - [x] Add the initial multiclass standings, Relative, and Session/Flags
   coverage.
+- [x] Add the initial fuel strategy with learned consumption and finish margin.
 - Add configuration UX, profile import/export, localization, diagnostics, and
   signed packaging/update foundations.
 
