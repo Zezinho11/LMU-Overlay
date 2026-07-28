@@ -35,6 +35,18 @@ public partial class OverlayWindow : Window
         Brush(66, 211, 166);
     private static readonly System.Windows.Media.Brush IndicatorActiveBrush =
         Brush(255, 135, 40);
+    private static readonly System.Windows.Media.Brush TireUnknownBrush =
+        Brush(72, 84, 96);
+    private static readonly System.Windows.Media.Brush TireColdBrush =
+        Brush(52, 115, 224);
+    private static readonly System.Windows.Media.Brush TireWarmingBrush =
+        Brush(46, 194, 214);
+    private static readonly System.Windows.Media.Brush TireOptimalBrush =
+        Brush(35, 205, 105);
+    private static readonly System.Windows.Media.Brush TireHotBrush =
+        Brush(255, 181, 45);
+    private static readonly System.Windows.Media.Brush TireCriticalBrush =
+        Brush(244, 53, 68);
 
     private readonly LayoutStore _layoutStore;
     private readonly FuelStrategyTracker _fuelStrategyTracker = new();
@@ -147,10 +159,30 @@ public partial class OverlayWindow : Window
               $"WATER {dashboard.EngineWaterTemperatureCelsius:0}°"
             : "OIL --°  WATER --°";
         var tire = dashboard.TireTemperatures;
-        TiresText.Text = dashboard.Available
-            ? $"FL {tire.FrontLeftCelsius:0}°       FR {tire.FrontRightCelsius:0}°\n" +
-              $"RL {tire.RearLeftCelsius:0}°       RR {tire.RearRightCelsius:0}°"
-            : "FL --°       FR --°\nRL --°       RR --°";
+        UpdateTireReading(
+            FrontLeftTireIcon,
+            FrontLeftTireText,
+            "FL",
+            tire.FrontLeftCelsius,
+            dashboard.Available);
+        UpdateTireReading(
+            FrontRightTireIcon,
+            FrontRightTireText,
+            "FR",
+            tire.FrontRightCelsius,
+            dashboard.Available);
+        UpdateTireReading(
+            RearLeftTireIcon,
+            RearLeftTireText,
+            "RL",
+            tire.RearLeftCelsius,
+            dashboard.Available);
+        UpdateTireReading(
+            RearRightTireIcon,
+            RearRightTireText,
+            "RR",
+            tire.RearRightCelsius,
+            dashboard.Available);
         UpdateShiftLights(dashboard.Available ? dashboard.EngineRpmFraction : 0);
         TcLevelText.Text = FormatControlLevel(
             dashboard.TractionControlLevel,
@@ -201,6 +233,29 @@ public partial class OverlayWindow : Window
                 }
                 : ShiftOffBrush;
         }
+    }
+
+    private static void UpdateTireReading(
+        Border icon,
+        TextBlock text,
+        string label,
+        double temperatureCelsius,
+        bool available)
+    {
+        text.Text = available
+            ? $"{label} {temperatureCelsius:0}°"
+            : $"{label} --°";
+        icon.Background = available
+            ? TireTemperatureClassifier.Classify(temperatureCelsius) switch
+            {
+                TireTemperatureBand.Cold => TireColdBrush,
+                TireTemperatureBand.Warming => TireWarmingBrush,
+                TireTemperatureBand.Optimal => TireOptimalBrush,
+                TireTemperatureBand.Hot => TireHotBrush,
+                TireTemperatureBand.Critical => TireCriticalBrush,
+                _ => TireUnknownBrush,
+            }
+            : TireUnknownBrush;
     }
 
     private static void UpdateIndicator(
