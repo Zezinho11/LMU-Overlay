@@ -43,6 +43,9 @@
 - [x] Add the initial fuel strategy with learned consumption and finish margin.
 - Add configuration UX, profile import/export, localization, diagnostics, and
   signed packaging/update foundations.
+- [x] Add the first configuration window with widget visibility, opacity, and
+  live application.
+- [ ] Add named profiles and profile import/export.
 
 ## Phase 4 — SteamVR
 
