@@ -59,13 +59,6 @@ public partial class App
             return;
         }
 
-        var gameBounds = LmuWindowTracker.TryGetClientBounds();
-        if (gameBounds is null)
-        {
-            _overlay.SetGameAvailable(false);
-            return;
-        }
-
         EnsureReader();
         var snapshot = _reader?.ReadTelemetrySnapshot()
             ?? LmuTelemetrySnapshot.Unavailable(
@@ -76,6 +69,26 @@ public partial class App
         {
             _reader?.Dispose();
             _reader = null;
+        }
+
+        var gameBounds = LmuWindowTracker.TryGetClientBounds();
+        if (gameBounds is null && snapshot.State == LmuConnectionState.Connected)
+        {
+            var screen = WinForms.Screen.PrimaryScreen?.Bounds;
+            if (screen is not null)
+            {
+                gameBounds = new System.Windows.Rect(
+                    screen.Value.Left,
+                    screen.Value.Top,
+                    screen.Value.Width,
+                    screen.Value.Height);
+            }
+        }
+
+        if (gameBounds is null)
+        {
+            _overlay.SetGameAvailable(false);
+            return;
         }
 
         _overlay.UpdateFrame(gameBounds.Value, snapshot);

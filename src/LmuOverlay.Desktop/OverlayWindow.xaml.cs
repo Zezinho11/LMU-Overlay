@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
 using LmuOverlay.Domain;
+using LmuOverlay.Widgets;
 
 namespace LmuOverlay.Desktop;
 
@@ -45,12 +46,17 @@ public partial class OverlayWindow : Window
 
         var connected = snapshot.State == LmuConnectionState.Connected;
         ConnectionText.Text = connected ? "CONECTADO" : snapshot.State.ToString().ToUpperInvariant();
-        SpeedText.Text = snapshot.Player is { } player
-            ? $"{player.SpeedKilometersPerHour:0} km/h  G{player.Gear}  {player.EngineRpm:0} rpm"
+        var dashboard = EssentialWidgetStateFactory.CreateDashboard(snapshot);
+        var inputs = EssentialWidgetStateFactory.CreateInputs(snapshot);
+        SpeedText.Text = dashboard.Available
+            ? $"{dashboard.SpeedKilometersPerHour:0} km/h  G{dashboard.Gear}  {dashboard.EngineRpm:0} rpm"
             : "--- km/h";
-        DetailText.Text = snapshot.Player is { } telemetry
-            ? $"{snapshot.Session?.TrackName ?? "LMU"} • P{telemetry.Position} • combustível {telemetry.FuelLiters:0.0} L"
+        DetailText.Text = dashboard.Available
+            ? $"{dashboard.TrackName} • P{dashboard.Position} • combustível {dashboard.FuelLiters:0.0} L"
             : snapshot.Detail;
+        InputsText.Text = inputs.Available
+            ? $"THR {inputs.Throttle:P0}  BRK {inputs.Brake:P0}  STR {inputs.Steering:P0}"
+            : "THR --  BRK --  STR --";
 
         SetGameAvailable(connected || IsEditMode);
     }

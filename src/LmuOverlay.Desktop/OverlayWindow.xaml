@@ -40,6 +40,9 @@
                     <TextBlock x:Name="DetailText" Text="Abra o Le Mans Ultimate"
                                Foreground="#FFD2D9E0" FontSize="12"
                                TextTrimming="CharacterEllipsis" />
+                    <TextBlock x:Name="InputsText" Text="THR 0%  BRK 0%  STR 0%"
+                               Foreground="#FF9FE8D1" FontSize="11"
+                               Margin="0,4,0,0" />
                 </StackPanel>
                 <TextBlock x:Name="EditHint" Grid.Row="2"
                            Text="ARRASTE • REDIMENSIONE PELO CANTO"

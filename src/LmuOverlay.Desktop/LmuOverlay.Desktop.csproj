@@ -2,6 +2,7 @@
   <ItemGroup>
     <ProjectReference Include="..\LmuOverlay.Domain\LmuOverlay.Domain.csproj" />
     <ProjectReference Include="..\LmuOverlay.LmuSharedMemory\LmuOverlay.LmuSharedMemory.csproj" />
+    <ProjectReference Include="..\LmuOverlay.Widgets\LmuOverlay.Widgets.csproj" />
   </ItemGroup>
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
