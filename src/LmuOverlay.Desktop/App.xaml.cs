@@ -1,5 +1,6 @@
 using System.Drawing;
 using System.Windows.Threading;
+using LmuOverlay.Core;
 using LmuOverlay.Domain;
 using LmuOverlay.LmuSharedMemory;
 using WinForms = System.Windows.Forms;
@@ -16,14 +17,18 @@ public partial class App
     private OverlayWindow? _overlay;
     private ConfigurationWindow? _configurationWindow;
     private WinForms.NotifyIcon? _trayIcon;
-    private LmuSharedMemoryReader? _reader;
-    private DateTimeOffset _lastReconnectAttempt;
+    private TelemetryRuntime? _telemetryRuntime;
     private bool _isExiting;
 
     protected override void OnStartup(System.Windows.StartupEventArgs e)
     {
         base.OnStartup(e);
         _overlay = new OverlayWindow(new LayoutStore());
+        _telemetryRuntime = new TelemetryRuntime(
+            () => new LmuSharedMemoryReader(),
+            TimeSpan.FromMilliseconds(50),
+            TimeSpan.FromSeconds(1));
+        _telemetryRuntime.Start();
         CreateTrayIcon();
         _timer.Tick += OnTick;
         _timer.Start();
@@ -81,17 +86,10 @@ public partial class App
             return;
         }
 
-        EnsureReader();
-        var snapshot = _reader?.ReadTelemetrySnapshot()
+        var snapshot = _telemetryRuntime?.Latest
             ?? LmuTelemetrySnapshot.Unavailable(
                 LmuConnectionState.Disconnected,
                 "Waiting for LMU shared memory.");
-
-        if (snapshot.State == LmuConnectionState.Disconnected)
-        {
-            _reader?.Dispose();
-            _reader = null;
-        }
 
         var gameBounds = LmuWindowTracker.TryGetClientBounds();
         if (gameBounds is null && snapshot.State == LmuConnectionState.Connected)
@@ -116,18 +114,6 @@ public partial class App
         _overlay.UpdateFrame(gameBounds.Value, snapshot);
     }
 
-    private void EnsureReader()
-    {
-        if (_reader is not null ||
-            DateTimeOffset.UtcNow - _lastReconnectAttempt < TimeSpan.FromSeconds(1))
-        {
-            return;
-        }
-
-        _lastReconnectAttempt = DateTimeOffset.UtcNow;
-        _reader = new LmuSharedMemoryReader();
-    }
-
     private void ExitApplication()
     {
         if (_isExiting)
@@ -137,7 +123,7 @@ public partial class App
 
         _isExiting = true;
         _timer.Stop();
-        _reader?.Dispose();
+        _telemetryRuntime?.DisposeAsync().AsTask().GetAwaiter().GetResult();
         _configurationWindow?.Close();
         _overlay?.Close();
         if (_trayIcon is not null)
@@ -151,7 +137,6 @@ public partial class App
 
     protected override void OnExit(System.Windows.ExitEventArgs e)
     {
-        _reader?.Dispose();
         _trayIcon?.Dispose();
         base.OnExit(e);
     }

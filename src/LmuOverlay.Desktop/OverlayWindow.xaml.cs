@@ -923,7 +923,7 @@ public partial class OverlayWindow : Window
         FuelTableCurrentText.Text = $"{state.FuelLiters:0.0} L";
         FuelUsageText.Text = state.Learning
             ? "LEARNING"
-            : $"{state.AverageConsumptionLitersPerLap:0.00} L";
+            : $"{state.ProjectedConsumptionLitersPerLap:0.00} L";
         FuelRangeText.Text = state.Learning
             ? "--.-"
             : $"{state.EstimatedRangeLaps:0.0}";
@@ -961,7 +961,10 @@ public partial class OverlayWindow : Window
                 : System.Windows.Media.Brushes.LightSkyBlue;
         FuelSamplesText.Text = state.Learning
             ? "COMPLETE A LAP TO CALCULATE"
-            : $"ROLLING AVERAGE · {state.Samples}/5 VALID LAPS · 1 LAP RESERVE";
+            : $"PIT L{state.SuggestedPitLap} ({state.LapsUntilPit} LAPS)  " +
+              $"· SAVE {state.RequiredFuelSavingFraction:P0}  " +
+              $"· ADD {state.FuelToAddLiters:0.0} L  " +
+              $"· CONF {state.Confidence} ({state.Samples}/8)";
     }
 
     private static string FormatStrategyMinutes(double seconds) =>
