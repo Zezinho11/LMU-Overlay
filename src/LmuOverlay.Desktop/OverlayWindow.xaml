@@ -11,11 +11,11 @@
         Topmost="True">
     <Canvas x:Name="OverlayCanvas" Background="Transparent">
         <Border x:Name="DiagnosticWidget"
-                MinWidth="170"
-                MinHeight="100"
-                Padding="12"
-                CornerRadius="8"
-                Background="#DD101820"
+                MinWidth="360"
+                MinHeight="220"
+                Padding="10"
+                CornerRadius="12"
+                Background="#EE080D12"
                 BorderBrush="#FF42D3A6"
                 BorderThickness="1"
                 MouseLeftButtonDown="WidgetMouseLeftButtonDown"
@@ -24,34 +24,99 @@
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
-                <DockPanel>
-                    <TextBlock Text="LMU LIVE" Foreground="#FF42D3A6"
-                               FontWeight="Bold" FontSize="12" />
-                    <TextBlock x:Name="ConnectionText" DockPanel.Dock="Right"
-                               Text="AGUARDANDO" Foreground="#FFAAB7C4"
-                               FontSize="10" HorizontalAlignment="Right" />
-                </DockPanel>
-                <StackPanel Grid.Row="1" Margin="0,8,0,4">
-                    <TextBlock x:Name="SpeedText" Text="--- km/h"
-                               Foreground="White" FontSize="26" FontWeight="SemiBold" />
-                    <TextBlock x:Name="DetailText" Text="Abra o Le Mans Ultimate"
-                               Foreground="#FFD2D9E0" FontSize="12"
-                               TextTrimming="CharacterEllipsis" />
-                    <TextBlock x:Name="DeltaText" Text="DELTA --"
-                               Foreground="#FFFFCA6A" FontSize="13"
-                               FontWeight="Bold" Margin="0,4,0,0" />
-                    <TextBlock x:Name="TiresText" Text="FL --°  FR --°  RL --°  RR --°"
-                               Foreground="#FFD2D9E0" FontSize="11"
-                               Margin="0,3,0,0" />
+                <StackPanel Grid.Row="0" Orientation="Horizontal"
+                            HorizontalAlignment="Center" Margin="0,0,0,5">
+                    <Ellipse x:Name="ShiftLight01" Width="13" Height="13" Margin="2,0" Fill="#FF26313B" />
+                    <Ellipse x:Name="ShiftLight02" Width="13" Height="13" Margin="2,0" Fill="#FF26313B" />
+                    <Ellipse x:Name="ShiftLight03" Width="13" Height="13" Margin="2,0" Fill="#FF26313B" />
+                    <Ellipse x:Name="ShiftLight04" Width="13" Height="13" Margin="2,0" Fill="#FF26313B" />
+                    <Ellipse x:Name="ShiftLight05" Width="13" Height="13" Margin="2,0" Fill="#FF26313B" />
+                    <Ellipse x:Name="ShiftLight06" Width="13" Height="13" Margin="2,0" Fill="#FF26313B" />
+                    <Ellipse x:Name="ShiftLight07" Width="13" Height="13" Margin="2,0" Fill="#FF26313B" />
+                    <Ellipse x:Name="ShiftLight08" Width="13" Height="13" Margin="2,0" Fill="#FF26313B" />
+                    <Ellipse x:Name="ShiftLight09" Width="13" Height="13" Margin="2,0" Fill="#FF26313B" />
+                    <Ellipse x:Name="ShiftLight10" Width="13" Height="13" Margin="2,0" Fill="#FF26313B" />
+                    <Ellipse x:Name="ShiftLight11" Width="13" Height="13" Margin="2,0" Fill="#FF26313B" />
+                    <Ellipse x:Name="ShiftLight12" Width="13" Height="13" Margin="2,0" Fill="#FF26313B" />
                 </StackPanel>
-                <TextBlock x:Name="EditHint" Grid.Row="2"
-                           Text="ARRASTE • REDIMENSIONE PELO CANTO"
-                           Foreground="#FFFFCA6A" FontSize="9"
-                           Visibility="Collapsed" />
-                <primitives:Thumb x:Name="ResizeThumb" Grid.RowSpan="3"
+                <Grid Grid.Row="1" Margin="2,0,2,5">
+                    <TextBlock x:Name="TrackText" Text="LMU"
+                               Foreground="#FFAAB7C4" FontSize="10"
+                               HorizontalAlignment="Left" VerticalAlignment="Center"
+                               TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="REDFOX RACING" Foreground="White"
+                               FontWeight="Bold" FontSize="18"
+                               HorizontalAlignment="Center" />
+                    <TextBlock x:Name="ConnectionText" Text="AGUARDANDO"
+                               Foreground="#FFAAB7C4" FontSize="10"
+                               HorizontalAlignment="Right" VerticalAlignment="Center" />
+                </Grid>
+                <Grid Grid.Row="2">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="1.1*" />
+                        <ColumnDefinition Width="1.2*" />
+                        <ColumnDefinition Width="1.1*" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" Margin="3">
+                        <TextBlock x:Name="PositionText" Text="POS --"
+                                   Foreground="#FF42D3A6" FontWeight="Bold" FontSize="14" />
+                        <TextBlock x:Name="LapText" Text="LAP --"
+                                   Foreground="White" FontSize="13" Margin="0,3,0,0" />
+                        <TextBlock x:Name="DeltaText" Text="DELTA --"
+                                   Foreground="#FFFFCA6A" FontWeight="Bold"
+                                   FontSize="13" Margin="0,6,0,0" />
+                        <TextBlock x:Name="FuelText" Text="FUEL --.- L"
+                                   Foreground="#FFD2D9E0" FontSize="11" Margin="0,4,0,0" />
+                        <TextBlock x:Name="BrakeBiasText" Text="BRAKE BIAS --.-%"
+                                   Foreground="#FFD2D9E0" FontSize="11" Margin="0,2,0,0" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" HorizontalAlignment="Center">
+                        <TextBlock x:Name="SpeedText" Text="--- KM/H"
+                                   Foreground="#FFAAB7C4" FontSize="18"
+                                   FontWeight="SemiBold" HorizontalAlignment="Center" />
+                        <TextBlock x:Name="GearText" Text="N"
+                                   Foreground="White" FontSize="62" FontWeight="Bold"
+                                   LineHeight="58" HorizontalAlignment="Center" />
+                        <TextBlock x:Name="RpmText" Text="RPM ----"
+                                   Foreground="#FFD2D9E0" FontSize="12"
+                                   HorizontalAlignment="Center" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="2" Margin="3">
+                        <TextBlock x:Name="CurrentLapText" Text="CURRENT --:--.---"
+                                   Foreground="White" FontSize="12" />
+                        <TextBlock x:Name="LastLapText" Text="LAST --:--.---"
+                                   Foreground="#FFD2D9E0" FontSize="11" Margin="0,3,0,0" />
+                        <TextBlock x:Name="BestLapText" Text="BEST --:--.---"
+                                   Foreground="#FF42D3A6" FontSize="11" Margin="0,2,0,0" />
+                        <StackPanel Orientation="Horizontal" Margin="0,7,0,0">
+                            <Border x:Name="AbsIndicator" Padding="7,3" CornerRadius="3"
+                                    Background="#FF202A33" Margin="0,0,5,0">
+                                <TextBlock x:Name="AbsIndicatorText" Text="ABS" Foreground="#FF788795"
+                                           FontWeight="Bold" FontSize="11" />
+                            </Border>
+                            <Border x:Name="TcIndicator" Padding="7,3" CornerRadius="3"
+                                    Background="#FF202A33">
+                                <TextBlock x:Name="TcIndicatorText" Text="TC" Foreground="#FF788795"
+                                           FontWeight="Bold" FontSize="11" />
+                            </Border>
+                        </StackPanel>
+                        <TextBlock x:Name="EngineTempsText" Text="OIL --°  WATER --°"
+                                   Foreground="#FFD2D9E0" FontSize="10" Margin="0,6,0,0" />
+                    </StackPanel>
+                </Grid>
+                <DockPanel Grid.Row="3" Margin="3,5,3,0">
+                    <TextBlock x:Name="TiresText" Text="FL --°  FR --°  RL --°  RR --°"
+                               Foreground="#FFD2D9E0" FontSize="11" />
+                    <TextBlock x:Name="EditHint" DockPanel.Dock="Right"
+                               Text="ARRASTE • REDIMENSIONE PELO CANTO"
+                               Foreground="#FFFFCA6A" FontSize="9"
+                               Visibility="Collapsed" />
+                </DockPanel>
+                <primitives:Thumb x:Name="ResizeThumb" Grid.RowSpan="4"
                                   Tag="DiagnosticWidget"
                                   Width="18" Height="18"
                                   Panel.ZIndex="10"

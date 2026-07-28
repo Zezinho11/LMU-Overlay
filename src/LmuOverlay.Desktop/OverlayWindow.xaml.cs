@@ -15,9 +15,26 @@ public partial class OverlayWindow : Window
     private const long NoActivateStyle = 0x08000000L;
     private const long TransparentStyle = 0x00000020L;
     private const double SnapDistance = 12;
+    private static readonly System.Windows.Media.Brush ShiftOffBrush =
+        Brush(38, 49, 59);
+    private static readonly System.Windows.Media.Brush ShiftGreenBrush =
+        Brush(42, 218, 109);
+    private static readonly System.Windows.Media.Brush ShiftAmberBrush =
+        Brush(255, 190, 64);
+    private static readonly System.Windows.Media.Brush ShiftRedBrush =
+        Brush(255, 70, 75);
+    private static readonly System.Windows.Media.Brush ShiftBlueBrush =
+        Brush(65, 120, 255);
+    private static readonly System.Windows.Media.Brush IndicatorOffBrush =
+        Brush(32, 42, 51);
+    private static readonly System.Windows.Media.Brush IndicatorTextOffBrush =
+        Brush(120, 135, 149);
+    private static readonly System.Windows.Media.Brush IndicatorActiveBrush =
+        Brush(255, 135, 40);
 
     private readonly LayoutStore _layoutStore;
     private readonly FuelStrategyTracker _fuelStrategyTracker = new();
+    private System.Windows.Shapes.Ellipse[] _shiftLights = [];
     private LayoutProfile _profile;
     private System.Windows.Point _dragStart;
     private double _dragLeft;
@@ -31,6 +48,12 @@ public partial class OverlayWindow : Window
         _layoutStore = layoutStore;
         _profile = layoutStore.Load();
         InitializeComponent();
+        _shiftLights =
+        [
+            ShiftLight01, ShiftLight02, ShiftLight03, ShiftLight04,
+            ShiftLight05, ShiftLight06, ShiftLight07, ShiftLight08,
+            ShiftLight09, ShiftLight10, ShiftLight11, ShiftLight12,
+        ];
         SourceInitialized += (_, _) => ApplyInteractionStyle();
         Loaded += (_, _) => ApplyProfile();
     }
@@ -53,20 +76,44 @@ public partial class OverlayWindow : Window
         ConnectionText.Text = connected ? "CONECTADO" : snapshot.State.ToString().ToUpperInvariant();
         var dashboard = EssentialWidgetStateFactory.CreateDashboard(snapshot);
         var inputs = EssentialWidgetStateFactory.CreateInputs(snapshot);
+        TrackText.Text = dashboard.Available ? dashboard.TrackName : "LMU";
         SpeedText.Text = dashboard.Available
-            ? $"{dashboard.SpeedKilometersPerHour:0} km/h  G{dashboard.Gear}  {dashboard.EngineRpm:0} rpm"
-            : "--- km/h";
-        DetailText.Text = dashboard.Available
-            ? $"{dashboard.TrackName} • P{dashboard.Position} • combustível {dashboard.FuelLiters:0.0} L"
-            : snapshot.Detail;
+            ? $"{dashboard.SpeedKilometersPerHour:0} KM/H"
+            : "--- KM/H";
+        GearText.Text = dashboard.Available ? dashboard.Gear : "N";
+        RpmText.Text = dashboard.Available
+            ? $"RPM {dashboard.EngineRpm:0}"
+            : "RPM ----";
+        PositionText.Text = dashboard.Available
+            ? $"POS {dashboard.Position}"
+            : "POS --";
+        LapText.Text = dashboard.Available ? $"LAP {dashboard.LapNumber}" : "LAP --";
         DeltaText.Text = dashboard.Available
             ? $"DELTA {dashboard.DeltaBestSeconds:+0.000;-0.000;0.000}"
             : "DELTA --";
+        FuelText.Text = dashboard.Available
+            ? $"FUEL {dashboard.FuelLiters:0.0} L"
+            : "FUEL --.- L";
+        BrakeBiasText.Text = dashboard.Available &&
+            dashboard.RearBrakeBiasFraction is >= 0 and <= 1
+                ? $"BRAKE BIAS {(1 - dashboard.RearBrakeBiasFraction):P1}"
+                : "BRAKE BIAS --.-%";
+        CurrentLapText.Text =
+            $"CURRENT {FormatLapTime(dashboard.CurrentLapTimeSeconds)}";
+        LastLapText.Text = $"LAST {FormatLapTime(dashboard.LastLapTimeSeconds)}";
+        BestLapText.Text = $"BEST {FormatLapTime(dashboard.BestLapTimeSeconds)}";
+        EngineTempsText.Text = dashboard.Available
+            ? $"OIL {dashboard.EngineOilTemperatureCelsius:0}°  " +
+              $"WATER {dashboard.EngineWaterTemperatureCelsius:0}°"
+            : "OIL --°  WATER --°";
         var tire = dashboard.TireTemperatures;
         TiresText.Text = dashboard.Available
             ? $"FL {tire.FrontLeftCelsius:0}°  FR {tire.FrontRightCelsius:0}°  " +
               $"RL {tire.RearLeftCelsius:0}°  RR {tire.RearRightCelsius:0}°"
             : "FL --°  FR --°  RL --°  RR --°";
+        UpdateShiftLights(dashboard.Available ? dashboard.EngineRpmFraction : 0);
+        UpdateIndicator(AbsIndicator, AbsIndicatorText, dashboard.AbsActive);
+        UpdateIndicator(TcIndicator, TcIndicatorText, dashboard.TractionControlActive);
         InputsText.Text = inputs.Available
             ? $"THR {inputs.Throttle:P0}  BRK {inputs.Brake:P0}  STR {inputs.Steering:P0}"
             : "THR --  BRK --  STR --";
@@ -77,6 +124,40 @@ public partial class OverlayWindow : Window
 
         SetGameAvailable(connected || IsEditMode);
     }
+
+    private void UpdateShiftLights(double rpmFraction)
+    {
+        var activeFraction = Math.Clamp((rpmFraction - 0.65) / 0.35, 0, 1);
+        var activeCount = (int)Math.Ceiling(activeFraction * _shiftLights.Length);
+        for (var index = 0; index < _shiftLights.Length; index++)
+        {
+            _shiftLights[index].Fill = index < activeCount
+                ? index switch
+                {
+                    < 4 => ShiftGreenBrush,
+                    < 7 => ShiftAmberBrush,
+                    < 10 => ShiftRedBrush,
+                    _ => ShiftBlueBrush,
+                }
+                : ShiftOffBrush;
+        }
+    }
+
+    private static void UpdateIndicator(
+        Border indicator,
+        TextBlock label,
+        bool active)
+    {
+        indicator.Background = active ? IndicatorActiveBrush : IndicatorOffBrush;
+        label.Foreground = active
+            ? System.Windows.Media.Brushes.White
+            : IndicatorTextOffBrush;
+    }
+
+    private static string FormatLapTime(double seconds) =>
+        seconds > 0 && double.IsFinite(seconds)
+            ? TimeSpan.FromSeconds(seconds).ToString(@"m\:ss\.fff")
+            : "--:--.---";
 
     public void SetGameAvailable(bool available)
     {
@@ -444,6 +525,14 @@ public partial class OverlayWindow : Window
         }
 
         return Math.Abs(value - end) <= SnapDistance ? end : value;
+    }
+
+    private static System.Windows.Media.Brush Brush(byte red, byte green, byte blue)
+    {
+        var brush = new System.Windows.Media.SolidColorBrush(
+            System.Windows.Media.Color.FromRgb(red, green, blue));
+        brush.Freeze();
+        return brush;
     }
 
     private static T? FindVisualAncestor<T>(DependencyObject? source)
