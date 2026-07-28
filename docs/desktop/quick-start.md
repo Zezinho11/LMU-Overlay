@@ -20,6 +20,22 @@ when both the LMU window and telemetry are unavailable. If telemetry is connecte
 but the current Windows session cannot expose the LMU window handle, the overlay
 uses the primary screen bounds as a safe borderless/fullscreen fallback.
 
+## Floating toolbar
+
+A compact `RFX` toolbar remains interactive above the game even while the main
+overlay is click-through. It provides:
+
+- direct layout-profile switching;
+- **AJUSTES** to open widget visibility, opacity, profile import/export, and
+  reset controls;
+- **EDITAR** to enable widget movement and resizing;
+- **TRAVAR** to save the layout and return the main overlay to click-through
+  race mode.
+
+The green **TRAVADO** state confirms that accidental pointer movement cannot
+change widget geometry. Drag the toolbar itself by its `RFX` handle. It remains
+inside the LMU client bounds when the game resolution changes.
+
 ## Position and resize
 
 Open the tray icon menu and select **Editar layout**. Drag the widget from its
@@ -27,8 +43,10 @@ body and resize it from the orange lower-right handle. Movement snaps to nearby
 screen edges. Select **Bloquear overlay** when finished.
 
 Locked mode applies the Windows click-through extended style to the complete
-overlay window, so the game receives pointer input normally. Double-clicking the
-tray icon toggles edit mode. **Restaurar layout** recovers the default placement.
+main overlay window, so the game receives pointer input normally. The independent
+toolbar remains clickable so the layout can be unlocked without returning to the
+notification area. Double-clicking the tray icon also toggles edit mode.
+**Restaurar layout** recovers the default placement.
 
 The normalized layout is stored at:
 
