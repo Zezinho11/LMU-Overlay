@@ -187,17 +187,86 @@
                                   DragCompleted="ResizeThumbDragCompleted" />
             </Grid>
         </Border>
-        <Border x:Name="LiveStandingsWidget" Padding="10" CornerRadius="8"
-                Background="#DD101820" BorderBrush="#FF42D3A6" BorderThickness="1"
+        <Border x:Name="LiveStandingsWidget" Padding="0" CornerRadius="7"
+                Background="#F2070B18" BorderBrush="#FF21B9E6" BorderThickness="2"
                 MouseLeftButtonDown="WidgetMouseLeftButtonDown"
                 MouseMove="WidgetMouseMove"
                 MouseLeftButtonUp="WidgetMouseLeftButtonUp">
             <Grid>
-                <StackPanel>
-                    <TextBlock Text="LIVE STANDINGS" Foreground="#FF42D3A6"
-                               FontWeight="Bold" FontSize="11" />
-                    <StackPanel x:Name="StandingsRows" Margin="0,6,0,0" />
-                </StackPanel>
+                <Viewbox Stretch="Uniform">
+                    <Grid Width="360" Height="410" Background="#F2070B18">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="56" />
+                            <RowDefinition Height="24" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="16" />
+                        </Grid.RowDefinitions>
+                        <Border Grid.Row="0" Background="#FF080D2B"
+                                BorderBrush="#FF21B9E6" BorderThickness="0,0,0,1">
+                            <Grid Margin="12,7">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel>
+                                    <TextBlock Text="REDFOX RACING"
+                                               FontFamily="Bahnschrift"
+                                               FontWeight="Bold" FontSize="17"
+                                               Foreground="White" />
+                                    <TextBlock x:Name="StandingsTitleText"
+                                               Text="LIVE STANDINGS"
+                                               FontFamily="Bahnschrift"
+                                               FontWeight="SemiBold" FontSize="11"
+                                               Foreground="#FF5AD8FF" />
+                                </StackPanel>
+                                <TextBlock x:Name="StandingsSubtitleText"
+                                           Grid.Column="1"
+                                           Text="NO DATA"
+                                           VerticalAlignment="Center"
+                                           FontFamily="Bahnschrift"
+                                           FontSize="10"
+                                           Foreground="#FF9BA9B8" />
+                            </Grid>
+                        </Border>
+                        <Grid Grid.Row="1" Background="#FF17213B">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="30" />
+                                <ColumnDefinition Width="35" />
+                                <ColumnDefinition Width="38" />
+                                <ColumnDefinition Width="48" />
+                                <ColumnDefinition Width="100" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="P" />
+                            <TextBlock Grid.Column="1" Text="CAR" />
+                            <TextBlock Grid.Column="2" Text="NO." />
+                            <TextBlock Grid.Column="3" Text="DRV" />
+                            <TextBlock Grid.Column="4" Text="LAST LAP" />
+                            <TextBlock Grid.Column="5" Text="INTERVAL"
+                                       HorizontalAlignment="Right" Margin="0,0,8,0" />
+                            <Grid.Resources>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="VerticalAlignment" Value="Center" />
+                                    <Setter Property="HorizontalAlignment" Value="Center" />
+                                    <Setter Property="FontFamily" Value="Bahnschrift" />
+                                    <Setter Property="FontWeight" Value="Bold" />
+                                    <Setter Property="FontSize" Value="9" />
+                                    <Setter Property="Foreground" Value="#FF8292A4" />
+                                </Style>
+                            </Grid.Resources>
+                        </Grid>
+                        <StackPanel x:Name="StandingsRows" Grid.Row="2" />
+                        <Border Grid.Row="3" Background="#FF007CAB"
+                                CornerRadius="0,0,5,5">
+                            <TextBlock Text="LE MANS ULTIMATE"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       FontFamily="Bahnschrift"
+                                       FontWeight="Bold" FontSize="8"
+                                       Foreground="White" />
+                        </Border>
+                    </Grid>
+                </Viewbox>
                 <primitives:Thumb x:Name="LiveStandingsResizeThumb" Tag="LiveStandingsWidget"
                                   Width="18" Height="18" Panel.ZIndex="10"
                                   HorizontalAlignment="Right" VerticalAlignment="Bottom"

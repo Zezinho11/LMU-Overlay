@@ -35,6 +35,8 @@ public partial class OverlayWindow : Window
         Brush(66, 211, 166);
     private static readonly System.Windows.Media.Brush IndicatorActiveBrush =
         Brush(255, 135, 40);
+    private static readonly System.Windows.Media.Geometry StandingsCarGeometry =
+        CreateCarGeometry();
 
     private readonly LayoutStore _layoutStore;
     private readonly FuelStrategyTracker _fuelStrategyTracker = new();
@@ -338,34 +340,208 @@ public partial class OverlayWindow : Window
     private void UpdateStandings(LiveStandingsWidgetState standings)
     {
         StandingsRows.Children.Clear();
+        StandingsTitleText.Text = string.IsNullOrWhiteSpace(standings.PlayerClass)
+            ? "LIVE STANDINGS"
+            : standings.PlayerClass.ToUpperInvariant();
+        var visibleCars = standings.Classes.Sum(item => item.Rows.Count);
+        StandingsSubtitleText.Text = visibleCars > 0
+            ? $"{visibleCars} CARS"
+            : "NO DATA";
+
         foreach (var category in standings.Classes)
         {
-            StandingsRows.Children.Add(new TextBlock
+            StandingsRows.Children.Add(new Border
             {
-                Text = category.ClassName,
-                Foreground = category.IsPlayerClass
-                    ? System.Windows.Media.Brushes.Orange
-                    : System.Windows.Media.Brushes.LightGray,
-                FontWeight = FontWeights.Bold,
-                Margin = new Thickness(0, 3, 0, 1),
-            });
-            foreach (var row in category.Rows)
-            {
-                var pit = row.IsInPitLane ? "  PIT" : string.Empty;
-                var time = row.LastLapTimeSeconds > 0
-                    ? TimeSpan.FromSeconds(row.LastLapTimeSeconds).ToString(@"m\:ss\.fff")
-                    : "--:--.---";
-                StandingsRows.Children.Add(new TextBlock
+                Height = 18,
+                Background = category.IsPlayerClass
+                    ? Brush(133, 24, 34)
+                    : Brush(24, 37, 69),
+                Child = new TextBlock
                 {
-                    Text = $"{row.ClassPosition,2}  {row.DriverName}  {time}{pit}",
-                    Foreground = row.IsPlayer
-                        ? System.Windows.Media.Brushes.White
-                        : System.Windows.Media.Brushes.Gainsboro,
-                    FontWeight = row.IsPlayer ? FontWeights.Bold : FontWeights.Normal,
-                    TextTrimming = TextTrimming.CharacterEllipsis,
-                });
+                    Text = category.ClassName.ToUpperInvariant(),
+                    Foreground = System.Windows.Media.Brushes.White,
+                    FontFamily = new System.Windows.Media.FontFamily("Bahnschrift"),
+                    FontWeight = FontWeights.Bold,
+                    FontSize = 9,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Margin = new Thickness(9, 0, 0, 0),
+                },
+            });
+
+            for (var rowIndex = 0; rowIndex < category.Rows.Count; rowIndex++)
+            {
+                StandingsRows.Children.Add(CreateStandingsRow(
+                    category.Rows[rowIndex],
+                    rowIndex));
             }
         }
+    }
+
+    private static Grid CreateStandingsRow(
+        LiveStandingsRowState row,
+        int rowIndex)
+    {
+        var grid = new Grid
+        {
+            Height = 25,
+            Background = row.IsPlayer
+                ? new System.Windows.Media.SolidColorBrush(
+                    System.Windows.Media.Color.FromRgb(14, 92, 116))
+                : rowIndex % 2 == 0
+                    ? Brush(13, 19, 38)
+                    : Brush(19, 27, 49),
+            ToolTip = $"{row.DriverName} · {row.VehicleName}",
+        };
+        foreach (var width in new[] { 30d, 35d, 38d, 48d, 100d })
+        {
+            grid.ColumnDefinitions.Add(new ColumnDefinition
+            {
+                Width = new GridLength(width),
+            });
+        }
+
+        grid.ColumnDefinitions.Add(new ColumnDefinition());
+        AddStandingsText(
+            grid,
+            row.ClassPosition.ToString(
+                System.Globalization.CultureInfo.InvariantCulture),
+            0,
+            row.ClassPosition == 1
+                ? System.Windows.Media.Brushes.Gold
+                : System.Windows.Media.Brushes.White,
+            FontWeights.Bold,
+            11);
+        var carIcon = new System.Windows.Shapes.Path
+        {
+            Data = StandingsCarGeometry,
+            Fill = CarIconBrush(row.VehicleName),
+            Width = 25,
+            Height = 13,
+            Stretch = System.Windows.Media.Stretch.Fill,
+            HorizontalAlignment = System.Windows.HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        Grid.SetColumn(carIcon, 1);
+        grid.Children.Add(carIcon);
+        AddStandingsText(
+            grid,
+            row.CarNumber,
+            2,
+            System.Windows.Media.Brushes.White,
+            FontWeights.Bold,
+            10);
+        AddStandingsText(
+            grid,
+            row.DriverAbbreviation,
+            3,
+            System.Windows.Media.Brushes.White,
+            FontWeights.Bold,
+            10);
+        AddStandingsText(
+            grid,
+            FormatLapTime(row.LastLapTimeSeconds),
+            4,
+            System.Windows.Media.Brushes.Gainsboro,
+            FontWeights.SemiBold,
+            10);
+        AddStandingsText(
+            grid,
+            FormatStandingsInterval(row),
+            5,
+            row.IsInPitLane
+                ? System.Windows.Media.Brushes.Orange
+                : System.Windows.Media.Brushes.Gainsboro,
+            FontWeights.SemiBold,
+            10,
+            System.Windows.HorizontalAlignment.Right,
+            new Thickness(0, 0, 8, 0));
+        return grid;
+    }
+
+    private static void AddStandingsText(
+        Grid grid,
+        string text,
+        int column,
+        System.Windows.Media.Brush foreground,
+        FontWeight fontWeight,
+        double fontSize,
+        System.Windows.HorizontalAlignment alignment =
+            System.Windows.HorizontalAlignment.Center,
+        Thickness? margin = null)
+    {
+        var element = new TextBlock
+        {
+            Text = text,
+            Foreground = foreground,
+            FontFamily = new System.Windows.Media.FontFamily("Bahnschrift"),
+            FontWeight = fontWeight,
+            FontSize = fontSize,
+            HorizontalAlignment = alignment,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = margin ?? new Thickness(0),
+        };
+        Grid.SetColumn(element, column);
+        grid.Children.Add(element);
+    }
+
+    private static string FormatStandingsInterval(LiveStandingsRowState row)
+    {
+        if (row.IsInPitLane)
+        {
+            return "PIT";
+        }
+
+        if (row.ClassPosition == 1)
+        {
+            return "LEADER";
+        }
+
+        if (row.IntervalLaps > 0)
+        {
+            return $"+{row.IntervalLaps} L";
+        }
+
+        return row.IntervalSeconds > 0 && double.IsFinite(row.IntervalSeconds)
+            ? $"+{row.IntervalSeconds:0.000}"
+            : "--.---";
+    }
+
+    private static System.Windows.Media.Brush CarIconBrush(string vehicleName)
+    {
+        var name = vehicleName.ToUpperInvariant();
+        return name switch
+        {
+            _ when name.Contains("FERRARI", StringComparison.Ordinal) =>
+                Brush(238, 37, 48),
+            _ when name.Contains("PORSCHE", StringComparison.Ordinal) =>
+                Brush(245, 245, 245),
+            _ when name.Contains("BMW", StringComparison.Ordinal) =>
+                Brush(45, 123, 225),
+            _ when name.Contains("CADILLAC", StringComparison.Ordinal) =>
+                Brush(239, 188, 46),
+            _ when name.Contains("ALPINE", StringComparison.Ordinal) =>
+                Brush(44, 122, 230),
+            _ when name.Contains("TOYOTA", StringComparison.Ordinal) =>
+                Brush(220, 35, 45),
+            _ when name.Contains("ASTON", StringComparison.Ordinal) =>
+                Brush(25, 168, 119),
+            _ when name.Contains("CORVETTE", StringComparison.Ordinal) =>
+                Brush(255, 211, 42),
+            _ when name.Contains("MCLAREN", StringComparison.Ordinal) =>
+                Brush(255, 125, 20),
+            _ when name.Contains("FORD", StringComparison.Ordinal) =>
+                Brush(35, 105, 190),
+            _ => Brush(135, 151, 168),
+        };
+    }
+
+    private static System.Windows.Media.Geometry CreateCarGeometry()
+    {
+        var geometry = System.Windows.Media.Geometry.Parse(
+            "M 1,7 L 4,3 L 10,2 L 13,0 L 20,0 L 23,2 L 29,3 L 32,7 " +
+            "L 29,11 L 23,11 L 21,9 L 12,9 L 10,11 L 4,11 Z");
+        geometry.Freeze();
+        return geometry;
     }
 
     private void UpdateRelative(RelativeWidgetState relative)
