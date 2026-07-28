@@ -17,16 +17,19 @@
 
 ## Phase 2 — desktop vertical slice
 
-- Build the external transparent click-through Windows host.
-- Add an explicit edit mode in which every widget can be freely moved and
+- [x] Build the external transparent click-through Windows host.
+- [x] Add an explicit edit mode in which every widget can be freely moved and
   resized, plus a locked race mode that is fully click-through.
-- Add optional snapping to screen edges, corners, a grid, and nearby widgets.
-- Persist position, size, scale, opacity, visibility, and lock state per layout
-  profile, monitor, resolution, and DPI.
-- Recover off-screen widgets after monitor, resolution, DPI, or game display
-  mode changes.
-- Add layout profiles, theme tokens, and the first diagnostic widget.
-- Establish frame-time, allocation, and idle-CPU budgets.
+- [x] Add snapping to screen edges.
+- [x] Persist position, size, opacity, and visibility in a layout profile.
+- [ ] Extend persistence to scale, lock state, monitor, resolution, and DPI
+  variants.
+- [x] Recover off-screen widgets after game display or resolution changes.
+- [ ] Add snapping to a grid and nearby widgets.
+- [ ] Add named layout profiles and theme tokens.
+- [x] Add the diagnostic, dashboard, inputs, standings, relative, and
+  session/flags widgets.
+- [ ] Establish automated frame-time, allocation, and idle-CPU budgets.
 
 ## Phase 3 — product coverage
 
@@ -34,6 +37,8 @@
   weather, incident, and session widgets.
 - Add multiclass live standings: full player-class field and compact leaders
   with timing and pit state for every other class.
+- [x] Add the initial multiclass standings, Relative, and Session/Flags
+  coverage.
 - Add configuration UX, profile import/export, localization, diagnostics, and
   signed packaging/update foundations.
 
