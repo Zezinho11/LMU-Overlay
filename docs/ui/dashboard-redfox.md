@@ -69,3 +69,5 @@ values.
   a dominant central gear, and RedFox Racing branding.
 - Keep tire temperatures permanently visible in a spacious 2x2 block ordered
   front-left/front-right over rear-left/rear-right.
+- Keep the orange tire-temperature label above the 2x2 readings so it never
+  obscures the front tire values.
