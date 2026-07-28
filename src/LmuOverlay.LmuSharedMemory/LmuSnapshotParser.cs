@@ -52,7 +52,8 @@ public static class LmuSnapshotParser
             };
         }
 
-        var standings = ParseStandings(data, scoredVehicles);
+        var vehicleModels = ParseVehicleModels(data, activeVehicles);
+        var standings = ParseStandings(data, scoredVehicles, vehicleModels);
         var session = ParseSession(data);
         var playerStanding = standings.FirstOrDefault(vehicle => vehicle.IsPlayer);
         var player = hasPlayerVehicle && playerVehicleIndex < activeVehicles
@@ -100,7 +101,8 @@ public static class LmuSnapshotParser
 
     private static LmuVehicleStanding[] ParseStandings(
         ReadOnlySpan<byte> data,
-        int vehicleCount)
+        int vehicleCount,
+        IReadOnlyDictionary<int, string> vehicleModels)
     {
         var standings = new LmuVehicleStanding[vehicleCount];
         for (var index = 0; index < vehicleCount; index++)
@@ -116,6 +118,9 @@ public static class LmuSnapshotParser
                     data,
                     offset + LmuApiLayoutV1.ScoringVehicleNameOffset,
                     LmuApiLayoutV1.ScoringVehicleNameLength),
+                vehicleModels.GetValueOrDefault(
+                    ReadInt32(data, offset + LmuApiLayoutV1.ScoringVehicleIdOffset),
+                    string.Empty),
                 ReadText(
                     data,
                     offset + LmuApiLayoutV1.ScoringVehicleClassOffset,
@@ -143,6 +148,35 @@ public static class LmuSnapshotParser
         }
 
         return standings;
+    }
+
+    private static IReadOnlyDictionary<int, string> ParseVehicleModels(
+        ReadOnlySpan<byte> data,
+        int vehicleCount)
+    {
+        var models = new Dictionary<int, string>(vehicleCount);
+        for (var index = 0; index < vehicleCount; index++)
+        {
+            var offset = LmuApiLayoutV1.VehicleTelemetryOffset(index);
+            var vehicleId = ReadInt32(
+                data,
+                offset + LmuApiLayoutV1.TelemetryVehicleIdOffset);
+            var vehicleName = ReadText(
+                data,
+                offset + LmuApiLayoutV1.VehicleNameOffset,
+                LmuApiLayoutV1.VehicleNameLength);
+            var vehicleModel = ReadText(
+                data,
+                offset + LmuApiLayoutV1.TelemetryVehicleModelOffset,
+                LmuApiLayoutV1.TelemetryVehicleModelLength);
+            models[vehicleId] = string.Join(
+                " ",
+                new[] { vehicleName, vehicleModel }
+                    .Where(value => !string.IsNullOrWhiteSpace(value))
+                    .Distinct(StringComparer.OrdinalIgnoreCase));
+        }
+
+        return models;
     }
 
     private static LmuPlayerTelemetry ParsePlayer(
