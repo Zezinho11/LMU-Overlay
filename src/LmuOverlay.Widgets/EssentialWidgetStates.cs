@@ -44,6 +44,18 @@ public sealed record LiveStandingsRowState(
     bool IsPlayer,
     bool IsInPitLane);
 
+public sealed record RelativeWidgetState(
+    IReadOnlyList<RelativeRowState> Rows);
+
+public sealed record RelativeRowState(
+    int OverallPosition,
+    string DriverName,
+    string VehicleClass,
+    double RelativeGapSeconds,
+    int RelativeLaps,
+    bool IsPlayer,
+    bool IsInPitLane);
+
 public static class EssentialWidgetStateFactory
 {
     public static DashboardWidgetState CreateDashboard(LmuTelemetrySnapshot snapshot)
@@ -132,6 +144,33 @@ public static class EssentialWidgetStateFactory
             .ToArray();
 
         return new LiveStandingsWidgetState(playerClass, classes);
+    }
+
+    public static RelativeWidgetState CreateRelative(
+        LmuTelemetrySnapshot snapshot,
+        int carsEachSide = 3)
+    {
+        var ordered = snapshot.Standings.OrderBy(item => item.Position).ToArray();
+        var playerIndex = Array.FindIndex(ordered, item => item.IsPlayer);
+        if (playerIndex < 0)
+        {
+            return new RelativeWidgetState(Array.Empty<RelativeRowState>());
+        }
+
+        var player = ordered[playerIndex];
+        var start = Math.Max(0, playerIndex - Math.Max(1, carsEachSide));
+        var end = Math.Min(ordered.Length - 1, playerIndex + Math.Max(1, carsEachSide));
+        var rows = ordered[start..(end + 1)]
+            .Select(item => new RelativeRowState(
+                item.Position,
+                item.DriverName,
+                item.VehicleClass,
+                item.IsPlayer ? 0 : item.GapToLeaderSeconds - player.GapToLeaderSeconds,
+                player.CompletedLaps - item.CompletedLaps,
+                item.IsPlayer,
+                item.IsInPits || item.PitState is not LmuPitState.None))
+            .ToArray();
+        return new RelativeWidgetState(rows);
     }
 
     private static string FormatGear(int gear) => gear switch
