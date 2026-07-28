@@ -85,11 +85,30 @@ public sealed record SessionFlagsWidgetState(
     string SessionName,
     string PhaseName,
     string FlagName,
+    string TrackGripName,
+    int TrackGripLevel,
+    WeatherConditionKind WeatherCondition,
+    string WeatherName,
+    double RainIntensity,
+    double Cloudiness,
+    double AveragePathWetness,
     double RemainingSeconds,
     int CurrentLap,
     int MaximumLaps,
     double AmbientTemperatureCelsius,
     double TrackTemperatureCelsius);
+
+public enum WeatherConditionKind
+{
+    Unknown,
+    Clear,
+    PartlyCloudy,
+    Cloudy,
+    Overcast,
+    LightRain,
+    Rain,
+    HeavyRain,
+}
 
 public static class EssentialWidgetStateFactory
 {
@@ -354,7 +373,23 @@ public static class EssentialWidgetStateFactory
     {
         if (snapshot.Session is not { } session)
         {
-            return new(false, string.Empty, string.Empty, "NO DATA", 0, 0, 0, 0, 0);
+            return new(
+                false,
+                string.Empty,
+                string.Empty,
+                "NO DATA",
+                "UNKNOWN",
+                -1,
+                WeatherConditionKind.Unknown,
+                "NO DATA",
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0);
         }
 
         var playerStanding = snapshot.Standings.FirstOrDefault(item => item.IsPlayer);
@@ -364,13 +399,25 @@ public static class EssentialWidgetStateFactory
             ? "YELLOW"
             : session.GamePhase == LmuGamePhase.GreenFlag
                 ? "GREEN"
+                : session.GamePhase == LmuGamePhase.Stopped
+                    ? "RED"
                 : session.GamePhase.ToString().ToUpperInvariant();
+        var weatherCondition = ClassifyWeather(
+            session.Weather.Cloudiness,
+            session.Weather.RainIntensity);
 
         return new(
             true,
             FormatSessionKind(session.Kind),
             FormatGamePhase(session.GamePhase),
             flagName,
+            FormatTrackGrip(session.Weather.TrackGripLevel),
+            session.Weather.TrackGripLevel,
+            weatherCondition,
+            FormatWeather(weatherCondition),
+            session.Weather.RainIntensity,
+            session.Weather.Cloudiness,
+            session.Weather.AveragePathWetness,
             session.EndElapsedTime > 0
                 ? Math.Max(0, session.EndElapsedTime - session.CurrentElapsedTime)
                 : 0,
@@ -379,6 +426,46 @@ public static class EssentialWidgetStateFactory
             session.Weather.AmbientTemperatureCelsius,
             session.Weather.TrackTemperatureCelsius);
     }
+
+    private static string FormatTrackGrip(int level) => level switch
+    {
+        0 => "GREEN",
+        1 => "LIGHT",
+        2 => "MEDIUM",
+        3 => "HEAVY",
+        >= 4 => "SATURATED",
+        _ => "UNKNOWN",
+    };
+
+    private static WeatherConditionKind ClassifyWeather(
+        double cloudiness,
+        double rainIntensity) =>
+        rainIntensity switch
+        {
+            >= 0.65 => WeatherConditionKind.HeavyRain,
+            >= 0.25 => WeatherConditionKind.Rain,
+            >= 0.02 => WeatherConditionKind.LightRain,
+            _ => cloudiness switch
+            {
+                >= 0.75 => WeatherConditionKind.Overcast,
+                >= 0.35 => WeatherConditionKind.Cloudy,
+                >= 0.10 => WeatherConditionKind.PartlyCloudy,
+                _ => WeatherConditionKind.Clear,
+            },
+        };
+
+    private static string FormatWeather(WeatherConditionKind condition) =>
+        condition switch
+        {
+            WeatherConditionKind.Clear => "CLEAR",
+            WeatherConditionKind.PartlyCloudy => "PARTLY CLOUDY",
+            WeatherConditionKind.Cloudy => "CLOUDY",
+            WeatherConditionKind.Overcast => "OVERCAST",
+            WeatherConditionKind.LightRain => "LIGHT RAIN",
+            WeatherConditionKind.Rain => "RAIN",
+            WeatherConditionKind.HeavyRain => "HEAVY RAIN",
+            _ => "UNKNOWN",
+        };
 
     private static string FormatGear(int gear) => gear switch
     {
