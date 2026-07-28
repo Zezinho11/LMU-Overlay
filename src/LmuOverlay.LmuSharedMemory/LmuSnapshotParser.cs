@@ -83,7 +83,8 @@ public static class LmuSnapshotParser
             (LmuGamePhase)data[LmuApiLayoutV1.GamePhaseOffset],
             ReadDouble(data, LmuApiLayoutV1.SessionCurrentElapsedTimeOffset),
             ReadDouble(data, LmuApiLayoutV1.SessionEndElapsedTimeOffset),
-            ReadInt32(data, LmuApiLayoutV1.SessionMaximumLapsOffset),
+            LmuSessionLimits.NormalizeMaximumLaps(
+                ReadInt32(data, LmuApiLayoutV1.SessionMaximumLapsOffset)),
             ReadDouble(data, LmuApiLayoutV1.SessionLapLengthOffset),
             ReadBoolean(data, LmuApiLayoutV1.IsRealtimeOffset),
             ReadText(data, LmuApiLayoutV1.PlayerNameOffset, LmuApiLayoutV1.PlayerNameLength),
