@@ -1,7 +1,22 @@
 # Widget configuration
 
-The desktop tray menu exposes **Configurar widgets**, which opens the first
-functional configuration surface for the default layout profile.
+The desktop tray menu exposes **Configurar widgets**, which opens the layout
+and profile manager.
+
+## Layout profiles
+
+- Create an empty profile from the RedFox default layout.
+- Duplicate the active profile, including every position, size, visibility,
+  and opacity value.
+- Rename profiles and switch between them without restarting the overlay.
+- Delete profiles with confirmation; the final remaining profile is protected.
+- Export one portable `*.lmu-layout.json` file.
+- Import exported profiles, with automatic names such as `Profile (2)` when a
+  profile with the same name already exists.
+
+The layout previously stored in `layout.json` is migrated automatically into
+the **Padrão** profile. Profile files carry explicit format and layout schema
+versions so incompatible data is rejected instead of partially applied.
 
 ## Current controls
 
@@ -21,8 +36,5 @@ configuration window because it is independent of the click-through overlay.
 
 ## Next configuration increment
 
-- Named layout profiles.
-- Profile duplication and rename.
 - Resolution and monitor variants.
-- Import and export.
 - Per-widget reset, scale, theme, and update-rate controls.

@@ -27,7 +27,9 @@
   variants.
 - [x] Recover off-screen widgets after game display or resolution changes.
 - [ ] Add snapping to a grid and nearby widgets.
-- [ ] Add named layout profiles and theme tokens.
+- [x] Add named layout profiles with create, duplicate, rename, delete, switch,
+  and portable import/export.
+- [ ] Add theme tokens.
 - [x] Add the diagnostic, dashboard, inputs, standings, relative, and
   session/flags widgets.
 - [ ] Establish automated frame-time, allocation, and idle-CPU budgets.
@@ -45,7 +47,7 @@
   signed packaging/update foundations.
 - [x] Add the first configuration window with widget visibility, opacity, and
   live application.
-- [ ] Add named profiles and profile import/export.
+- [x] Add named profiles and profile import/export.
 
 ## Phase 4 — SteamVR
 
