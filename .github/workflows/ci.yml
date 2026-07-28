@@ -1,0 +1,24 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build-test:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.302
+      - run: dotnet restore
+      - run: dotnet build --no-restore --configuration Release
+      - run: dotnet run --no-build --configuration Release --project tests/LmuOverlay.Domain.Tests
+      - run: dotnet run --no-build --configuration Release --project tests/LmuOverlay.LmuSharedMemory.Tests
