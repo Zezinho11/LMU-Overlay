@@ -29,7 +29,8 @@ public sealed record DashboardWidgetState(
     int TractionControlCutMaximum,
     int AbsLevel,
     int AbsMaximum,
-    LmuWheelTemperatures TireTemperatures);
+    LmuWheelTemperatures TireTemperatures,
+    LmuWheelWear TireWear);
 
 public sealed record InputsWidgetState(
     bool Available,
@@ -126,7 +127,8 @@ public static class EssentialWidgetStateFactory
                 snapshot.Session?.TrackName ?? string.Empty,
                 0, 0, 0, 0, 0, 0, 0, false, false,
                 0, 0, 0, 0, 0, 0, 0, 0,
-                new LmuWheelTemperatures(0, 0, 0, 0));
+                new LmuWheelTemperatures(0, 0, 0, 0),
+                new LmuWheelWear(0, 0, 0, 0));
         }
 
         var session = snapshot.Session;
@@ -163,7 +165,8 @@ public static class EssentialWidgetStateFactory
             player.TractionControlCutMaximum,
             player.AbsLevel,
             player.AbsMaximum,
-            player.TireTemperatures);
+            player.TireTemperatures,
+            player.TireWear);
     }
 
     public static InputsWidgetState CreateInputs(LmuTelemetrySnapshot snapshot)
