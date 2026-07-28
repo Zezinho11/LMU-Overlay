@@ -13,7 +13,9 @@ writes to game memory.
    memory telemetry when the map is available.
 
 The application lives in the Windows notification area. It automatically hides
-when the LMU window is unavailable.
+when both the LMU window and telemetry are unavailable. If telemetry is connected
+but the current Windows session cannot expose the LMU window handle, the overlay
+uses the primary screen bounds as a safe borderless/fullscreen fallback.
 
 ## Position and resize
 
