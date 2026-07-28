@@ -22,6 +22,26 @@ public sealed record InputsWidgetState(
     bool AbsActive,
     bool TractionControlActive);
 
+public sealed record LiveStandingsWidgetState(
+    string PlayerClass,
+    IReadOnlyList<LiveStandingsClassState> Classes);
+
+public sealed record LiveStandingsClassState(
+    string ClassName,
+    bool IsPlayerClass,
+    IReadOnlyList<LiveStandingsRowState> Rows);
+
+public sealed record LiveStandingsRowState(
+    int ClassPosition,
+    string DriverName,
+    string VehicleName,
+    int CompletedLaps,
+    double GapToLeaderSeconds,
+    double LastLapTimeSeconds,
+    double BestLapTimeSeconds,
+    bool IsPlayer,
+    bool IsInPitLane);
+
 public static class EssentialWidgetStateFactory
 {
     public static DashboardWidgetState CreateDashboard(LmuTelemetrySnapshot snapshot)
@@ -60,6 +80,50 @@ public static class EssentialWidgetStateFactory
             Math.Clamp(player.Steering, -1, 1),
             player.AbsActive,
             player.TractionControlActive);
+    }
+
+    public static LiveStandingsWidgetState CreateLiveStandings(
+        LmuTelemetrySnapshot snapshot)
+    {
+        var ordered = snapshot.Standings
+            .OrderBy(item => item.Position)
+            .ToArray();
+        var playerClass = ordered.FirstOrDefault(item => item.IsPlayer)?.VehicleClass
+            ?? string.Empty;
+
+        var classes = ordered
+            .GroupBy(item => string.IsNullOrWhiteSpace(item.VehicleClass)
+                ? "Unknown"
+                : item.VehicleClass)
+            .Select(group =>
+            {
+                var isPlayerClass = string.Equals(
+                    group.Key,
+                    playerClass,
+                    StringComparison.OrdinalIgnoreCase);
+                var classOrder = group.OrderBy(item => item.Position).ToArray();
+                var visible = isPlayerClass ? classOrder : classOrder.Take(1);
+                var rows = visible.Select((item, index) => new LiveStandingsRowState(
+                    index + 1,
+                    item.DriverName,
+                    item.VehicleName,
+                    item.CompletedLaps,
+                    item.GapToLeaderSeconds,
+                    item.LastLapTimeSeconds,
+                    item.BestLapTimeSeconds,
+                    item.IsPlayer,
+                    item.IsInPits || item.PitState is not LmuPitState.None))
+                    .ToArray();
+                return new LiveStandingsClassState(
+                    group.Key,
+                    isPlayerClass,
+                    rows);
+            })
+            .OrderByDescending(item => item.IsPlayerClass)
+            .ThenBy(item => item.ClassName, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        return new LiveStandingsWidgetState(playerClass, classes);
     }
 
     private static string FormatGear(int gear) => gear switch
