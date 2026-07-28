@@ -71,3 +71,9 @@ values.
   front-left/front-right over rear-left/rear-right.
 - Keep the orange tire-temperature label above the 2x2 readings so it never
   obscures the front tire values.
+- Place a compact tire-shaped indicator beside each FL/FR/RL/RR value. Color
+  each wheel independently from official carcass temperature using the initial
+  generic bands: cold below 60 C, warming below 75 C, optimal below 100 C, hot
+  below 115 C, and critical at or above 115 C. Keep this classification in the
+  renderer-independent widgets layer so future per-car thresholds and SteamVR
+  rendering can reuse it.
