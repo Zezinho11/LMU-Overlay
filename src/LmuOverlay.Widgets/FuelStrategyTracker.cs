@@ -20,11 +20,18 @@ public sealed record FuelStrategyWidgetState(
     double EstimatedVirtualEnergyRangeTimeSeconds,
     double RequiredVirtualEnergyFraction,
     double VirtualEnergyMarginFraction,
+    double ProjectedConsumptionLitersPerLap,
+    double TargetConsumptionLitersPerLap,
+    double RequiredFuelSavingFraction,
+    int LapsUntilPit,
+    int SuggestedPitLap,
+    double FuelToAddLiters,
+    string Confidence,
     string Status);
 
 public sealed class FuelStrategyTracker
 {
-    private const int MaximumSamples = 5;
+    private const int MaximumSamples = 8;
     private const double ReserveLaps = 1;
 
     private readonly Queue<double> _samples = new();
@@ -100,19 +107,47 @@ public sealed class FuelStrategyTracker
 
         _previousFuel = player.FuelLiters;
         _previousVirtualEnergy = virtualEnergy;
-        var average = _samples.Count > 0 ? _samples.Average() : 0;
+        var average = WeightedAverage(_samples);
+        var projectedConsumption = ConservativeProjection(_samples, average);
         var virtualEnergyAverage = _virtualEnergySamples.Count > 0
-            ? _virtualEnergySamples.Average()
+            ? WeightedAverage(_virtualEnergySamples)
             : 0;
         var lapsToFinish = EstimateLapsToFinish(session, playerStanding, completedLaps);
         var referenceLapSeconds = ReferenceLapSeconds(playerStanding);
-        var required = average > 0
-            ? average * (lapsToFinish + ReserveLaps)
+        var required = projectedConsumption > 0
+            ? projectedConsumption * (lapsToFinish + ReserveLaps)
             : 0;
-        var margin = average > 0 ? player.FuelLiters - required : 0;
-        var estimatedRange = average > 0 ? player.FuelLiters / average : 0;
+        var margin = projectedConsumption > 0 ? player.FuelLiters - required : 0;
+        var estimatedRange = projectedConsumption > 0
+            ? player.FuelLiters / projectedConsumption
+            : 0;
+        var targetConsumption = lapsToFinish >= 0
+            ? player.FuelLiters / Math.Max(1, lapsToFinish + ReserveLaps)
+            : 0;
+        var requiredSaving = projectedConsumption > targetConsumption &&
+            projectedConsumption > 0
+                ? 1 - (targetConsumption / projectedConsumption)
+                : 0;
+        var fuelLapsUntilPit = projectedConsumption > 0
+            ? Math.Max(
+                0,
+                (int)Math.Floor(
+                    player.FuelLiters / projectedConsumption - ReserveLaps))
+            : 0;
         var virtualEnergyRange = virtualEnergyAverage > 0
             ? virtualEnergy / virtualEnergyAverage
+            : 0;
+        var energyLapsUntilPit = virtualEnergyAverage > 0
+            ? Math.Max(
+                0,
+                (int)Math.Floor(
+                    virtualEnergy / virtualEnergyAverage - ReserveLaps))
+            : int.MaxValue;
+        var lapsUntilPit = projectedConsumption > 0
+            ? Math.Min(fuelLapsUntilPit, energyLapsUntilPit)
+            : 0;
+        var suggestedPitLap = projectedConsumption > 0
+            ? completedLaps + lapsUntilPit
             : 0;
         var requiredVirtualEnergy = virtualEnergyAverage > 0
             ? virtualEnergyAverage * (lapsToFinish + ReserveLaps)
@@ -151,6 +186,13 @@ public sealed class FuelStrategyTracker
             virtualEnergyRange * referenceLapSeconds,
             requiredVirtualEnergy,
             virtualEnergyMargin,
+            projectedConsumption,
+            targetConsumption,
+            requiredSaving,
+            lapsUntilPit,
+            suggestedPitLap,
+            Math.Max(0, required - player.FuelLiters),
+            Confidence(_samples.Count),
             status);
     }
 
@@ -206,7 +248,51 @@ public sealed class FuelStrategyTracker
                 ? standing.BestLapTimeSeconds
                 : 0;
 
+    private static double WeightedAverage(IEnumerable<double> samples)
+    {
+        var values = samples.ToArray();
+        if (values.Length == 0)
+        {
+            return 0;
+        }
+
+        double weightedTotal = 0;
+        double totalWeight = 0;
+        for (var index = 0; index < values.Length; index++)
+        {
+            var weight = index + 1;
+            weightedTotal += values[index] * weight;
+            totalWeight += weight;
+        }
+
+        return weightedTotal / totalWeight;
+    }
+
+    private static double ConservativeProjection(
+        IEnumerable<double> samples,
+        double weightedAverage)
+    {
+        var values = samples.ToArray();
+        if (values.Length < 2)
+        {
+            return weightedAverage;
+        }
+
+        var variance = values.Sum(
+            value => Math.Pow(value - weightedAverage, 2)) / values.Length;
+        return weightedAverage + Math.Sqrt(variance) * 0.35;
+    }
+
+    private static string Confidence(int samples) => samples switch
+    {
+        >= 6 => "HIGH",
+        >= 3 => "MEDIUM",
+        > 0 => "LOW",
+        _ => "LEARNING",
+    };
+
     private static FuelStrategyWidgetState Unavailable() => new(
         false, true, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, "LEARNING",
         "NO DATA");
 }
