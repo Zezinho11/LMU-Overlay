@@ -248,7 +248,12 @@ public static class LmuSnapshotParser
                 ReadWheelTemperature(data, offset, 0),
                 ReadWheelTemperature(data, offset, 1),
                 ReadWheelTemperature(data, offset, 2),
-                ReadWheelTemperature(data, offset, 3)));
+                ReadWheelTemperature(data, offset, 3)),
+            new LmuWheelWear(
+                ReadWheelWear(data, offset, 0),
+                ReadWheelWear(data, offset, 1),
+                ReadWheelWear(data, offset, 2),
+                ReadWheelWear(data, offset, 3)));
     }
 
     private static double ReadWheelTemperature(
@@ -261,6 +266,20 @@ public static class LmuSnapshotParser
             LmuApiLayoutV1.TelemetryWheelArrayOffset +
             (wheelIndex * LmuApiLayoutV1.TelemetryWheelSize) +
             LmuApiLayoutV1.TelemetryWheelCarcassTemperatureOffset) - 273.15;
+
+    private static double ReadWheelWear(
+        ReadOnlySpan<byte> data,
+        int telemetryOffset,
+        int wheelIndex)
+    {
+        var value = ReadDouble(
+            data,
+            telemetryOffset +
+            LmuApiLayoutV1.TelemetryWheelArrayOffset +
+            (wheelIndex * LmuApiLayoutV1.TelemetryWheelSize) +
+            LmuApiLayoutV1.TelemetryWheelWearOffset);
+        return double.IsFinite(value) ? Math.Clamp(value, 0, 1) : 0;
+    }
 
     private static LmuSessionKind ToSessionKind(int sessionCode) =>
         sessionCode switch
