@@ -89,6 +89,16 @@ Assert(strategy.EstimatedLapsToFinish == 15, "Remaining laps must use session le
 Assert(strategy.RequiredFuelLiters == 40, "Fuel need must include a one-lap reserve.");
 Assert(strategy.Status == "SHORT", "Negative fuel margin must be highlighted.");
 Assert(refueled.Samples == 1, "Refueling must not be recorded as negative consumption.");
+
+var timedSession = session with { MaximumLaps = int.MaxValue };
+var timedRace = raceSnapshot with { Session = timedSession };
+var timedFlags = EssentialWidgetStateFactory.CreateSessionFlags(timedRace);
+var timedTracker = new FuelStrategyTracker();
+_ = timedTracker.Update(timedRace);
+var timedStrategy = timedTracker.Update(nextLapSnapshot with { Session = timedSession });
+Assert(timedFlags.MaximumLaps == 0, "Timed sessions must hide the unlimited-lap sentinel.");
+Assert(timedStrategy.EstimatedLapsToFinish == 30, "Timed fuel projection must use time and lap pace.");
+Assert(timedStrategy.RequiredFuelLiters == 77.5, "Timed projection must remain within a realistic range.");
 Console.WriteLine("Widget state checks passed.");
 return 0;
 
