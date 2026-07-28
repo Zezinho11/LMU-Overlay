@@ -141,6 +141,29 @@ try
     Assert(migratedRelative.X == 0.64 && migratedRelative.Y == 0.05,
         "The relative tower must migrate beside live standings.");
 
+    var sessionPanelPath = Path.Combine(root, "layout-v7.json");
+    var versionSevenProfile = LayoutProfile.Default with
+    {
+        SchemaVersion = 7,
+        SessionFlags = new WidgetPlacement(
+            0.36, 0.05, 0.28, 0.12, 1, 0.92, true),
+    };
+    File.WriteAllText(sessionPanelPath, JsonSerializer.Serialize(new
+    {
+        SchemaVersion = 1,
+        ActiveProfile = "Legacy Session",
+        Profiles = new Dictionary<string, LayoutProfile>
+        {
+            ["Legacy Session"] = versionSevenProfile,
+        },
+    }));
+    var sessionPanelStore = new LayoutStore(sessionPanelPath);
+    var migratedSession = sessionPanelStore.Load().SessionFlags;
+    Assert(migratedSession.Width == 0.30 && migratedSession.Height == 0.18,
+        "The old session strip must migrate to the three-card panel.");
+    Assert(migratedSession.X == 0.33,
+        "The migrated session panel must stay centered.");
+
     File.WriteAllText(path, "{broken");
     var corruptStore = new LayoutStore(path);
     Assert(corruptStore.Load() == LayoutProfile.Default, "Corrupt profiles must be recoverable.");
