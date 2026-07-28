@@ -64,3 +64,8 @@ values.
 - Use a nearly opaque black background to cover the vehicle's original display.
 - Continue to support click-through race mode and the persistent edit mode.
 - Keep the renderer-independent state reusable by the future SteamVR host.
+- Mirror the approved physical-display composition with a dark rounded bezel,
+  blue side LEDs, centered shift lights, boxed timing and technical fields,
+  a dominant central gear, and RedFox Racing branding.
+- Keep tire temperatures permanently visible in a spacious 2x2 block ordered
+  front-left/front-right over rear-left/rear-right.
