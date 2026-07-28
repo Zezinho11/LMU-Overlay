@@ -191,8 +191,24 @@ public static class LmuSnapshotParser
             ReadBoolean(data, offset + LmuApiLayoutV1.TelemetrySpeedLimiterActiveOffset),
             ReadBoolean(data, offset + LmuApiLayoutV1.TelemetryLapInvalidatedOffset),
             ReadBoolean(data, offset + LmuApiLayoutV1.TelemetryAbsActiveOffset),
-            ReadBoolean(data, offset + LmuApiLayoutV1.TelemetryTractionControlActiveOffset));
+            ReadBoolean(data, offset + LmuApiLayoutV1.TelemetryTractionControlActiveOffset),
+            new LmuWheelTemperatures(
+                ReadWheelTemperature(data, offset, 0),
+                ReadWheelTemperature(data, offset, 1),
+                ReadWheelTemperature(data, offset, 2),
+                ReadWheelTemperature(data, offset, 3)));
     }
+
+    private static double ReadWheelTemperature(
+        ReadOnlySpan<byte> data,
+        int telemetryOffset,
+        int wheelIndex) =>
+        ReadDouble(
+            data,
+            telemetryOffset +
+            LmuApiLayoutV1.TelemetryWheelArrayOffset +
+            (wheelIndex * LmuApiLayoutV1.TelemetryWheelSize) +
+            LmuApiLayoutV1.TelemetryWheelCarcassTemperatureOffset) - 273.15;
 
     private static LmuSessionKind ToSessionKind(int sessionCode) =>
         sessionCode switch
