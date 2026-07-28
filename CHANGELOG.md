@@ -23,6 +23,8 @@
 - Rebuilt the main dashboard as the RedFox Racing display with progressive
   shift lights, ABS/TC activation lights, large gear, lap timing, brake bias,
   engine temperatures, fuel, delta, position, and tire temperatures.
+- Added the official TC, TC Slip, TC Cut, and ABS setup levels, uniform
+  dashboard scaling, Bahnschrift typography, and a nearly opaque background.
 
 All notable changes will be documented here.
 
