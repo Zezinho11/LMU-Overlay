@@ -14,6 +14,8 @@
 - Added independent, movable, resizable, and persistent Relative and
   Session/Flags widgets.
 - Added renderer-independent session, weather, race-phase, and flag state.
+- Added a stateful fuel-strategy widget with rolling per-lap consumption,
+  range, finish projection, reserve, margin, and refueling detection.
 
 All notable changes will be documented here.
 
