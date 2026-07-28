@@ -20,6 +20,9 @@
   as a real lap count in timed-session fuel projections.
 - Expanded Fuel Strategy with current Virtual Energy, energy consumption per
   lap, and estimated energy range for LMGT3 and other supported cars.
+- Rebuilt the main dashboard as the RedFox Racing display with progressive
+  shift lights, ABS/TC activation lights, large gear, lap timing, brake bias,
+  engine temperatures, fuel, delta, position, and tire temperatures.
 
 All notable changes will be documented here.
 
