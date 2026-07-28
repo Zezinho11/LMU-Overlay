@@ -107,13 +107,35 @@ var deepField = Enumerable.Range(1, 15)
 var compactStandings = EssentialWidgetStateFactory.CreateLiveStandings(
     raceSnapshot with { Standings = deepField });
 var compactRows = compactStandings.Classes[0].Rows;
-Assert(compactRows.Count == 10, "Player-class standings must be limited to ten cars.");
+Assert(compactRows.Count == 14,
+    "A single-class standings tower must use all fourteen available car rows.");
 Assert(compactRows[0].ClassPosition == 1, "The class leader must always remain visible.");
 Assert(compactRows.Any(row => row.IsPlayer), "The moving window must always include the player.");
 Assert(compactRows.Single(row => row.IsPlayer).DriverAbbreviation == "COS",
     "Driver abbreviation must use the final name component.");
 Assert(compactRows.Single(row => row.IsPlayer).CarNumber == "6",
     "Explicit race numbers must be extracted from the official vehicle name.");
+
+var multiclassField = deepField
+    .Select(row => row with { VehicleClass = "GT3" })
+    .Concat(new[]
+    {
+        Standing(101, "Hyper Leader", 16, 0, false, false) with
+        {
+            VehicleClass = "Hypercar",
+        },
+        Standing(102, "LMP2 Leader", 17, 0, false, false) with
+        {
+            VehicleClass = "LMP2",
+        },
+    })
+    .ToArray();
+var multiclassStandings = EssentialWidgetStateFactory.CreateLiveStandings(
+    raceSnapshot with { Standings = multiclassField });
+Assert(multiclassStandings.Classes.Sum(group => group.Rows.Count) == 13,
+    "Three-class standings must fill the tower without overflowing.");
+Assert(multiclassStandings.Classes.Single(group => group.IsPlayerClass).Rows.Count == 11,
+    "Spare multiclass rows must belong to the player's class.");
 
 var fuelTracker = new FuelStrategyTracker();
 var learning = fuelTracker.Update(raceSnapshot);
