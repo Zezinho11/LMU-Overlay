@@ -27,6 +27,8 @@ WriteDouble(data, LmuApiLayoutV1.WindOffset + 8, 0);
 WriteDouble(data, LmuApiLayoutV1.WindOffset + 16, 4);
 WriteDouble(data, LmuApiLayoutV1.MinimumPathWetnessOffset, 0.05);
 WriteDouble(data, LmuApiLayoutV1.MaximumPathWetnessOffset, 0.2);
+WriteDouble(data, LmuApiLayoutV1.AveragePathWetnessOffset, 0.12);
+data[LmuApiLayoutV1.TrackGripLevelOffset] = 3;
 
 var scoring = LmuApiLayoutV1.VehicleScoringOffset(0);
 WriteInt32(data, scoring + LmuApiLayoutV1.ScoringVehicleIdOffset, 42);
@@ -117,6 +119,8 @@ Require(snapshot.Session?.TrackName == expected.TrackName, "Track name");
 Require(snapshot.Session?.Kind == LmuSessionKind.Race, "Session kind");
 Require(snapshot.Session?.GamePhase == LmuGamePhase.GreenFlag, "Game phase");
 Require(snapshot.Session?.Weather.WindMetersPerSecond.Length == 5, "Wind magnitude");
+Require(snapshot.Session?.Weather.AveragePathWetness == 0.12, "Average path wetness");
+Require(snapshot.Session?.Weather.TrackGripLevel == 3, "Track grip level");
 Require(snapshot.Player?.VehicleName == expected.PlayerVehicleName, "Player vehicle");
 Require(snapshot.Player?.Position == 1, "Player position");
 Require(snapshot.Player?.Gear == 4, "Gear");
