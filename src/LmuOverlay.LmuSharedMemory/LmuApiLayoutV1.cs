@@ -37,6 +37,9 @@ public static class LmuApiLayoutV1
     public const int WindOffset = ScoringOffset + 244;
     public const int MinimumPathWetnessOffset = ScoringOffset + 268;
     public const int MaximumPathWetnessOffset = ScoringOffset + 276;
+    public const int AveragePathWetnessOffset = ScoringOffset + 332;
+    public const int TrackGripLevelOffset = ScoringOffset + 349;
+    public const int CloudCoverageOffset = ScoringOffset + 350;
     public const int VehicleScoringArrayOffset = ScoringOffset + 560;
     public const int VehicleScoringSize = 584;
 

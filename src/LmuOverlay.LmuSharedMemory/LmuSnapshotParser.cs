@@ -96,7 +96,9 @@ public static class LmuSnapshotParser
                 ReadDouble(data, LmuApiLayoutV1.TrackTemperatureOffset),
                 ReadVector3(data, LmuApiLayoutV1.WindOffset),
                 ReadDouble(data, LmuApiLayoutV1.MinimumPathWetnessOffset),
-                ReadDouble(data, LmuApiLayoutV1.MaximumPathWetnessOffset)));
+                ReadDouble(data, LmuApiLayoutV1.MaximumPathWetnessOffset),
+                ReadDouble(data, LmuApiLayoutV1.AveragePathWetnessOffset),
+                data[LmuApiLayoutV1.TrackGripLevelOffset]));
     }
 
     private static LmuVehicleStanding[] ParseStandings(
