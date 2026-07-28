@@ -70,6 +70,31 @@ try
     legacyStore.Create("Migrated copy", legacyStore.Load());
     Assert(legacyStore.ProfileNames.Count == 2, "Migrated catalogs must remain writable.");
 
+    var narrowTowerPath = Path.Combine(root, "layout-v4.json");
+    var versionFourProfile = LayoutProfile.Default with
+    {
+        SchemaVersion = 4,
+        LiveStandings = LayoutProfile.Default.LiveStandings with
+        {
+            X = 0.72,
+            Width = 0.25,
+            Opacity = 0.92,
+        },
+    };
+    File.WriteAllText(narrowTowerPath, JsonSerializer.Serialize(new
+    {
+        SchemaVersion = 1,
+        ActiveProfile = "Legacy",
+        Profiles = new Dictionary<string, LayoutProfile>
+        {
+            ["Legacy"] = versionFourProfile,
+        },
+    }));
+    var narrowTowerStore = new LayoutStore(narrowTowerPath);
+    var migratedTower = narrowTowerStore.Load().LiveStandings;
+    Assert(migratedTower.Width == 0.16, "The old wide standings layout must migrate.");
+    Assert(migratedTower.X == 0.81, "The narrow timing tower must remain right aligned.");
+
     File.WriteAllText(path, "{broken");
     var corruptStore = new LayoutStore(path);
     Assert(corruptStore.Load() == LayoutProfile.Default, "Corrupt profiles must be recoverable.");
