@@ -53,6 +53,9 @@
 - Rebuilt Relative as a 260x410 timing tower matching Live Standings, with a
   centered nine-car window, explicit race numbers, compact driver names,
   colored GT3/Hypercar/LMP2 badges, player highlight, lap gaps, and pit state.
+- Added four tire-shaped dashboard indicators beside FL/FR/RL/RR temperatures,
+  with independent cold, warming, optimal, hot, and critical colors driven by
+  official carcass telemetry.
 
 All notable changes will be documented here.
 
