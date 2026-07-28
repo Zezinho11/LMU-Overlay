@@ -56,6 +56,17 @@ public sealed record RelativeRowState(
     bool IsPlayer,
     bool IsInPitLane);
 
+public sealed record SessionFlagsWidgetState(
+    bool Available,
+    string SessionName,
+    string PhaseName,
+    string FlagName,
+    double RemainingSeconds,
+    int CurrentLap,
+    int MaximumLaps,
+    double AmbientTemperatureCelsius,
+    double TrackTemperatureCelsius);
+
 public static class EssentialWidgetStateFactory
 {
     public static DashboardWidgetState CreateDashboard(LmuTelemetrySnapshot snapshot)
@@ -173,11 +184,61 @@ public static class EssentialWidgetStateFactory
         return new RelativeWidgetState(rows);
     }
 
+    public static SessionFlagsWidgetState CreateSessionFlags(
+        LmuTelemetrySnapshot snapshot)
+    {
+        if (snapshot.Session is not { } session)
+        {
+            return new(false, string.Empty, string.Empty, "NO DATA", 0, 0, 0, 0, 0);
+        }
+
+        var playerStanding = snapshot.Standings.FirstOrDefault(item => item.IsPlayer);
+        var globalYellow = session.GamePhase == LmuGamePhase.FullCourseYellow ||
+            snapshot.Standings.Any(item => item.IsUnderYellow);
+        var flagName = globalYellow
+            ? "YELLOW"
+            : session.GamePhase == LmuGamePhase.GreenFlag
+                ? "GREEN"
+                : session.GamePhase.ToString().ToUpperInvariant();
+
+        return new(
+            true,
+            FormatSessionKind(session.Kind),
+            FormatGamePhase(session.GamePhase),
+            flagName,
+            session.EndElapsedTime > 0
+                ? Math.Max(0, session.EndElapsedTime - session.CurrentElapsedTime)
+                : 0,
+            playerStanding?.CompletedLaps ?? snapshot.Player?.LapNumber ?? 0,
+            session.MaximumLaps,
+            session.Weather.AmbientTemperatureCelsius,
+            session.Weather.TrackTemperatureCelsius);
+    }
+
     private static string FormatGear(int gear) => gear switch
     {
         < 0 => "R",
         0 => "N",
         _ => gear.ToString(System.Globalization.CultureInfo.InvariantCulture),
+    };
+
+    private static string FormatSessionKind(LmuSessionKind kind) => kind switch
+    {
+        LmuSessionKind.TestDay => "TEST DAY",
+        LmuSessionKind.Qualifying => "QUALIFYING",
+        _ => kind.ToString().ToUpperInvariant(),
+    };
+
+    private static string FormatGamePhase(LmuGamePhase phase) => phase switch
+    {
+        LmuGamePhase.BeforeSession => "BEFORE SESSION",
+        LmuGamePhase.GridWalk => "GRID WALK",
+        LmuGamePhase.FormationLap => "FORMATION LAP",
+        LmuGamePhase.StartingLights => "STARTING LIGHTS",
+        LmuGamePhase.GreenFlag => "GREEN FLAG",
+        LmuGamePhase.FullCourseYellow => "FULL COURSE YELLOW",
+        LmuGamePhase.SessionOver => "SESSION OVER",
+        _ => phase.ToString().ToUpperInvariant(),
     };
 
     private static double ClampInput(double value) => Math.Clamp(value, 0, 1);
