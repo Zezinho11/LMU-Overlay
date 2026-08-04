@@ -173,6 +173,9 @@ public partial class OverlayWindow : Window
         RpmText.Text = dashboard.Available
             ? $"RPM {dashboard.EngineRpm:0}"
             : "RPM ----";
+        PitLimiterIndicator.Visibility = dashboard.Available && dashboard.SpeedLimiterActive
+            ? Visibility.Visible
+            : Visibility.Collapsed;
         PositionText.Text = dashboard.Available
             ? $"POS {dashboard.Position}"
             : "POS --";

@@ -19,6 +19,7 @@ public sealed record DashboardWidgetState(
     double EngineWaterTemperatureCelsius,
     double EngineOilTemperatureCelsius,
     double RearBrakeBiasFraction,
+    bool SpeedLimiterActive,
     bool AbsActive,
     bool TractionControlActive,
     int TractionControlLevel,
@@ -138,7 +139,7 @@ public static class EssentialWidgetStateFactory
             return new(
                 false, 0, "N", 0, 0, 0, 0, 0,
                 snapshot.Session?.TrackName ?? string.Empty,
-                0, 0, 0, 0, 0, 0, 0, false, false,
+                0, 0, 0, 0, 0, 0, 0, false, false, false,
                 0, 0, 0, 0, 0, 0, 0, 0,
                 new LmuWheelTemperatures(0, 0, 0, 0),
                 new LmuWheelWear(0, 0, 0, 0));
@@ -168,6 +169,7 @@ public static class EssentialWidgetStateFactory
             player.EngineWaterTemperatureCelsius,
             player.EngineOilTemperatureCelsius,
             player.RearBrakeBiasFraction,
+            player.SpeedLimiterActive,
             player.AbsActive,
             player.TractionControlActive,
             player.TractionControlLevel,
