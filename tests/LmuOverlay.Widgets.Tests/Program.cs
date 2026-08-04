@@ -70,6 +70,7 @@ Assert(dashboard.EngineRpmFraction == 1, "RPM fraction must be clamped.");
 Assert(dashboard.EngineWaterTemperatureCelsius == 78, "Water temperature must reach the dashboard.");
 Assert(dashboard.EngineOilTemperatureCelsius == 92, "Oil temperature must reach the dashboard.");
 Assert(dashboard.RearBrakeBiasFraction == 0.43, "Brake bias must reach the dashboard.");
+Assert(!dashboard.SpeedLimiterActive, "Pit limiter state must reach the dashboard.");
 Assert(dashboard.AbsActive, "ABS activation must reach the dashboard.");
 Assert(dashboard.TractionControlLevel == 4, "TC level must reach the dashboard.");
 Assert(dashboard.TractionControlSlipLevel == 7, "TC slip must reach the dashboard.");
@@ -104,7 +105,12 @@ var session = new LmuSessionSnapshot(
     120, 3720, 20, 7004, true, "Player",
     new LmuWeatherSnapshot(
         0.2, 0, 21, 29, new LmuVector3(0, 0, 0), 0, 0, 0.05, 3));
-var raceSnapshot = snapshot with { Session = session, Standings = standings };
+var raceSnapshot = snapshot with
+{
+    Session = session,
+    Standings = standings,
+    Player = player with { SpeedLimiterActive = true },
+};
 var raceDashboard = EssentialWidgetStateFactory.CreateDashboard(raceSnapshot);
 var liveStandings = EssentialWidgetStateFactory.CreateLiveStandings(raceSnapshot);
 var relative = EssentialWidgetStateFactory.CreateRelative(raceSnapshot);
@@ -131,6 +137,8 @@ Assert(sessionFlags.RemainingSeconds == 3600, "Remaining session time must be de
 Assert(raceDashboard.CurrentLapTimeSeconds == 120, "Current lap time must be derived.");
 Assert(raceDashboard.LastLapTimeSeconds == 121, "Last lap time must be preserved.");
 Assert(raceDashboard.BestLapTimeSeconds == 120, "Best lap time must be preserved.");
+Assert(raceDashboard.SpeedLimiterActive,
+    "Active pit limiter must be exposed to the dashboard renderer.");
 Assert(liveStandings.Classes[0].Rows[0].DriverAbbreviation == "LEA",
     "Standings must expose compact driver abbreviations.");
 Assert(liveStandings.Classes[0].Rows[0].VehicleModel == "Porsche 963",
