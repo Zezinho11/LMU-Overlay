@@ -69,6 +69,7 @@ public partial class OverlayWindow : Window
 
     private readonly LayoutStore _layoutStore;
     private readonly FuelStrategyTracker _fuelStrategyTracker = new();
+    private readonly Queue<(double Throttle, double Brake)> _pedalHistory = new();
     private System.Windows.Shapes.Ellipse[] _shiftLights = [];
     private LayoutProfile _profile;
     private System.Windows.Point _dragStart;
@@ -82,6 +83,8 @@ public partial class OverlayWindow : Window
         "No telemetry captured yet.");
     private TelemetryRuntimeHealth _runtimeHealth =
         new(0, 0, 0, 0, 0, 0, null, string.Empty);
+    private uint _renderedScoringSequence = uint.MaxValue;
+    private uint _lastPedalTelemetrySequence = uint.MaxValue;
 
     public OverlayWindow(LayoutStore layoutStore)
     {
@@ -186,6 +189,9 @@ public partial class OverlayWindow : Window
         FuelText.Text = dashboard.Available
             ? $"FUEL {dashboard.FuelLiters:0.0} L"
             : "FUEL --.- L";
+        VirtualEnergyDashText.Text = dashboard.Available
+            ? $"VIRTUAL ENERGY {dashboard.VirtualEnergyFraction:P0}"
+            : "VIRTUAL ENERGY --%";
         BrakeBiasText.Text = dashboard.Available &&
             dashboard.RearBrakeBiasFraction is >= 0 and <= 1
                 ? $"BRAKE BIAS {(1 - dashboard.RearBrakeBiasFraction):P1}"
@@ -198,32 +204,58 @@ public partial class OverlayWindow : Window
             ? $"OIL {dashboard.EngineOilTemperatureCelsius:0}°  " +
               $"WATER {dashboard.EngineWaterTemperatureCelsius:0}°"
             : "OIL --°  WATER --°";
+        EnvironmentText.Text = dashboard.Available
+            ? $"TRACK {dashboard.TrackTemperatureCelsius:0}Â°  " +
+              $"AIR {dashboard.AmbientTemperatureCelsius:0}Â°  " +
+              $"RAIN {dashboard.RainIntensity:P0}"
+            : "TRACK --  AIR --  RAIN --%";
+        SessionModeText.Text = dashboard.Available
+            ? dashboard.SessionName
+            : "SESSION --";
+        SessionTimeText.Text = FormatSessionTime(dashboard.SessionRemainingSeconds);
+        PenaltyDashText.Text = dashboard.OutstandingPenalties > 0
+            ? $"PENALTY {dashboard.OutstandingPenalties}"
+            : "PENALTY CLEAR";
+        PenaltyDashText.Foreground = dashboard.OutstandingPenalties > 0
+            ? System.Windows.Media.Brushes.OrangeRed
+            : IndicatorEnabledTextBrush;
+        SectorLastLapText.Text = FormatLapTime(dashboard.LastLapTimeSeconds);
+        SectorBestLapText.Text = FormatLapTime(dashboard.BestLapTimeSeconds);
+        UpdateSectorReadings(dashboard.SectorTimes);
+        DashboardThrottleText.Text = dashboard.Available ? $"{dashboard.Throttle:P0}" : "--";
+        DashboardBrakeText.Text = dashboard.Available ? $"{dashboard.Brake:P0}" : "--";
+        LongitudinalGText.Text = dashboard.Available
+            ? $"{dashboard.LongitudinalAccelerationG:+0.0;-0.0;0.0}"
+            : "--";
+        LateralGText.Text = dashboard.Available
+            ? $"{dashboard.LateralAccelerationG:+0.0;-0.0;0.0}"
+            : "--";
+        TireCompoundText.Text = dashboard.Available
+            ? $"COMPOUND {dashboard.TireCompound.ToUpperInvariant()}"
+            : "COMPOUND --";
+        UpdatePedalGraph(dashboard, snapshot.TelemetrySequence);
         var tire = dashboard.TireTemperatures;
         UpdateTireReading(
             FrontLeftTireIcon,
             FrontLeftTireText,
-            "FL",
             tire.FrontLeftCelsius,
             dashboard.TireWear.FrontLeftFraction,
             dashboard.Available);
         UpdateTireReading(
             FrontRightTireIcon,
             FrontRightTireText,
-            "FR",
             tire.FrontRightCelsius,
             dashboard.TireWear.FrontRightFraction,
             dashboard.Available);
         UpdateTireReading(
             RearLeftTireIcon,
             RearLeftTireText,
-            "RL",
             tire.RearLeftCelsius,
             dashboard.TireWear.RearLeftFraction,
             dashboard.Available);
         UpdateTireReading(
             RearRightTireIcon,
             RearRightTireText,
-            "RR",
             tire.RearRightCelsius,
             dashboard.TireWear.RearRightFraction,
             dashboard.Available);
@@ -253,9 +285,13 @@ public partial class OverlayWindow : Window
         InputsText.Text = inputs.Available
             ? $"THR {inputs.Throttle:P0}  BRK {inputs.Brake:P0}  STR {inputs.Steering:P0}"
             : "THR --  BRK --  STR --";
-        UpdateStandings(EssentialWidgetStateFactory.CreateLiveStandings(snapshot));
-        UpdateRelative(EssentialWidgetStateFactory.CreateRelative(snapshot));
-        UpdateSessionFlags(EssentialWidgetStateFactory.CreateSessionFlags(snapshot));
+        if (_renderedScoringSequence != snapshot.ScoringSequence)
+        {
+            UpdateStandings(EssentialWidgetStateFactory.CreateLiveStandings(snapshot));
+            UpdateRelative(EssentialWidgetStateFactory.CreateRelative(snapshot));
+            UpdateSessionFlags(EssentialWidgetStateFactory.CreateSessionFlags(snapshot));
+            _renderedScoringSequence = snapshot.ScoringSequence;
+        }
         UpdateFuelStrategy(_fuelStrategyTracker.Update(
             snapshot,
             new FuelStrategyOptions(
@@ -263,7 +299,10 @@ public partial class OverlayWindow : Window
                 _profile.Settings.EnergyReservePercent / 100,
                 _profile.Settings.ManualRemainingLaps,
                 _profile.Settings.MaximumStintLaps,
-                _profile.Settings.EstimatedPitLossSeconds)));
+                _profile.Settings.EstimatedPitLossSeconds,
+                _profile.Settings.AvailableTireSets,
+                _profile.Settings.TireWearLimitPercent / 100,
+                _profile.Settings.EstimatedTireChangeSeconds)));
         UpdateRaceControl(EssentialWidgetStateFactory.CreateRaceControl(snapshot));
 
         SetGameAvailable(connected || IsEditMode);
@@ -290,14 +329,13 @@ public partial class OverlayWindow : Window
     private static void UpdateTireReading(
         Border icon,
         TextBlock text,
-        string label,
         double temperatureCelsius,
         double wearFraction,
         bool available)
     {
         text.Text = available
-            ? $"{label} {temperatureCelsius:0}° · D {wearFraction:P0}"
-            : $"{label} --° · D --%";
+            ? $"{temperatureCelsius:0}° · {wearFraction:P0}"
+            : "--° · --%";
         icon.Background = available
             ? TireTemperatureClassifier.Classify(temperatureCelsius) switch
             {
@@ -338,6 +376,89 @@ public partial class OverlayWindow : Window
         seconds > 0 && double.IsFinite(seconds)
             ? TimeSpan.FromSeconds(seconds).ToString(@"m\:ss\.fff")
             : "--:--.---";
+
+    private static string FormatSessionTime(double seconds) =>
+        seconds > 0 && double.IsFinite(seconds)
+            ? TimeSpan.FromSeconds(seconds).ToString(@"h\:mm\:ss")
+            : "--:--:--";
+
+    private void UpdateSectorReadings(DashboardSectorTimes sectors)
+    {
+        UpdateSectorReading(
+            Sector1Text,
+            Sector1DeltaText,
+            sectors.CurrentSector1Seconds,
+            sectors.LastSector1Seconds,
+            sectors.BestSector1Seconds);
+        UpdateSectorReading(
+            Sector2Text,
+            Sector2DeltaText,
+            sectors.CurrentSector2Seconds,
+            sectors.LastSector2Seconds,
+            sectors.BestSector2Seconds);
+        UpdateSectorReading(
+            Sector3Text,
+            Sector3DeltaText,
+            sectors.CurrentSector3Seconds,
+            sectors.LastSector3Seconds,
+            sectors.BestSector3Seconds);
+    }
+
+    private static void UpdateSectorReading(
+        TextBlock timeText,
+        TextBlock deltaText,
+        double currentSeconds,
+        double lastSeconds,
+        double bestSeconds)
+    {
+        var value = currentSeconds > 0 ? currentSeconds : lastSeconds;
+        timeText.Text = value > 0 ? $"{value:0.000}" : "--.---";
+        if (value <= 0 || bestSeconds <= 0)
+        {
+            deltaText.Text = "--.---";
+            deltaText.Foreground = System.Windows.Media.Brushes.LightGray;
+            return;
+        }
+
+        var delta = value - bestSeconds;
+        deltaText.Text = delta.ToString("+0.000;-0.000;0.000");
+        deltaText.Foreground = delta <= 0
+            ? System.Windows.Media.Brushes.LimeGreen
+            : System.Windows.Media.Brushes.OrangeRed;
+    }
+
+    private void UpdatePedalGraph(DashboardWidgetState dashboard, uint telemetrySequence)
+    {
+        if (dashboard.Available && _lastPedalTelemetrySequence != telemetrySequence)
+        {
+            _pedalHistory.Enqueue((dashboard.Throttle, dashboard.Brake));
+            while (_pedalHistory.Count > 90)
+            {
+                _pedalHistory.Dequeue();
+            }
+
+            _lastPedalTelemetrySequence = telemetrySequence;
+        }
+
+        var values = _pedalHistory.ToArray();
+        var throttlePoints = new System.Windows.Media.PointCollection(values.Length);
+        var brakePoints = new System.Windows.Media.PointCollection(values.Length);
+        for (var index = 0; index < values.Length; index++)
+        {
+            var x = values.Length <= 1 ? 230 : index * 230d / (values.Length - 1);
+            throttlePoints.Add(new System.Windows.Point(x, 101 - values[index].Throttle * 96));
+            brakePoints.Add(new System.Windows.Point(x, 101 - values[index].Brake * 96));
+        }
+
+        ThrottleTrace.Points = throttlePoints;
+        BrakeTrace.Points = brakePoints;
+        Canvas.SetLeft(
+            GForceDot,
+            24 + Math.Clamp(dashboard.LateralAccelerationG / 2, -1, 1) * 20);
+        Canvas.SetTop(
+            GForceDot,
+            46 - Math.Clamp(dashboard.LongitudinalAccelerationG / 2, -1, 1) * 38);
+    }
 
     public void SetGameAvailable(bool available)
     {
@@ -957,6 +1078,10 @@ public partial class OverlayWindow : Window
             FinishTargetText.Text = "-- LAPS / -- MIN";
             FuelFinishText.Text = "--.- L / --.- L";
             EnergyFinishText.Text = "--% / --%";
+            StrategyPlanText.Text = "STRATEGY LEARNING";
+            StrategyPitPlanText.Text = "PIT --";
+            StrategyTirePlanText.Text = "TIRES --";
+            StrategyAlternativeText.Text = "ALT --";
             FuelSamplesText.Text = "WAITING FOR TELEMETRY";
             return;
         }
@@ -1010,6 +1135,10 @@ public partial class OverlayWindow : Window
             state.VirtualEnergyMarginFraction < 0
                 ? System.Windows.Media.Brushes.OrangeRed
                 : System.Windows.Media.Brushes.LightSkyBlue;
+        StrategyPlanText.Text = state.PlanSummary;
+        StrategyPitPlanText.Text = $"PIT  {state.PitPlan}";
+        StrategyTirePlanText.Text = $"TIRES  {state.TirePlan}";
+        StrategyAlternativeText.Text = state.AlternativePlan;
         FuelSamplesText.Text = state.Learning
             ? "COMPLETE A LAP TO CALCULATE"
             : $"PIT L{state.SuggestedPitLap} ({state.LapsUntilPit} LAPS)  " +
@@ -1162,15 +1291,44 @@ public partial class OverlayWindow : Window
 
         var minimumWidth = widget.MinWidth > 0 ? widget.MinWidth : 120;
         var minimumHeight = widget.MinHeight > 0 ? widget.MinHeight : 60;
-        widget.Width = Math.Clamp(
-            widget.ActualWidth + e.HorizontalChange,
-            minimumWidth,
-            Math.Max(minimumWidth, ActualWidth - Canvas.GetLeft(widget)));
-        widget.Height = Math.Clamp(
-            widget.ActualHeight + e.VerticalChange,
-            minimumHeight,
-            Math.Max(minimumHeight, ActualHeight - Canvas.GetTop(widget)));
+        var maximumWidth = Math.Max(minimumWidth, ActualWidth - Canvas.GetLeft(widget));
+        var maximumHeight = Math.Max(minimumHeight, ActualHeight - Canvas.GetTop(widget));
+        var aspectRatio = WidgetAspectRatio(widget.Name);
+        if (aspectRatio <= 0)
+        {
+            widget.Width = Math.Clamp(
+                widget.ActualWidth + e.HorizontalChange,
+                minimumWidth,
+                maximumWidth);
+            widget.Height = Math.Clamp(
+                widget.ActualHeight + e.VerticalChange,
+                minimumHeight,
+                maximumHeight);
+            return;
+        }
+
+        var widthFromHorizontal = widget.ActualWidth + e.HorizontalChange;
+        var widthFromVertical = (widget.ActualHeight + e.VerticalChange) * aspectRatio;
+        var targetWidth = Math.Abs(e.HorizontalChange) >= Math.Abs(e.VerticalChange)
+            ? widthFromHorizontal
+            : widthFromVertical;
+        targetWidth = Math.Clamp(
+            targetWidth,
+            Math.Max(minimumWidth, minimumHeight * aspectRatio),
+            Math.Min(maximumWidth, maximumHeight * aspectRatio));
+        widget.Width = targetWidth;
+        widget.Height = targetWidth / aspectRatio;
     }
+
+    private static double WidgetAspectRatio(string widgetName) => widgetName switch
+    {
+        "DiagnosticWidget" => 800d / 480d,
+        "LiveStandingsWidget" or "RelativeWidget" => 260d / 410d,
+        "SessionFlagsWidget" => 500d / 190d,
+        "FuelStrategyWidget" => 500d / 340d,
+        "RaceControlWidget" => 430d / 190d,
+        _ => 0,
+    };
 
     private void ResizeThumbDragCompleted(
         object sender,

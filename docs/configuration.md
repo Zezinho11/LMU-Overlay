@@ -30,8 +30,9 @@ versions so incompatible data is rejected instead of partially applied.
 - Set independent opacity from 20% to 100%.
 - Set independent scale from 0.5x to 2x.
 - Select RedFox, black, or high-contrast themes.
-- Select a 2-30 Hz UI refresh rate and a 0-50 px magnetic grid.
-- Configure reserves, manual remaining laps, maximum stint, and pit loss.
+- Select a 10-60 Hz UI refresh rate and a 0-50 px magnetic grid.
+- Configure reserves, manual remaining laps, maximum stint, pit loss, available
+  tire sets, tire-wear limit and estimated tire-change time.
 - Export a privacy-safe JSON diagnostic report.
 - Apply changes without restarting LMU or the overlay.
 - Restore the complete default layout.

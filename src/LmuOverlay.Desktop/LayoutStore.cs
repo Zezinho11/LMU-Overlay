@@ -337,6 +337,18 @@ public sealed class LayoutStore
 
     private static LayoutProfile Sanitize(LayoutProfile profile)
     {
+        var diagnostic = SanitizePlacement(profile.Diagnostic);
+        if (profile.SchemaVersion < 10 &&
+            diagnostic.Width <= 0.23 && diagnostic.Height <= 0.20)
+        {
+            diagnostic = diagnostic with
+            {
+                Width = 0.38,
+                Height = 0.40,
+                Opacity = Math.Max(0.96, diagnostic.Opacity),
+            };
+        }
+
         var liveStandings = SanitizePlacement(profile.LiveStandings);
         if (profile.SchemaVersion < 5 &&
             Math.Abs(liveStandings.Width - 0.25) < 0.001)
@@ -396,7 +408,7 @@ public sealed class LayoutStore
         return profile with
         {
             SchemaVersion = LayoutProfile.CurrentSchemaVersion,
-            Diagnostic = SanitizePlacement(profile.Diagnostic),
+            Diagnostic = diagnostic,
             Inputs = SanitizePlacement(profile.Inputs),
             LiveStandings = liveStandings,
             Relative = relative,
@@ -417,7 +429,7 @@ public sealed class LayoutStore
         return settings with
         {
             Theme = theme,
-            RefreshRateHz = Math.Clamp(settings.RefreshRateHz, 2, 30),
+            RefreshRateHz = Math.Clamp(settings.RefreshRateHz <= 10 ? 30 : settings.RefreshRateHz, 10, 60),
             GridSnapPixels = Math.Clamp(settings.GridSnapPixels, 0, 50),
             FuelReserveLaps = Math.Clamp(settings.FuelReserveLaps, 0, 5),
             EnergyReservePercent = Math.Clamp(settings.EnergyReservePercent, 0, 25),
@@ -427,6 +439,12 @@ public sealed class LayoutStore
                 settings.EstimatedPitLossSeconds,
                 0,
                 600),
+            AvailableTireSets = Math.Clamp(settings.AvailableTireSets, 0, 100),
+            TireWearLimitPercent = Math.Clamp(settings.TireWearLimitPercent, 20, 95),
+            EstimatedTireChangeSeconds = Math.Clamp(
+                settings.EstimatedTireChangeSeconds,
+                0,
+                180),
         };
     }
 

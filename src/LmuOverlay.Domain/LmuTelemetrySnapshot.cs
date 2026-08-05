@@ -99,7 +99,12 @@ public sealed record LmuPlayerTelemetry(
     int AbsMaximum,
     LmuWheelTemperatures TireTemperatures,
     LmuWheelWear TireWear,
-    LmuDamageSnapshot? Damage = null);
+    LmuDamageSnapshot? Damage = null,
+    string FrontTireCompound = "",
+    string RearTireCompound = "",
+    int FrontTireCompoundIndex = 0,
+    int RearTireCompoundIndex = 0,
+    LmuVector3 LocalAcceleration = default);
 
 public sealed record LmuWheelTemperatures(
     double FrontLeftCelsius,
@@ -162,7 +167,13 @@ public sealed record LmuVehicleStanding(
     bool IsUnderYellow,
     bool IsInGarage,
     double FuelFraction,
-    bool DrsActive);
+    bool DrsActive,
+    double BestSector1Seconds = 0,
+    double BestSector2CumulativeSeconds = 0,
+    double LastSector1Seconds = 0,
+    double LastSector2CumulativeSeconds = 0,
+    double CurrentSector1Seconds = 0,
+    double CurrentSector2CumulativeSeconds = 0);
 
 public readonly record struct LmuVector3(double X, double Y, double Z)
 {

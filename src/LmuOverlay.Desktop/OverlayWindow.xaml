@@ -8,6 +8,10 @@
         AllowsTransparency="True"
         Background="Transparent"
         ShowInTaskbar="False"
+        UseLayoutRounding="True"
+        SnapsToDevicePixels="True"
+        TextOptions.TextFormattingMode="Display"
+        RenderOptions.BitmapScalingMode="HighQuality"
         Topmost="True">
     <Canvas x:Name="OverlayCanvas" Background="Transparent">
         <Border x:Name="DiagnosticWidget"
@@ -23,13 +27,13 @@
                 MouseLeftButtonUp="WidgetMouseLeftButtonUp">
             <Grid>
                 <Viewbox Stretch="Uniform" StretchDirection="Both">
-                    <Grid Width="720" Height="330" TextElement.FontFamily="Bahnschrift"
+                    <Grid Width="800" Height="480" TextElement.FontFamily="Bahnschrift"
                           Background="#FF030506">
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="28" />
+                    <RowDefinition Height="38" />
+                    <RowDefinition Height="205" />
                     <RowDefinition Height="*" />
-                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
                 <StackPanel Grid.RowSpan="4" Orientation="Vertical"
                             HorizontalAlignment="Left" VerticalAlignment="Center"
@@ -65,10 +69,13 @@
                     <Ellipse x:Name="ShiftLight12" Width="13" Height="13" Margin="2,0" Fill="#FF26313B" />
                 </StackPanel>
                 <Grid Grid.Row="1" Margin="24,0,24,6">
-                    <TextBlock x:Name="TrackText" Text="LMU"
-                               Foreground="#FFAAB7C4" FontSize="10"
-                               HorizontalAlignment="Left" VerticalAlignment="Center"
-                               TextTrimming="CharacterEllipsis" />
+                    <StackPanel HorizontalAlignment="Left" VerticalAlignment="Center">
+                        <TextBlock x:Name="TrackText" Text="LMU"
+                                   Foreground="White" FontSize="10" FontWeight="Bold"
+                                   TextTrimming="CharacterEllipsis" />
+                        <TextBlock x:Name="EnvironmentText" Text="TRACK --  AIR --  RAIN --%"
+                                   Foreground="#FF97A4B2" FontSize="8" />
+                    </StackPanel>
                     <TextBlock Text="REDFOX RACING" Foreground="White"
                                FontWeight="Bold" FontSize="24"
                                HorizontalAlignment="Center" />
@@ -98,8 +105,18 @@
                                    FontSize="13" Margin="0,6,0,0" />
                         <TextBlock x:Name="FuelText" Text="FUEL --.- L"
                                    Foreground="#FFD2D9E0" FontSize="11" Margin="0,4,0,0" />
+                        <TextBlock x:Name="VirtualEnergyDashText" Text="VIRTUAL ENERGY --%"
+                                   Foreground="#FFDA40E8" FontSize="11" Margin="0,2,0,0" />
                         <TextBlock x:Name="BrakeBiasText" Text="BRAKE BIAS --.-%"
                                    Foreground="#FFD2D9E0" FontSize="11" Margin="0,2,0,0" />
+                        <TextBlock x:Name="SessionModeText" Text="SESSION --"
+                                   Foreground="#FF42D3A6" FontSize="11" FontWeight="Bold"
+                                   Margin="0,8,0,0" />
+                        <TextBlock x:Name="SessionTimeText" Text="--:--:--"
+                                   Foreground="White" FontSize="12" />
+                        <TextBlock x:Name="PenaltyDashText" Text="PENALTY CLEAR"
+                                   Foreground="#FF42D3A6" FontSize="10" FontWeight="Bold"
+                                   Margin="0,5,0,0" />
                     </StackPanel>
                     </Border>
                     <Border Grid.Column="1" Margin="5,3" Padding="8,3"
@@ -192,32 +209,74 @@
                     </StackPanel>
                     </Border>
                 </Grid>
-                <Grid Grid.Row="3" Margin="24,6,24,4">
+                <Grid Grid.Row="3" Margin="24,7,24,10">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="250" />
+                        <ColumnDefinition Width="214" />
+                        <ColumnDefinition Width="248" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
-                    <Border Grid.Column="0" Width="54" Height="44"
-                            HorizontalAlignment="Left"
-                            Background="#FF15191B" BorderBrush="#FF343A3D"
-                            BorderThickness="1">
-                        <TextBlock Text="RF" Foreground="#FFF1F3F4"
-                                   FontWeight="Bold" FontSize="20"
-                                   HorizontalAlignment="Center"
-                                   VerticalAlignment="Center" />
-                    </Border>
-                    <Border Grid.Column="1" Background="#FF15191B"
-                            BorderBrush="#FFE1972F" BorderThickness="1">
+                    <Border Grid.Column="0" Margin="3" Background="#FF0B0E0F"
+                            BorderBrush="#FF3C4246" BorderThickness="1">
                         <Grid>
-                            <Border Height="16" VerticalAlignment="Top"
-                                    Margin="0,-13,0,0" Panel.ZIndex="2"
-                                    Background="#FFD78421">
-                                <TextBlock Text="TYRE TEMP / WEAR" Foreground="White"
-                                           FontSize="9" HorizontalAlignment="Center"
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="25" />
+                                <RowDefinition Height="40" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <Border Background="#FF12D9E5">
+                                <TextBlock Text="SECTORS" Foreground="#FF031013"
+                                           FontSize="13" FontWeight="Bold"
+                                           HorizontalAlignment="Center"
                                            VerticalAlignment="Center" />
                             </Border>
-                            <Grid Margin="22,2,22,1">
+                            <Grid Grid.Row="1" Margin="8,3">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition />
+                                    <ColumnDefinition />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel>
+                                    <TextBlock Text="LAST" Foreground="#FF7F8C99" FontSize="8" />
+                                    <TextBlock x:Name="SectorLastLapText" Text="--:--.---"
+                                               Foreground="White" FontSize="14" FontWeight="Bold" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="1">
+                                    <TextBlock Text="BEST" Foreground="#FF7F8C99" FontSize="8" />
+                                    <TextBlock x:Name="SectorBestLapText" Text="--:--.---"
+                                               Foreground="#FFB84BDF" FontSize="14" FontWeight="Bold" />
+                                </StackPanel>
+                            </Grid>
+                            <Grid Grid.Row="2" Margin="8,1,8,5">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="24" />
+                                    <ColumnDefinition />
+                                    <ColumnDefinition Width="54" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition /><RowDefinition /><RowDefinition />
+                                </Grid.RowDefinitions>
+                                <TextBlock Grid.Row="0" Text="S1" Foreground="White" FontSize="11" FontWeight="Bold" VerticalAlignment="Center" />
+                                <TextBlock Grid.Row="1" Text="S2" Foreground="White" FontSize="11" FontWeight="Bold" VerticalAlignment="Center" />
+                                <TextBlock Grid.Row="2" Text="S3" Foreground="White" FontSize="11" FontWeight="Bold" VerticalAlignment="Center" />
+                                <TextBlock x:Name="Sector1Text" Grid.Row="0" Grid.Column="1" Text="--.---" Foreground="White" FontSize="11" VerticalAlignment="Center" />
+                                <TextBlock x:Name="Sector2Text" Grid.Row="1" Grid.Column="1" Text="--.---" Foreground="White" FontSize="11" VerticalAlignment="Center" />
+                                <TextBlock x:Name="Sector3Text" Grid.Row="2" Grid.Column="1" Text="--.---" Foreground="White" FontSize="11" VerticalAlignment="Center" />
+                                <TextBlock x:Name="Sector1DeltaText" Grid.Row="0" Grid.Column="2" Text="--.---" Foreground="#FF42D3A6" FontSize="10" FontWeight="Bold" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                <TextBlock x:Name="Sector2DeltaText" Grid.Row="1" Grid.Column="2" Text="--.---" Foreground="#FF42D3A6" FontSize="10" FontWeight="Bold" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                <TextBlock x:Name="Sector3DeltaText" Grid.Row="2" Grid.Column="2" Text="--.---" Foreground="#FF42D3A6" FontSize="10" FontWeight="Bold" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                            </Grid>
+                        </Grid>
+                    </Border>
+                    <Border Grid.Column="1" Margin="3" Background="#FF15191B"
+                            BorderBrush="#FFE1972F" BorderThickness="1">
+                        <Grid>
+                            <Border Height="25" VerticalAlignment="Top"
+                                    Margin="0" Panel.ZIndex="2"
+                                    Background="#FFD78421">
+                                <TextBlock Text="TYRE TEMP / WEAR" Foreground="White"
+                                           FontSize="11" FontWeight="Bold" HorizontalAlignment="Center"
+                                           VerticalAlignment="Center" />
+                            </Border>
+                            <Grid Margin="10,31,10,25">
                                 <Grid.RowDefinitions>
                                     <RowDefinition />
                                     <RowDefinition />
@@ -229,6 +288,8 @@
                                 <StackPanel Grid.Row="0" Grid.Column="0"
                                             Orientation="Horizontal"
                                             HorizontalAlignment="Center">
+                                    <TextBlock Text="FL" Foreground="White" FontSize="11"
+                                               FontWeight="Bold" Width="20" />
                                     <Grid Width="10" Height="17">
                                         <Border x:Name="FrontLeftTireIcon"
                                                 CornerRadius="3"
@@ -245,6 +306,8 @@
                                 <StackPanel Grid.Row="0" Grid.Column="1"
                                             Orientation="Horizontal"
                                             HorizontalAlignment="Center">
+                                    <TextBlock Text="FR" Foreground="White" FontSize="11"
+                                               FontWeight="Bold" Width="20" />
                                     <Grid Width="10" Height="17">
                                         <Border x:Name="FrontRightTireIcon"
                                                 CornerRadius="3"
@@ -261,6 +324,8 @@
                                 <StackPanel Grid.Row="1" Grid.Column="0"
                                             Orientation="Horizontal"
                                             HorizontalAlignment="Center">
+                                    <TextBlock Text="RL" Foreground="White" FontSize="11"
+                                               FontWeight="Bold" Width="20" />
                                     <Grid Width="10" Height="17">
                                         <Border x:Name="RearLeftTireIcon"
                                                 CornerRadius="3"
@@ -277,6 +342,8 @@
                                 <StackPanel Grid.Row="1" Grid.Column="1"
                                             Orientation="Horizontal"
                                             HorizontalAlignment="Center">
+                                    <TextBlock Text="RR" Foreground="White" FontSize="11"
+                                               FontWeight="Bold" Width="20" />
                                     <Grid Width="10" Height="17">
                                         <Border x:Name="RearRightTireIcon"
                                                 CornerRadius="3"
@@ -291,9 +358,57 @@
                                                Margin="5,0,0,0" />
                                 </StackPanel>
                             </Grid>
+                            <TextBlock x:Name="TireCompoundText"
+                                       Text="COMPOUND --" Foreground="#FFFFCA6A"
+                                       FontSize="9" FontWeight="Bold"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Bottom" Margin="0,0,0,7" />
+                        </Grid>
+                    </Border>
+                    <Border Grid.Column="2" Margin="3" Background="#FF0B0E0F"
+                            BorderBrush="#FF12D9E5" BorderThickness="1">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="25" />
+                                <RowDefinition Height="32" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <Border Background="#FF12D9E5">
+                                <TextBlock Text="TELEMETRY" Foreground="#FF031013"
+                                           FontSize="13" FontWeight="Bold"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center" />
+                            </Border>
+                            <UniformGrid Grid.Row="1" Columns="4" Margin="6,2">
+                                <StackPanel HorizontalAlignment="Center"><TextBlock Text="THR" Foreground="#FF8D98A4" FontSize="8" FontWeight="Bold" HorizontalAlignment="Center"/><TextBlock x:Name="DashboardThrottleText" Text="--" Foreground="White" FontSize="11" FontWeight="Bold" HorizontalAlignment="Center"/></StackPanel>
+                                <StackPanel HorizontalAlignment="Center"><TextBlock Text="BRK" Foreground="#FF8D98A4" FontSize="8" FontWeight="Bold" HorizontalAlignment="Center"/><TextBlock x:Name="DashboardBrakeText" Text="--" Foreground="White" FontSize="11" FontWeight="Bold" HorizontalAlignment="Center"/></StackPanel>
+                                <StackPanel HorizontalAlignment="Center"><TextBlock Text="GX" Foreground="#FF8D98A4" FontSize="8" FontWeight="Bold" HorizontalAlignment="Center"/><TextBlock x:Name="LongitudinalGText" Text="--" Foreground="White" FontSize="11" FontWeight="Bold" HorizontalAlignment="Center"/></StackPanel>
+                                <StackPanel HorizontalAlignment="Center"><TextBlock Text="GY" Foreground="#FF8D98A4" FontSize="8" FontWeight="Bold" HorizontalAlignment="Center"/><TextBlock x:Name="LateralGText" Text="--" Foreground="White" FontSize="11" FontWeight="Bold" HorizontalAlignment="Center"/></StackPanel>
+                            </UniformGrid>
+                            <Grid Grid.Row="2" Margin="7,2,7,6">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="66" />
+                                </Grid.ColumnDefinitions>
+                                <Canvas Width="230" Height="102" HorizontalAlignment="Stretch"
+                                        Background="#FF080B0D" ClipToBounds="True">
+                                    <Line X1="0" Y1="25" X2="230" Y2="25" Stroke="#FF30373E" StrokeThickness="1" />
+                                    <Line X1="0" Y1="51" X2="230" Y2="51" Stroke="#FF30373E" StrokeThickness="1" />
+                                    <Line X1="0" Y1="76" X2="230" Y2="76" Stroke="#FF30373E" StrokeThickness="1" />
+                                    <Polyline x:Name="ThrottleTrace" Stroke="#FF00F23D" StrokeThickness="3" />
+                                    <Polyline x:Name="BrakeTrace" Stroke="#FFFF2738" StrokeThickness="3" />
+                                </Canvas>
+                                <Canvas Grid.Column="1" Width="58" Height="102" Background="#FF080B0D">
+                                    <Line X1="29" Y1="8" X2="29" Y2="94" Stroke="#FF5B6570" StrokeDashArray="2,4" />
+                                    <Line X1="6" Y1="51" X2="52" Y2="51" Stroke="#FF5B6570" StrokeDashArray="2,4" />
+                                    <Ellipse x:Name="GForceDot" Width="10" Height="10"
+                                             Fill="#FF12D9E5" Canvas.Left="24" Canvas.Top="46" />
+                                </Canvas>
+                            </Grid>
                         </Grid>
                     </Border>
                     <TextBlock x:Name="EditHint" Grid.Column="2"
+                               Panel.ZIndex="5"
                                Text="ARRASTE · REDIMENSIONE"
                                Foreground="#FFFFCA6A" FontSize="9"
                                HorizontalAlignment="Right"
@@ -341,7 +456,7 @@
                 MouseMove="WidgetMouseMove"
                 MouseLeftButtonUp="WidgetMouseLeftButtonUp">
             <Grid>
-                <Viewbox Stretch="Fill">
+                <Viewbox Stretch="Uniform">
                     <Grid Width="260" Height="410" Background="#F5070B18">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="22" />
@@ -392,7 +507,7 @@
                 MouseMove="WidgetMouseMove"
                 MouseLeftButtonUp="WidgetMouseLeftButtonUp">
             <Grid>
-                <Viewbox Stretch="Fill">
+                <Viewbox Stretch="Uniform">
                     <Grid Width="260" Height="410" Background="#F5070B18">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="34" />
@@ -429,7 +544,7 @@
                 MouseMove="WidgetMouseMove"
                 MouseLeftButtonUp="WidgetMouseLeftButtonUp">
             <Grid>
-                <Viewbox Stretch="Fill">
+                <Viewbox Stretch="Uniform">
                     <Grid Width="500" Height="190" Background="#F20A0F1A">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="34" />
@@ -591,8 +706,8 @@
                 MouseMove="WidgetMouseMove"
                 MouseLeftButtonUp="WidgetMouseLeftButtonUp">
             <Grid>
-                <Viewbox Stretch="Fill">
-                    <Grid Width="500" Height="260" Background="#F20A0F1A">
+                <Viewbox Stretch="Uniform">
+                    <Grid Width="500" Height="340" Background="#F20A0F1A">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="34" />
                             <RowDefinition Height="54" />
@@ -600,6 +715,7 @@
                             <RowDefinition Height="38" />
                             <RowDefinition Height="38" />
                             <RowDefinition Height="52" />
+                            <RowDefinition Height="80" />
                             <RowDefinition Height="18" />
                         </Grid.RowDefinitions>
                         <Border Grid.Row="0" Background="#FF1B2441">
@@ -742,7 +858,27 @@
                                            FontSize="13" FontWeight="Bold" />
                             </StackPanel>
                         </Grid>
-                        <TextBlock x:Name="FuelSamplesText" Grid.Row="6"
+                        <Border Grid.Row="6" Margin="10,3" Padding="9,4"
+                                Background="#FF11192A" BorderBrush="#FF34415A" BorderThickness="1">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="*" />
+                                    <RowDefinition Height="*" />
+                                    <RowDefinition Height="*" />
+                                    <RowDefinition Height="*" />
+                                </Grid.RowDefinitions>
+                                <TextBlock x:Name="StrategyPlanText" Text="STRATEGY LEARNING"
+                                           Foreground="#FFFFCA6A" FontFamily="Bahnschrift"
+                                           FontWeight="Bold" FontSize="10" />
+                                <TextBlock x:Name="StrategyPitPlanText" Grid.Row="1" Text="PIT --"
+                                           Foreground="White" FontFamily="Bahnschrift" FontSize="9" />
+                                <TextBlock x:Name="StrategyTirePlanText" Grid.Row="2" Text="TIRES --"
+                                           Foreground="#FF8BC5FF" FontFamily="Bahnschrift" FontSize="9" />
+                                <TextBlock x:Name="StrategyAlternativeText" Grid.Row="3" Text="ALT --"
+                                           Foreground="#FF91A0B7" FontFamily="Bahnschrift" FontSize="9" />
+                            </Grid>
+                        </Border>
+                        <TextBlock x:Name="FuelSamplesText" Grid.Row="7"
                                    Text="COMPLETE A LAP TO CALCULATE"
                                    Foreground="#FF718096" FontFamily="Bahnschrift"
                                    FontSize="8" Margin="10,0"
@@ -764,7 +900,7 @@
                 MouseMove="WidgetMouseMove"
                 MouseLeftButtonUp="WidgetMouseLeftButtonUp">
             <Grid>
-                <Viewbox Stretch="Fill">
+                <Viewbox Stretch="Uniform">
                     <Grid Width="430" Height="190" Background="#F20A0F1A"
                           TextElement.FontFamily="Bahnschrift">
                         <Grid.RowDefinitions>
