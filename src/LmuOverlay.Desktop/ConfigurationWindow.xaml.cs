@@ -64,6 +64,12 @@ public partial class ConfigurationWindow : Window
             System.Globalization.CultureInfo.InvariantCulture);
         PitLossSeconds.Text = profile.Settings.EstimatedPitLossSeconds.ToString(
             System.Globalization.CultureInfo.InvariantCulture);
+        AvailableTireSets.Text = profile.Settings.AvailableTireSets.ToString(
+            System.Globalization.CultureInfo.InvariantCulture);
+        TireWearLimit.Text = profile.Settings.TireWearLimitPercent.ToString(
+            System.Globalization.CultureInfo.InvariantCulture);
+        TireChangeSeconds.Text = profile.Settings.EstimatedTireChangeSeconds.ToString(
+            System.Globalization.CultureInfo.InvariantCulture);
     }
 
     private void ProfileSelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -384,6 +390,9 @@ public partial class ConfigurationWindow : Window
             ManualRemainingLaps = ParseInt(ManualRemainingLaps.Text, 0, 0, 1000),
             MaximumStintLaps = ParseInt(MaximumStintLaps.Text, 0, 0, 1000),
             EstimatedPitLossSeconds = ParseDouble(PitLossSeconds.Text, 30, 0, 600),
+            AvailableTireSets = ParseInt(AvailableTireSets.Text, 0, 0, 100),
+            TireWearLimitPercent = ParseDouble(TireWearLimit.Text, 70, 20, 95),
+            EstimatedTireChangeSeconds = ParseDouble(TireChangeSeconds.Text, 15, 0, 180),
         };
     }
 

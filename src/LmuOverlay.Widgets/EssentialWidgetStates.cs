@@ -31,7 +31,31 @@ public sealed record DashboardWidgetState(
     int AbsLevel,
     int AbsMaximum,
     LmuWheelTemperatures TireTemperatures,
-    LmuWheelWear TireWear);
+    LmuWheelWear TireWear,
+    double Throttle = 0,
+    double Brake = 0,
+    double LongitudinalAccelerationG = 0,
+    double LateralAccelerationG = 0,
+    double AmbientTemperatureCelsius = 0,
+    double TrackTemperatureCelsius = 0,
+    double RainIntensity = 0,
+    double SessionRemainingSeconds = 0,
+    string SessionName = "",
+    int OutstandingPenalties = 0,
+    string TireCompound = "",
+    DashboardSectorTimes SectorTimes = default,
+    double VirtualEnergyFraction = 0);
+
+public readonly record struct DashboardSectorTimes(
+    double CurrentSector1Seconds,
+    double CurrentSector2Seconds,
+    double CurrentSector3Seconds,
+    double LastSector1Seconds,
+    double LastSector2Seconds,
+    double LastSector3Seconds,
+    double BestSector1Seconds,
+    double BestSector2Seconds,
+    double BestSector3Seconds);
 
 public sealed record InputsWidgetState(
     bool Available,
@@ -181,7 +205,28 @@ public static class EssentialWidgetStateFactory
             player.AbsLevel,
             player.AbsMaximum,
             player.TireTemperatures,
-            player.TireWear);
+            player.TireWear)
+        {
+            Throttle = ClampInput(player.Throttle),
+            Brake = ClampInput(player.Brake),
+            LongitudinalAccelerationG = -player.LocalAcceleration.Z / 9.80665,
+            LateralAccelerationG = player.LocalAcceleration.X / 9.80665,
+            AmbientTemperatureCelsius = session?.Weather.AmbientTemperatureCelsius ?? 0,
+            TrackTemperatureCelsius = session?.Weather.TrackTemperatureCelsius ?? 0,
+            RainIntensity = session?.Weather.RainIntensity ?? 0,
+            SessionRemainingSeconds = session is not null
+                ? Math.Max(0, session.EndElapsedTime - session.CurrentElapsedTime)
+                : 0,
+            SessionName = session?.Kind.ToString().ToUpperInvariant() ?? string.Empty,
+            OutstandingPenalties = playerStanding?.Penalties ?? 0,
+            TireCompound = FormatTireCompound(player),
+            VirtualEnergyFraction = Math.Clamp(player.VirtualEnergy, 0, 1),
+            SectorTimes = CreateSectorTimes(
+                playerStanding,
+                session is not null && session.CurrentElapsedTime >= player.LapStartElapsedTime
+                    ? session.CurrentElapsedTime - player.LapStartElapsedTime
+                    : 0),
+        };
     }
 
     public static InputsWidgetState CreateInputs(LmuTelemetrySnapshot snapshot)
@@ -320,7 +365,7 @@ public static class EssentialWidgetStateFactory
                     AbbreviateDriverName(item.DriverName),
                     item.VehicleName,
                     item.VehicleModel,
-                    ExtractCarNumber(item.VehicleName),
+                    ExtractCarNumber(item.VehicleName, item.VehicleModel),
                     item.CompletedLaps,
                     item.GapToLeaderSeconds,
                     item.GapToNextSeconds,
@@ -385,13 +430,31 @@ public static class EssentialWidgetStateFactory
         return letters.PadRight(3, '-').ToUpperInvariant();
     }
 
-    private static string ExtractCarNumber(string vehicleName)
+    private static string ExtractCarNumber(string vehicleName, string vehicleModel)
     {
-        var match = System.Text.RegularExpressions.Regex.Match(
+        var explicitMatch = System.Text.RegularExpressions.Regex.Match(
             vehicleName,
-            @"(?:^|\s)#(?<number>\d{1,3})(?:\s|$)",
-            System.Text.RegularExpressions.RegexOptions.CultureInvariant);
-        return match.Success ? match.Groups["number"].Value : "--";
+            @"(?:#|\b(?:CAR|NO|NUM|NUMBER)\s*[:#-]?)\s*(?<number>\d{1,3})",
+            System.Text.RegularExpressions.RegexOptions.CultureInvariant |
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        if (explicitMatch.Success)
+        {
+            return explicitMatch.Groups["number"].Value;
+        }
+
+        var modelNumbers = System.Text.RegularExpressions.Regex.Matches(
+                vehicleModel,
+                @"(?<!\d)\d{1,4}(?!\d)",
+                System.Text.RegularExpressions.RegexOptions.CultureInvariant)
+            .Select(match => match.Value)
+            .ToHashSet(StringComparer.Ordinal);
+        return System.Text.RegularExpressions.Regex.Matches(
+                vehicleName,
+                @"(?<![A-Za-z0-9])(?<number>\d{1,3})(?![A-Za-z0-9])",
+                System.Text.RegularExpressions.RegexOptions.CultureInvariant)
+            .Select(match => match.Groups["number"].Value)
+            .LastOrDefault(number => !modelNumbers.Contains(number))
+            ?? "--";
     }
 
     public static RelativeWidgetState CreateRelative(
@@ -415,7 +478,7 @@ public static class EssentialWidgetStateFactory
                 AbbreviateRelativeDriverName(item.DriverName),
                 item.VehicleClass,
                 AbbreviateVehicleClass(item.VehicleClass),
-                ExtractCarNumber(item.VehicleName),
+                ExtractCarNumber(item.VehicleName, item.VehicleModel),
                 item.IsPlayer ? 0 : item.GapToLeaderSeconds - player.GapToLeaderSeconds,
                 player.CompletedLaps - item.CompletedLaps,
                 item.IsPlayer,
@@ -450,6 +513,61 @@ public static class EssentialWidgetStateFactory
                 .PadRight(3, '-'),
         };
     }
+
+    private static string FormatTireCompound(LmuPlayerTelemetry player)
+    {
+        var front = player.FrontTireCompound.Trim();
+        var rear = player.RearTireCompound.Trim();
+        if (front.Length == 0 && rear.Length == 0)
+        {
+            return "UNKNOWN";
+        }
+
+        return string.Equals(front, rear, StringComparison.OrdinalIgnoreCase) ||
+               rear.Length == 0
+            ? front
+            : front.Length == 0
+                ? rear
+                : $"{front} / {rear}";
+    }
+
+    private static DashboardSectorTimes CreateSectorTimes(
+        LmuVehicleStanding? standing,
+        double currentLapSeconds)
+    {
+        if (standing is null)
+        {
+            return default;
+        }
+
+        var currentSector2 = PositiveDifference(
+            standing.CurrentSector2CumulativeSeconds,
+            standing.CurrentSector1Seconds);
+        var currentSector3 = standing.Sector == 0
+            ? PositiveDifference(currentLapSeconds, standing.CurrentSector2CumulativeSeconds)
+            : 0;
+        return new(
+            standing.CurrentSector1Seconds,
+            currentSector2,
+            currentSector3,
+            standing.LastSector1Seconds,
+            PositiveDifference(
+                standing.LastSector2CumulativeSeconds,
+                standing.LastSector1Seconds),
+            PositiveDifference(
+                standing.LastLapTimeSeconds,
+                standing.LastSector2CumulativeSeconds),
+            standing.BestSector1Seconds,
+            PositiveDifference(
+                standing.BestSector2CumulativeSeconds,
+                standing.BestSector1Seconds),
+            PositiveDifference(
+                standing.BestLapTimeSeconds,
+                standing.BestSector2CumulativeSeconds));
+    }
+
+    private static double PositiveDifference(double total, double previous) =>
+        total > previous && previous >= 0 ? total - previous : 0;
 
     public static SessionFlagsWidgetState CreateSessionFlags(
         LmuTelemetrySnapshot snapshot)

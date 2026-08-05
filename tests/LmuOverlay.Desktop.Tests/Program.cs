@@ -46,7 +46,7 @@ try
     Assert(loaded.RaceControl.Scale == 2,
         "Race Control scale must be clamped.");
     Assert(loaded.Settings.Theme == "RedFox", "Unknown themes must fail to RedFox.");
-    Assert(loaded.Settings.RefreshRateHz == 30, "Refresh rate must be clamped.");
+    Assert(loaded.Settings.RefreshRateHz == 60, "Refresh rate must be clamped.");
     Assert(loaded.Settings.GridSnapPixels == 50, "Grid snapping must be clamped.");
     Assert(loaded.Settings.FuelReserveLaps == 5, "Fuel reserve must be clamped.");
 

@@ -32,6 +32,15 @@ public sealed record FuelStrategyWidgetState(
     public int EstimatedPitStops { get; init; }
     public double EstimatedTotalPitLossSeconds { get; init; }
     public string PlanSummary { get; init; } = string.Empty;
+    public double AveragePaceSeconds { get; init; }
+    public double PaceTrendSecondsPerLap { get; init; }
+    public double CurrentMaximumTireWearFraction { get; init; }
+    public double AverageTireWearFractionPerLap { get; init; }
+    public double EstimatedStrategyTimeSeconds { get; init; }
+    public int RecommendedTireSets { get; init; }
+    public string PitPlan { get; init; } = string.Empty;
+    public string TirePlan { get; init; } = string.Empty;
+    public string AlternativePlan { get; init; } = string.Empty;
 }
 
 public sealed record FuelStrategyOptions(
@@ -39,13 +48,18 @@ public sealed record FuelStrategyOptions(
     double EnergyReserveFraction = 0,
     int ManualRemainingLaps = 0,
     int MaximumStintLaps = 0,
-    double EstimatedPitLossSeconds = 30);
+    double EstimatedPitLossSeconds = 30,
+    int AvailableTireSets = 0,
+    double TireWearLimitFraction = 0.7,
+    double EstimatedTireChangeSeconds = 15);
 
 public sealed class FuelStrategyTracker
 {
     private const int MaximumSamples = 8;
     private readonly Queue<double> _samples = new();
     private readonly Queue<double> _virtualEnergySamples = new();
+    private readonly Queue<double> _paceSamples = new();
+    private readonly Queue<double> _tireWearSamples = new();
     private string _trackName = string.Empty;
     private int _sessionCode = int.MinValue;
     private int _lastCompletedLaps = -1;
@@ -53,6 +67,7 @@ public sealed class FuelStrategyTracker
     private double _previousFuel;
     private double _lapStartVirtualEnergy;
     private double _previousVirtualEnergy;
+    private double _previousMaximumTireWear;
 
     public FuelStrategyWidgetState Update(
         LmuTelemetrySnapshot snapshot,
@@ -72,7 +87,11 @@ public sealed class FuelStrategyTracker
             ?? Math.Max(0, player.LapNumber - 1);
         if (HasSessionChanged(session, completedLaps))
         {
-            Reset(session, completedLaps, player.FuelLiters);
+            Reset(
+                session,
+                completedLaps,
+                player.FuelLiters,
+                MaximumTireWear(player.TireWear));
         }
 
         var refueled = player.FuelLiters > _previousFuel + 0.5;
@@ -115,6 +134,20 @@ public sealed class FuelStrategyTracker
                 }
             }
 
+            if (playerStanding?.LastLapTimeSeconds is > 10 and < 1800)
+            {
+                EnqueueSample(_paceSamples, playerStanding.LastLapTimeSeconds);
+            }
+
+            var maximumTireWear = MaximumTireWear(player.TireWear);
+            var tireWearUsed = maximumTireWear - _previousMaximumTireWear;
+            if (tireWearUsed > 0.00001 && tireWearUsed < 0.25)
+            {
+                EnqueueSample(_tireWearSamples, tireWearUsed);
+            }
+
+            _previousMaximumTireWear = maximumTireWear;
+
             _lapStartFuel = player.FuelLiters;
             _lapStartVirtualEnergy = virtualEnergy;
             _lastCompletedLaps = completedLaps;
@@ -127,6 +160,14 @@ public sealed class FuelStrategyTracker
         var virtualEnergyAverage = _virtualEnergySamples.Count > 0
             ? WeightedAverage(_virtualEnergySamples)
             : 0;
+        var averagePace = _paceSamples.Count > 0
+            ? WeightedAverage(_paceSamples)
+            : ReferenceLapSeconds(playerStanding);
+        var paceTrend = Math.Clamp(LinearTrend(_paceSamples), 0, 5);
+        var maximumWear = MaximumTireWear(player.TireWear);
+        var tireWearPerLap = ConservativeProjection(
+            _tireWearSamples,
+            WeightedAverage(_tireWearSamples));
         var lapsToFinish = options.ManualRemainingLaps > 0
             ? options.ManualRemainingLaps
             : EstimateLapsToFinish(session, playerStanding, completedLaps);
@@ -189,15 +230,26 @@ public sealed class FuelStrategyTracker
         var fuelStintCapacity = projectedConsumption > 0 &&
             player.FuelCapacityLiters > 0
                 ? Math.Max(1, (int)Math.Floor(
-                    player.FuelCapacityLiters / projectedConsumption - reserveLaps))
+                    player.FuelCapacityLiters / projectedConsumption))
                 : int.MaxValue;
-        var configuredStint = options.MaximumStintLaps > 0
-            ? options.MaximumStintLaps
-            : int.MaxValue;
-        var effectiveStint = Math.Min(fuelStintCapacity, configuredStint);
-        var estimatedPitStops = lapsToFinish > 0 && effectiveStint < int.MaxValue
-            ? Math.Max(0, (int)Math.Ceiling(lapsToFinish / (double)effectiveStint) - 1)
-            : 0;
+        var strategy = EnduranceStrategyPlanner.Calculate(new(
+            completedLaps,
+            lapsToFinish,
+            Math.Max(1, fuelLapsUntilPit),
+            fuelStintCapacity,
+            options.MaximumStintLaps,
+            averagePace,
+            paceTrend,
+            projectedConsumption,
+            player.FuelCapacityLiters,
+            projectedConsumption * reserveLaps,
+            Math.Clamp(options.EstimatedPitLossSeconds, 0, 600),
+            Math.Clamp(options.EstimatedTireChangeSeconds, 0, 180),
+            maximumWear,
+            tireWearPerLap,
+            Math.Clamp(options.TireWearLimitFraction, 0.2, 0.95),
+            Math.Max(0, options.AvailableTireSets)));
+        var estimatedPitStops = strategy.Available ? strategy.Stops : 0;
         var pitLoss = estimatedPitStops *
             Math.Clamp(options.EstimatedPitLossSeconds, 0, 600);
 
@@ -230,10 +282,18 @@ public sealed class FuelStrategyTracker
         {
             EstimatedPitStops = estimatedPitStops,
             EstimatedTotalPitLossSeconds = pitLoss,
-            PlanSummary = _samples.Count == 0
+            PlanSummary = _samples.Count == 0 || !strategy.Available
                 ? "LEARNING STINT"
-                : $"{estimatedPitStops} STOP{(estimatedPitStops == 1 ? string.Empty : "S")} · " +
-                  $"PIT LOSS {pitLoss:0}s · RESERVE {reserveLaps:0.0}LAP",
+                : strategy.Summary,
+            AveragePaceSeconds = averagePace,
+            PaceTrendSecondsPerLap = paceTrend,
+            CurrentMaximumTireWearFraction = maximumWear,
+            AverageTireWearFractionPerLap = tireWearPerLap,
+            EstimatedStrategyTimeSeconds = strategy.EstimatedRaceTimeSeconds,
+            RecommendedTireSets = strategy.TireSets,
+            PitPlan = strategy.PitPlan,
+            TirePlan = strategy.TirePlan,
+            AlternativePlan = strategy.AlternativeSummary,
         };
     }
 
@@ -245,10 +305,13 @@ public sealed class FuelStrategyTracker
     private void Reset(
         LmuSessionSnapshot session,
         int completedLaps,
-        double fuelLiters)
+        double fuelLiters,
+        double maximumTireWear)
     {
         _samples.Clear();
         _virtualEnergySamples.Clear();
+        _paceSamples.Clear();
+        _tireWearSamples.Clear();
         _trackName = session.TrackName;
         _sessionCode = session.SessionCode;
         _lastCompletedLaps = completedLaps;
@@ -256,6 +319,42 @@ public sealed class FuelStrategyTracker
         _previousFuel = fuelLiters;
         _lapStartVirtualEnergy = 0;
         _previousVirtualEnergy = 0;
+        _previousMaximumTireWear = maximumTireWear;
+    }
+
+    private static void EnqueueSample(Queue<double> samples, double value)
+    {
+        samples.Enqueue(value);
+        while (samples.Count > MaximumSamples)
+        {
+            samples.Dequeue();
+        }
+    }
+
+    private static double MaximumTireWear(LmuWheelWear wear) => Math.Max(
+        Math.Max(wear.FrontLeftFraction, wear.FrontRightFraction),
+        Math.Max(wear.RearLeftFraction, wear.RearRightFraction));
+
+    private static double LinearTrend(IEnumerable<double> samples)
+    {
+        var values = samples.ToArray();
+        if (values.Length < 3)
+        {
+            return 0;
+        }
+
+        var xMean = (values.Length - 1) / 2d;
+        var yMean = values.Average();
+        var numerator = 0d;
+        var denominator = 0d;
+        for (var index = 0; index < values.Length; index++)
+        {
+            var x = index - xMean;
+            numerator += x * (values[index] - yMean);
+            denominator += x * x;
+        }
+
+        return denominator > 0 ? numerator / denominator : 0;
     }
 
     private static double NormalizeVirtualEnergy(double value) =>

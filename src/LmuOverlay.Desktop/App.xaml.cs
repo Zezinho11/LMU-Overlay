@@ -9,15 +9,16 @@ namespace LmuOverlay.Desktop;
 
 public partial class App
 {
-    private readonly DispatcherTimer _timer = new()
+    private readonly DispatcherTimer _timer = new(DispatcherPriority.Render)
     {
-        Interval = TimeSpan.FromMilliseconds(100),
+        Interval = TimeSpan.FromMilliseconds(1000d / 30),
     };
 
     private OverlayWindow? _overlay;
     private OverlayToolbarWindow? _toolbar;
     private ConfigurationWindow? _configurationWindow;
     private WinForms.NotifyIcon? _trayIcon;
+    private Icon? _trayIconImage;
     private TelemetryRuntime? _telemetryRuntime;
     private bool _isExiting;
 
@@ -30,7 +31,7 @@ public partial class App
         _toolbar = new OverlayToolbarWindow(_overlay, ShowConfiguration);
         _telemetryRuntime = new TelemetryRuntime(
             () => new LmuSharedMemoryReader(),
-            TimeSpan.FromMilliseconds(50),
+            TimeSpan.FromMilliseconds(16),
             TimeSpan.FromSeconds(1));
         _telemetryRuntime.Start();
         CreateTrayIcon();
@@ -49,9 +50,12 @@ public partial class App
         menu.Items.Add(new WinForms.ToolStripSeparator());
         menu.Items.Add("Sair", null, (_, _) => ExitApplication());
 
+        _trayIconImage = Environment.ProcessPath is { Length: > 0 } executablePath
+            ? Icon.ExtractAssociatedIcon(executablePath)
+            : null;
         _trayIcon = new WinForms.NotifyIcon
         {
-            Icon = SystemIcons.Application,
+            Icon = _trayIconImage ?? SystemIcons.Application,
             Text = "LMU Overlay",
             ContextMenuStrip = menu,
             Visible = true,
@@ -100,7 +104,7 @@ public partial class App
             _overlay.UpdateRuntimeHealth(_telemetryRuntime.Health);
         }
         var requestedInterval = TimeSpan.FromMilliseconds(
-            1000d / Math.Clamp(_overlay.RequestedRefreshRateHz, 2, 30));
+            1000d / Math.Clamp(_overlay.RequestedRefreshRateHz, 10, 60));
         if (Math.Abs((_timer.Interval - requestedInterval).TotalMilliseconds) >= 1)
         {
             _timer.Interval = requestedInterval;
@@ -148,7 +152,11 @@ public partial class App
         {
             _trayIcon.Visible = false;
             _trayIcon.Dispose();
+            _trayIcon = null;
         }
+
+        _trayIconImage?.Dispose();
+        _trayIconImage = null;
 
         Shutdown();
     }
@@ -156,6 +164,7 @@ public partial class App
     protected override void OnExit(System.Windows.ExitEventArgs e)
     {
         _trayIcon?.Dispose();
+        _trayIconImage?.Dispose();
         base.OnExit(e);
     }
 }

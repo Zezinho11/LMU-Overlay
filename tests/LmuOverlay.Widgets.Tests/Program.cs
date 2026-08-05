@@ -244,6 +244,31 @@ Assert(configuredStrategy.EstimatedPitStops == 2,
 Assert(configuredStrategy.EstimatedTotalPitLossSeconds == 50,
     "Pit-loss projection must include every planned stop.");
 
+var optimizedPlan = EnduranceStrategyPlanner.Calculate(new(
+    CompletedLaps: 10,
+    RemainingLaps: 30,
+    CurrentFuelRangeLaps: 8,
+    MaximumFuelStintLaps: 12,
+    ConfiguredMaximumStintLaps: 12,
+    ReferencePaceSeconds: 120,
+    PaceDegradationSecondsPerLap: 0.02,
+    ConsumptionLitersPerLap: 2.5,
+    FuelCapacityLiters: 30,
+    ReserveFuelLiters: 2.5,
+    PitLossSeconds: 30,
+    TireChangeSeconds: 15,
+    CurrentMaximumTireWearFraction: 0.2,
+    TireWearFractionPerLap: 0.025,
+    TireWearLimitFraction: 0.7,
+    AvailableTireSets: 3));
+Assert(optimizedPlan.Available, "A feasible endurance strategy must be produced.");
+Assert(optimizedPlan.StintLaps.Sum() == 30,
+    "Strategy stints must cover every remaining lap exactly once.");
+Assert(optimizedPlan.PitLaps.Count == optimizedPlan.Stops,
+    "Every planned stop must expose its race lap.");
+Assert(optimizedPlan.TireSets <= 3,
+    "Strategy must respect the configured tire allocation.");
+
 var timedSession = session with { MaximumLaps = int.MaxValue };
 var timedRace = raceSnapshot with { Session = timedSession };
 var timedFlags = EssentialWidgetStateFactory.CreateSessionFlags(timedRace);

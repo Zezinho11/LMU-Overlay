@@ -32,9 +32,10 @@ official overall position within each class. A pit indicator is active when the
 vehicle is reported in pits or has a non-`None` pit state.
 
 If a time or interval is unavailable, the widget renders a neutral placeholder
-rather than inventing a value. Car numbers are extracted only from an explicit
-`#number` in the official vehicle name; the runtime vehicle ID is never
-misrepresented as a race number. Manufacturer badges cross-reference each
+rather than inventing a value. Car numbers are extracted from explicit
+`#number`, `CAR`, `NO`, `NUM` or standalone number tokens in the official
+vehicle name. Tokens that belong to the vehicle model are excluded, and the
+runtime vehicle ID is never misrepresented as a race number. Manufacturer badges cross-reference each
 scoring row with the official telemetry vehicle model by vehicle ID, then use a
 known three-letter code and brand color. Unknown models render `---` rather than
 misrepresenting a team-name abbreviation as a manufacturer.

@@ -51,8 +51,14 @@ public static class LmuApiLayoutV1
     public const int ScoringCompletedLapsOffset = 100;
     public const int ScoringSectorOffset = 102;
     public const int ScoringLapDistanceOffset = 104;
+    public const int ScoringBestSector1Offset = 128;
+    public const int ScoringBestSector2Offset = 136;
     public const int ScoringBestLapTimeOffset = 144;
+    public const int ScoringLastSector1Offset = 152;
+    public const int ScoringLastSector2Offset = 160;
     public const int ScoringLastLapTimeOffset = 168;
+    public const int ScoringCurrentSector1Offset = 176;
+    public const int ScoringCurrentSector2Offset = 184;
     public const int ScoringPitStopsOffset = 192;
     public const int ScoringPenaltiesOffset = 194;
     public const int VehicleScoringIsPlayerOffset = 196;
@@ -85,6 +91,7 @@ public static class LmuApiLayoutV1
     public const int TelemetryLapNumberOffset = 20;
     public const int TelemetryLapStartElapsedTimeOffset = 24;
     public const int TelemetryLocalVelocityOffset = 184;
+    public const int TelemetryLocalAccelerationOffset = 208;
     public const int TelemetryGearOffset = 352;
     public const int TelemetryEngineRpmOffset = 356;
     public const int TelemetryEngineWaterTemperatureOffset = 364;
@@ -104,7 +111,12 @@ public static class LmuApiLayoutV1
     public const int TelemetryLastImpactMagnitudeOffset = 560;
     public const int TelemetryCurrentSectorOffset = 600;
     public const int TelemetryMaximumGearsOffset = 605;
+    public const int TelemetryFrontTireCompoundIndexOffset = 606;
+    public const int TelemetryRearTireCompoundIndexOffset = 607;
     public const int TelemetryFuelCapacityOffset = 608;
+    public const int TelemetryFrontTireCompoundNameOffset = 620;
+    public const int TelemetryRearTireCompoundNameOffset = 638;
+    public const int TelemetryTireCompoundNameLength = 18;
     public const int TelemetryRearBrakeBiasOffset = 664;
     public const int TelemetryDeltaBestOffset = 696;
     public const int TelemetryBatteryChargeOffset = 704;

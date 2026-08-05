@@ -12,5 +12,6 @@
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <ApplicationIcon>Assets\RedFox-AppIcon.ico</ApplicationIcon>
   </PropertyGroup>
 </Project>

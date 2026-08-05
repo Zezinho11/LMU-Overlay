@@ -146,7 +146,13 @@ public static class LmuSnapshotParser
                 ReadBoolean(data, offset + LmuApiLayoutV1.ScoringUnderYellowOffset),
                 ReadBoolean(data, offset + LmuApiLayoutV1.ScoringInGarageOffset),
                 data[offset + LmuApiLayoutV1.ScoringFuelFractionOffset] / 255d,
-                ReadBoolean(data, offset + LmuApiLayoutV1.ScoringDrsActiveOffset));
+                ReadBoolean(data, offset + LmuApiLayoutV1.ScoringDrsActiveOffset),
+                ReadDouble(data, offset + LmuApiLayoutV1.ScoringBestSector1Offset),
+                ReadDouble(data, offset + LmuApiLayoutV1.ScoringBestSector2Offset),
+                ReadDouble(data, offset + LmuApiLayoutV1.ScoringLastSector1Offset),
+                ReadDouble(data, offset + LmuApiLayoutV1.ScoringLastSector2Offset),
+                ReadDouble(data, offset + LmuApiLayoutV1.ScoringCurrentSector1Offset),
+                ReadDouble(data, offset + LmuApiLayoutV1.ScoringCurrentSector2Offset));
         }
 
         return standings;
@@ -254,7 +260,18 @@ public static class LmuSnapshotParser
                 ReadWheelWear(data, offset, 1),
                 ReadWheelWear(data, offset, 2),
                 ReadWheelWear(data, offset, 3)),
-            ParseDamage(data, offset));
+            ParseDamage(data, offset),
+            ReadText(
+                data,
+                offset + LmuApiLayoutV1.TelemetryFrontTireCompoundNameOffset,
+                LmuApiLayoutV1.TelemetryTireCompoundNameLength),
+            ReadText(
+                data,
+                offset + LmuApiLayoutV1.TelemetryRearTireCompoundNameOffset,
+                LmuApiLayoutV1.TelemetryTireCompoundNameLength),
+            data[offset + LmuApiLayoutV1.TelemetryFrontTireCompoundIndexOffset],
+            data[offset + LmuApiLayoutV1.TelemetryRearTireCompoundIndexOffset],
+            ReadVector3(data, offset + LmuApiLayoutV1.TelemetryLocalAccelerationOffset));
     }
 
     private static LmuDamageSnapshot ParseDamage(
