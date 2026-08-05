@@ -19,6 +19,8 @@ public partial class ConfigurationWindow : Window
     {
         _overlay = overlay;
         InitializeComponent();
+        PresetSelector.ItemsSource = LayoutPresets.Names;
+        PresetSelector.SelectedIndex = 0;
         RefreshProfiles();
         LoadProfile();
     }
@@ -55,6 +57,21 @@ public partial class ConfigurationWindow : Window
         }
         RefreshRate.Value = profile.Settings.RefreshRateHz;
         GridSnap.Value = profile.Settings.GridSnapPixels;
+        BackgroundOpacity.Value = profile.Settings.BackgroundOpacity;
+        PedalHistory.Value = profile.Settings.PedalHistorySeconds;
+        PriorityAlerts.IsChecked = profile.Settings.ShowPriorityAlerts;
+        ReduceMotion.IsChecked = profile.Settings.ReduceMotion;
+        foreach (var item in DensitySelector.Items.OfType<ComboBoxItem>())
+        {
+            if (string.Equals(
+                item.Tag?.ToString(),
+                profile.Settings.VisualDensity,
+                StringComparison.OrdinalIgnoreCase))
+            {
+                DensitySelector.SelectedItem = item;
+                break;
+            }
+        }
         FuelReserve.Value = profile.Settings.FuelReserveLaps;
         EnergyReserve.Text = profile.Settings.EnergyReservePercent.ToString(
             System.Globalization.CultureInfo.InvariantCulture);
@@ -116,6 +133,20 @@ public partial class ConfigurationWindow : Window
         {
             _overlay.CreateProfile(name, true);
             RefreshProfiles();
+            LoadProfile();
+        });
+    }
+
+    private void ApplyPresetClicked(object sender, RoutedEventArgs e)
+    {
+        if (PresetSelector.SelectedItem is not string name)
+        {
+            return;
+        }
+
+        RunProfileAction(() =>
+        {
+            _overlay.ApplyPreset(name);
             LoadProfile();
         });
     }
@@ -380,11 +411,18 @@ public partial class ConfigurationWindow : Window
     {
         var theme = (ThemeSelector.SelectedItem as ComboBoxItem)?.Tag?.ToString()
             ?? "RedFox";
+        var density = (DensitySelector.SelectedItem as ComboBoxItem)?.Tag?.ToString()
+            ?? "Auto";
         return current with
         {
             Theme = theme,
+            VisualDensity = density,
             RefreshRateHz = (int)Math.Round(RefreshRate.Value),
             GridSnapPixels = (int)Math.Round(GridSnap.Value),
+            BackgroundOpacity = BackgroundOpacity.Value,
+            PedalHistorySeconds = (int)Math.Round(PedalHistory.Value),
+            ShowPriorityAlerts = PriorityAlerts.IsChecked == true,
+            ReduceMotion = ReduceMotion.IsChecked == true,
             FuelReserveLaps = FuelReserve.Value,
             EnergyReservePercent = ParseDouble(EnergyReserve.Text, 2, 0, 25),
             ManualRemainingLaps = ParseInt(ManualRemainingLaps.Text, 0, 0, 1000),

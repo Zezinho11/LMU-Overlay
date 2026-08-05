@@ -3,13 +3,16 @@
 ## Goal
 
 Minimize interaction with both Le Mans Ultimate and Easy Anti-Cheat by treating
-the official LMU shared-memory interface as the only game-data boundary.
+the official LMU shared-memory interface and its packaged read-only localhost
+Live Timing endpoint as the only game-data boundaries.
 
 ## Allowed interaction
 
 - Open the named Windows mapping `LMU_Data`.
 - Request `MemoryMappedFileRights.Read` only.
 - Copy documented telemetry into application-owned memory.
+- Read `/rest/watch/standings/history` from LMU's localhost WebUI solely to
+  reproduce the game's theoretical optimal-sector calculation.
 - Render in a separate top-level desktop window.
 - In VR, submit application-owned textures through SteamVR's documented
   `IVROverlay` API.

@@ -20,7 +20,8 @@ public sealed class TelemetryRuntime : IAsyncDisposable
     private readonly TimeSpan _pollInterval;
     private readonly TimeSpan _reconnectInterval;
     private readonly CancellationTokenSource _shutdown = new();
-    private Task? _worker;
+    private readonly ManualResetEventSlim _shutdownSignal = new(false);
+    private Thread? _worker;
     private LmuTelemetrySnapshot _latest = LmuTelemetrySnapshot.Unavailable(
         LmuConnectionState.Disconnected,
         "Telemetry runtime is starting.");
@@ -47,6 +48,8 @@ public sealed class TelemetryRuntime : IAsyncDisposable
     }
 
     public LmuTelemetrySnapshot Latest => Volatile.Read(ref _latest);
+
+    public event Action<LmuTelemetrySnapshot>? SnapshotPublished;
 
     public TelemetryRuntimeHealth Health
     {
@@ -81,16 +84,30 @@ public sealed class TelemetryRuntime : IAsyncDisposable
             return;
         }
 
-        _worker = Task.Run(() => RunAsync(_shutdown.Token));
+        _worker = new Thread(Run)
+        {
+            IsBackground = true,
+            Name = "LMU telemetry capture",
+            Priority = ThreadPriority.AboveNormal,
+        };
+        _worker.Start();
     }
 
-    private async Task RunAsync(CancellationToken cancellationToken)
+    private void Run()
     {
+        var cancellationToken = _shutdown.Token;
         ILmuTelemetrySource? source = null;
+        var nextAttempt = Stopwatch.GetTimestamp();
         try
         {
             while (!cancellationToken.IsCancellationRequested)
             {
+                if (!WaitUntil(nextAttempt, cancellationToken))
+                {
+                    break;
+                }
+
+                var attemptStarted = Stopwatch.GetTimestamp();
                 var wait = _pollInterval;
                 try
                 {
@@ -103,7 +120,7 @@ public sealed class TelemetryRuntime : IAsyncDisposable
                     var started = Stopwatch.GetTimestamp();
                     var snapshot = source.ReadTelemetrySnapshot();
                     RecordReadDuration(Stopwatch.GetTimestamp() - started);
-                    Volatile.Write(ref _latest, snapshot);
+                    Publish(snapshot);
 
                     if (snapshot.State == LmuConnectionState.Connected)
                     {
@@ -126,21 +143,24 @@ public sealed class TelemetryRuntime : IAsyncDisposable
                 {
                     Interlocked.Increment(ref _failedReads);
                     Volatile.Write(ref _lastError, exception.Message);
-                    Volatile.Write(
-                        ref _latest,
-                        LmuTelemetrySnapshot.Unavailable(
-                            LmuConnectionState.InvalidData,
-                            $"Telemetry read failed: {exception.Message}"));
+                    Publish(LmuTelemetrySnapshot.Unavailable(
+                        LmuConnectionState.InvalidData,
+                        $"Telemetry read failed: {exception.Message}"));
                     source?.Dispose();
                     source = null;
                     wait = _reconnectInterval;
                 }
 
-                await Task.Delay(wait, cancellationToken).ConfigureAwait(false);
+                var waitTicks = ToStopwatchTicks(wait);
+                nextAttempt += waitTicks;
+                var afterAttempt = Stopwatch.GetTimestamp();
+                if (nextAttempt <= afterAttempt)
+                {
+                    // Never build a backlog. The dashboard consumes only the
+                    // freshest sample and resumes from the current clock.
+                    nextAttempt = afterAttempt + waitTicks;
+                }
             }
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
         }
         finally
         {
@@ -168,6 +188,32 @@ public sealed class TelemetryRuntime : IAsyncDisposable
         }
     }
 
+    private void Publish(LmuTelemetrySnapshot snapshot)
+    {
+        var previous = Volatile.Read(ref _latest);
+        Volatile.Write(ref _latest, snapshot);
+        if (ReferenceEquals(previous, snapshot))
+        {
+            return;
+        }
+
+        var handlers = SnapshotPublished;
+        if (handlers is null)
+        {
+            return;
+        }
+
+        try
+        {
+            handlers(snapshot);
+        }
+        catch
+        {
+            // A presentation consumer must never interrupt capture or force a
+            // reconnect. Consumers expose their own health/fallback state.
+        }
+    }
+
     private static TimeSpan ValidateInterval(TimeSpan value, string name) =>
         value > TimeSpan.Zero
             ? value
@@ -176,14 +222,53 @@ public sealed class TelemetryRuntime : IAsyncDisposable
     private static double ToMilliseconds(long stopwatchTicks) =>
         stopwatchTicks * 1000d / Stopwatch.Frequency;
 
-    public async ValueTask DisposeAsync()
+    private static long ToStopwatchTicks(TimeSpan interval) =>
+        Math.Max(1, (long)Math.Round(interval.TotalSeconds * Stopwatch.Frequency));
+
+    private bool WaitUntil(
+        long targetTimestamp,
+        CancellationToken cancellationToken)
     {
-        _shutdown.Cancel();
-        if (_worker is not null)
+        while (!cancellationToken.IsCancellationRequested)
         {
-            await _worker.ConfigureAwait(false);
+            var remaining = targetTimestamp - Stopwatch.GetTimestamp();
+            if (remaining <= 0)
+            {
+                return true;
+            }
+
+            var remainingMilliseconds =
+                remaining * 1000d / Stopwatch.Frequency;
+            if (remainingMilliseconds > 1.5)
+            {
+                var waitMilliseconds = Math.Max(
+                    1,
+                    (int)Math.Floor(remainingMilliseconds - 0.5));
+                if (_shutdownSignal.Wait(waitMilliseconds, cancellationToken))
+                {
+                    return false;
+                }
+            }
+            else
+            {
+                Thread.SpinWait(64);
+            }
         }
 
+        return false;
+    }
+
+    public ValueTask DisposeAsync()
+    {
+        _shutdown.Cancel();
+        _shutdownSignal.Set();
+        if (_worker is not null)
+        {
+            _worker.Join(TimeSpan.FromSeconds(2));
+        }
+
+        _shutdownSignal.Dispose();
         _shutdown.Dispose();
+        return ValueTask.CompletedTask;
     }
 }

@@ -52,6 +52,7 @@ data[LmuApiLayoutV1.PlayerVehicleIndexOffset] = 0;
 data[LmuApiLayoutV1.PlayerHasVehicleOffset] = 1;
 var telemetry = LmuApiLayoutV1.VehicleTelemetryOffset(0);
 WriteInt32(data, telemetry + LmuApiLayoutV1.TelemetryVehicleIdOffset, 42);
+WriteDouble(data, telemetry + LmuApiLayoutV1.TelemetryElapsedTimeOffset, 1_000);
 WriteInt32(data, telemetry + LmuApiLayoutV1.TelemetryLapNumberOffset, 13);
 WriteDouble(data, telemetry + LmuApiLayoutV1.TelemetryLapStartElapsedTimeOffset, 950);
 WriteText(data, telemetry + LmuApiLayoutV1.VehicleNameOffset, "Porsche 963");
@@ -72,12 +73,22 @@ WriteDouble(data, telemetry + LmuApiLayoutV1.TelemetrySteeringOffset, -0.2);
 WriteDouble(data, telemetry + LmuApiLayoutV1.TelemetryClutchOffset, 0);
 WriteDouble(data, telemetry + LmuApiLayoutV1.TelemetryFuelOffset, 50);
 WriteDouble(data, telemetry + LmuApiLayoutV1.TelemetryFuelCapacityOffset, 100);
+WriteText(
+    data,
+    telemetry + LmuApiLayoutV1.TelemetryFrontTireCompoundNameOffset,
+    "Medium");
+WriteText(
+    data,
+    telemetry + LmuApiLayoutV1.TelemetryRearTireCompoundNameOffset,
+    "Medium");
+data[telemetry + LmuApiLayoutV1.TelemetryFrontTireCompoundIndexOffset] = 2;
+data[telemetry + LmuApiLayoutV1.TelemetryRearTireCompoundIndexOffset] = 2;
 WriteDouble(data, telemetry + LmuApiLayoutV1.TelemetryRearBrakeBiasOffset, 0.43);
 WriteDouble(data, telemetry + LmuApiLayoutV1.TelemetryDeltaBestOffset, -0.2);
 WriteDouble(data, telemetry + LmuApiLayoutV1.TelemetryBatteryChargeOffset, 0.6);
 WriteSingle(data, telemetry + LmuApiLayoutV1.TelemetryRegenerationOffset, 25);
 WriteSingle(data, telemetry + LmuApiLayoutV1.TelemetryStateOfChargeOffset, 0.65f);
-WriteSingle(data, telemetry + LmuApiLayoutV1.TelemetryVirtualEnergyOffset, 42);
+WriteSingle(data, telemetry + LmuApiLayoutV1.TelemetryVirtualEnergyOffset, 0.78f);
 WriteSingle(data, telemetry + LmuApiLayoutV1.TelemetryGapToCarAheadOffset, 1.2f);
 WriteSingle(data, telemetry + LmuApiLayoutV1.TelemetryGapToCarBehindOffset, 0.8f);
 WriteInt32(data, telemetry + LmuApiLayoutV1.TelemetryCurrentSectorOffset, 1);
@@ -117,7 +128,20 @@ for (var wheel = 0; wheel < 4; wheel++)
         LmuApiLayoutV1.TelemetryWheelArrayOffset +
         (wheel * LmuApiLayoutV1.TelemetryWheelSize) +
         LmuApiLayoutV1.TelemetryWheelCarcassTemperatureOffset,
-        353.15 + wheel);
+        453.15 + wheel);
+    for (var band = 0;
+         band < LmuApiLayoutV1.TelemetryWheelInnerLayerTemperatureCount;
+         band++)
+    {
+        WriteDouble(
+            data,
+            telemetry +
+            LmuApiLayoutV1.TelemetryWheelArrayOffset +
+            (wheel * LmuApiLayoutV1.TelemetryWheelSize) +
+            LmuApiLayoutV1.TelemetryWheelInnerLayerTemperatureOffset +
+            (band * sizeof(double)),
+            353.15 + wheel + (band - 1));
+    }
 }
 data[
     telemetry +
@@ -147,8 +171,11 @@ Require(snapshot.Session?.Weather.TrackGripLevel == 3, "Track grip level");
 Require(snapshot.Player?.VehicleName == expected.PlayerVehicleName, "Player vehicle");
 Require(snapshot.Player?.Position == 1, "Player position");
 Require(snapshot.Player?.Gear == 4, "Gear");
+Require(snapshot.Player?.ElapsedTime == 1_000, "Player elapsed time");
 Require(snapshot.Player?.SpeedKilometersPerHour == expected.SpeedKilometersPerHour, "Speed");
 Require(snapshot.Player?.FuelLiters == 50, "Fuel");
+Require(snapshot.Player?.Throttle == 0.75, "Throttle input");
+Require(snapshot.Player?.Brake == 0.1, "Brake input");
 Require(snapshot.Player?.EngineWaterTemperatureCelsius == 78, "Water temperature");
 Require(snapshot.Player?.EngineOilTemperatureCelsius == 92, "Oil temperature");
 Require(snapshot.Player?.RearBrakeBiasFraction == 0.43, "Rear brake bias");
@@ -156,8 +183,12 @@ Require(snapshot.Player?.TractionControlLevel == 4, "TC level");
 Require(snapshot.Player?.TractionControlSlipLevel == 7, "TC slip level");
 Require(snapshot.Player?.TractionControlCutLevel == 3, "TC cut level");
 Require(snapshot.Player?.AbsLevel == 6, "ABS level");
-Require(snapshot.Player?.TireTemperatures.FrontLeftCelsius == 80, "Front-left tire temperature");
-Require(snapshot.Player?.TireTemperatures.RearRightCelsius == 83, "Rear-right tire temperature");
+Require(
+    Math.Abs((snapshot.Player?.TireTemperatures.FrontLeftCelsius ?? 0) - 80) < 0.0001,
+    "Front-left MFD inner-layer tire temperature");
+Require(
+    Math.Abs((snapshot.Player?.TireTemperatures.RearRightCelsius ?? 0) - 83) < 0.0001,
+    "Rear-right MFD inner-layer tire temperature");
 Require(snapshot.Player?.TireWear.FrontLeftFraction == 0.1, "Front-left tire wear");
 Require(
     Math.Abs((snapshot.Player?.TireWear.RearRightFraction ?? 0) - 0.25) < 0.0001,
@@ -174,6 +205,73 @@ Require(
     snapshot.Standings[0].VehicleModel == "Porsche 963 963",
     "Standing vehicle model must be joined from telemetry by vehicle id");
 Require(snapshot.Standings[0].FuelFraction == 128d / 255d, "Scoring fuel fraction");
+Require(snapshot.Standings[0].FrontTireCompound == "Medium",
+    "Standing tire compound must be joined from vehicle telemetry by id");
+Require(snapshot.Standings[0].FrontTireCompoundIndex == 2,
+    "Standing tire compound index must be joined from vehicle telemetry by id");
+Require(Math.Abs(snapshot.Standings[0].VirtualEnergyFraction - 0.78) < 0.0001,
+    "Standing virtual energy must be joined from vehicle telemetry by id");
+
+WriteUInt32(data, LmuApiLayoutV1.EventOffset(LmuApiLayoutV1.TelemetryUpdateEventIndex), 10);
+WriteDouble(data, telemetry + LmuApiLayoutV1.TelemetryElapsedTimeOffset, 1_000.02);
+WriteDouble(data, telemetry + LmuApiLayoutV1.TelemetryEngineRpmOffset, 8_500);
+var fastSnapshot = LmuSnapshotParser.ParseTelemetryUpdate(data, snapshot);
+Require(fastSnapshot.TelemetrySequence == 10, "Fast telemetry sequence");
+Require(fastSnapshot.Player?.EngineRpm == 8_500, "Fast RPM update");
+Require(fastSnapshot.Player?.ElapsedTime == 1_000.02, "Fast elapsed-time update");
+Require(ReferenceEquals(fastSnapshot.Standings, snapshot.Standings),
+    "Fast telemetry must reuse the unchanged standings tree");
+Require(fastSnapshot.Player?.VehicleName == snapshot.Player?.VehicleName,
+    "Fast telemetry must preserve player metadata");
+WriteDouble(data, telemetry + LmuApiLayoutV1.TelemetryEngineRpmOffset, 8_750);
+var unchangedEventSnapshot = LmuSnapshotParser.ParseTelemetryUpdate(data, fastSnapshot);
+Require(unchangedEventSnapshot.Player?.EngineRpm == 8_750,
+    "Fast telemetry values must update even when LMU event counters do not change");
+var playerBlock = data.AsSpan(
+    telemetry,
+    LmuApiLayoutV1.VehicleTelemetrySize);
+WriteDouble(data, telemetry + LmuApiLayoutV1.TelemetryEngineRpmOffset, 8_900);
+WriteDouble(data, telemetry + LmuApiLayoutV1.TelemetryElapsedTimeOffset, 1_000.04);
+var blockSnapshot = LmuSnapshotParser.ParsePlayerTelemetryBlock(
+    playerBlock,
+    unchangedEventSnapshot,
+    11);
+Require(blockSnapshot.Player?.EngineRpm == 8_900,
+    "Player-only telemetry block must update the dashboard frame");
+Require(blockSnapshot.Player?.ElapsedTime == 1_000.04,
+    "Player-only telemetry block must preserve the LMU source clock");
+Require(ReferenceEquals(blockSnapshot.Standings, snapshot.Standings),
+    "Player-only telemetry must not rebuild standings");
+GC.Collect();
+var allocatedBeforeFastLoop = GC.GetAllocatedBytesForCurrentThread();
+var benchmarkSnapshot = fastSnapshot;
+const int fastIterations = 1_000;
+for (var iteration = 0; iteration < fastIterations; iteration++)
+{
+    WriteUInt32(
+        data,
+        LmuApiLayoutV1.EventOffset(LmuApiLayoutV1.TelemetryUpdateEventIndex),
+        (uint)(100 + iteration));
+    benchmarkSnapshot = LmuSnapshotParser.ParseTelemetryUpdate(data, benchmarkSnapshot);
+}
+
+var fastBytesPerFrame =
+    (GC.GetAllocatedBytesForCurrentThread() - allocatedBeforeFastLoop) /
+    (double)fastIterations;
+Require(fastBytesPerFrame < 4_096,
+    $"Fast telemetry must stay allocation-light ({fastBytesPerFrame:0} bytes/frame)");
+WriteUInt32(data, LmuApiLayoutV1.EventOffset(LmuApiLayoutV1.TelemetryUpdateEventIndex), 9);
+WriteDouble(data, telemetry + LmuApiLayoutV1.TelemetryEngineRpmOffset, 8_000);
+
+data[LmuApiLayoutV1.PlayerHasVehicleOffset] = 0;
+data[LmuApiLayoutV1.PlayerVehicleIndexOffset] = byte.MaxValue;
+var fallbackPlayerSnapshot = LmuSnapshotParser.ParseTelemetry(data);
+Require(fallbackPlayerSnapshot.Player?.VehicleId == 42,
+    "Player telemetry fallback by official scoring vehicle id");
+Require(fallbackPlayerSnapshot.Player?.Throttle == 0.75,
+    "Fallback player throttle input");
+data[LmuApiLayoutV1.PlayerHasVehicleOffset] = 1;
+data[LmuApiLayoutV1.PlayerVehicleIndexOffset] = 0;
 
 var metrics = LmuTelemetryMetricsCalculator.Calculate(snapshot);
 Require(metrics.SessionTimeRemainingSeconds == 600, "Session time remaining");

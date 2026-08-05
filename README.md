@@ -3,9 +3,9 @@
 Extensible telemetry overlay for **Le Mans Ultimate**, designed around the game's
 official shared-memory interface and a strict anti-cheat-safe boundary.
 
-> Project status: `0.1.0-preview.1` functional desktop preview with public
+> Project status: `0.4.0-preview.5` functional desktop preview with public
 > Windows packaging.
-> Extended live-race validation and SteamVR remain planned.
+> Extended live-race validation and complete SteamVR widget parity remain planned.
 
 ## Safety boundary
 
@@ -29,16 +29,43 @@ revalidated after LMU, EAC, SteamVR, or overlay changes.
 - Background telemetry runtime with automatic reconnect, failure isolation,
   health counters, and a render-thread-safe latest-frame buffer.
 - Reused shared-memory view and read buffer for stable high-frequency polling.
+- Native low-latency dashboard rendered by Win32, Direct3D 11, Direct2D,
+  DirectWrite and DirectComposition. New telemetry snapshots travel directly
+  from the dedicated 240 Hz capture thread to a latest-frame GPU renderer;
+  WPF remains the editor, configuration UI and automatic compatibility fallback.
+- Native Live Standings and Relative surfaces share a Direct3D device, preserve
+  the approved wider timing-tower appearance and transparent unused area, and redraw only
+  for new LMU scoring data or layout changes. Their WPF versions remain available
+  automatically in edit mode and as a graphics compatibility fallback.
+- Duplicate LMU frames are reused without reparsing, while new player telemetry
+  follows an allocation-light path and the graph emits at most one visual point
+  per horizontal pixel.
+- Clean out-lap S2 and S3 times seed sector delta references. S1 is used only
+  when the complete sector was driven outside the pit lane, avoiding a false
+  first-lap benchmark on tracks whose pit exit bypasses part of sector 1.
 - Reproducible anonymized fixture, parser checks, and Windows CI.
 - Header provenance and compatibility matrix without redistributing proprietary
   Studio 397 files.
 - Movable/resizable RedFox dashboard, Live Standings, Relative, Fuel & Virtual
   Energy strategy, Race Control/damage, inputs, and session/weather/flag widgets.
+- Session type and remaining time on Live Standings, qualifying-specific
+  best-lap gaps by class, per-car tire/Virtual Energy status, and the official LMU Timing
+  history optimal lap on the dashboard.
 - Weighted race strategy with conservative consumption, configurable reserves,
   manual race distance, stint limits, multi-stop and pit-loss projection.
 - Per-profile widget scale, theme, refresh rate, magnetic grid, privacy-safe
   diagnostics export, and local crash logging.
 - Reproducible self-contained Windows x64 ZIP releases with SHA-256 checksums.
+- Separate SteamVR preview host using the documented OpenVR `IVROverlay` API,
+  five independent head-relative surfaces, live shared widget states and a
+  persistent per-widget VR layout profile.
+- Resolution-independent desktop layouts with fixed widget proportions,
+  adaptive readability limits and Windows per-monitor DPI support from 720p
+  through ultrawide and 4K. SteamVR keeps texture-native proportions and metric
+  panel sizes, independent of the headset render resolution.
+- Visual-density breakpoints, background-only opacity, tabular timing numbers,
+  priority alerts, stable timing rows and factory presets for Race, Endurance,
+  Qualifying, Multiclass, VR Compact and High Contrast.
 
 ## Prerequisites
 
@@ -84,9 +111,10 @@ Widget/runtime services
 Desktop host   SteamVR IVROverlay host
 ```
 
-Desktop and VR are separate presentation hosts over the same widget model. The
-SteamVR route uses the documented overlay API; OpenXR remains an optional future
-adapter. See the project master plan alongside this repository.
+Desktop and VR are separate presentation hosts over the same normalized
+telemetry runtime. The initial SteamVR host uses the documented overlay API;
+full widget parity is being added incrementally, while OpenXR remains an
+optional future adapter. See the project master plan alongside this repository.
 
 ## Desktop application
 
@@ -94,6 +122,24 @@ The desktop host includes LMU-window alignment, auto-hide, tray controls,
 independent widget movement and resizing, normalized profile persistence, profile
 import/export, and a locked click-through race mode. See
 [the desktop quick start](docs/desktop/quick-start.md).
+
+The configuration UI controls visual density, background contrast, pedal
+history and priority alerts. Widget opacity affects dark surfaces while text and
+semantic status colors remain fully readable.
+
+SteamVR calibration can be run before the host starts:
+
+```powershell
+LmuOverlay.SteamVr.exe --vr-preset compact --calibrate
+```
+
+Use `--vr-preset endurance` to restore the five-panel endurance arrangement.
+
+Generate reproducible desktop screenshots for visual review with:
+
+```powershell
+.\scripts\capture-visual-baselines.ps1
+```
 
 ## Download and release
 

@@ -142,10 +142,14 @@ public static class LmuApiLayoutV1
     public const int TelemetryVehicleClassOffset = 826;
     public const int TelemetryWheelArrayOffset = 848;
     public const int TelemetryWheelSize = 260;
+    public const int TelemetryWheelSurfaceTemperatureOffset = 128;
+    public const int TelemetryWheelSurfaceTemperatureCount = 3;
     public const int TelemetryWheelWearOffset = 152;
     public const int TelemetryWheelFlatOffset = 177;
     public const int TelemetryWheelDetachedOffset = 178;
     public const int TelemetryWheelCarcassTemperatureOffset = 204;
+    public const int TelemetryWheelInnerLayerTemperatureOffset = 212;
+    public const int TelemetryWheelInnerLayerTemperatureCount = 3;
 
     public static int EventOffset(int eventIndex) => eventIndex * EventSize;
 

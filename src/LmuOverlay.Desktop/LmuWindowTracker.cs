@@ -42,8 +42,14 @@ internal static class LmuWindowTracker
 
         var width = client.Right - client.Left;
         var height = client.Bottom - client.Top;
+        var dpi = GetDpiForWindow(match);
+        var pixelsToDip = dpi > 0 ? 96d / dpi : 1d;
         return width > 0 && height > 0
-            ? new Rect(origin.X, origin.Y, width, height)
+            ? new Rect(
+                origin.X * pixelsToDip,
+                origin.Y * pixelsToDip,
+                width * pixelsToDip,
+                height * pixelsToDip)
             : null;
     }
 
@@ -72,6 +78,9 @@ internal static class LmuWindowTracker
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool ClientToScreen(nint window, ref Point point);
+
+    [DllImport("user32.dll")]
+    private static extern uint GetDpiForWindow(nint window);
 
     [StructLayout(LayoutKind.Sequential)]
     private struct NativeRect

@@ -391,6 +391,19 @@ public sealed class LayoutStore
             };
         }
 
+        if (profile.SchemaVersion < 17)
+        {
+            liveStandings = ExpandTimingPanel(liveStandings);
+            relative = ExpandTimingPanel(relative);
+            if (Overlaps(liveStandings, relative))
+            {
+                relative = relative with
+                {
+                    X = Math.Max(0, liveStandings.X - relative.Width - 0.01),
+                };
+            }
+        }
+
         var sessionFlags = SanitizePlacement(profile.SessionFlags);
         if (profile.SchemaVersion < 8 &&
             Math.Abs(sessionFlags.Width - 0.28) < 0.001 &&
@@ -405,19 +418,58 @@ public sealed class LayoutStore
             };
         }
 
+        var inputs = SanitizePlacement(profile.Inputs);
+        if (profile.SchemaVersion < 15 &&
+            Math.Abs(inputs.X - 0.025) < 0.001 &&
+            Math.Abs(inputs.Y - 0.47) < 0.001)
+        {
+            inputs = inputs with { Y = 0.66 };
+        }
+
+        var settings = SanitizeSettings(profile.Settings);
+        if (profile.SchemaVersion < 16 && settings.RefreshRateHz <= 60)
+        {
+            settings = settings with { RefreshRateHz = 120 };
+        }
+
         return profile with
         {
             SchemaVersion = LayoutProfile.CurrentSchemaVersion,
             Diagnostic = diagnostic,
-            Inputs = SanitizePlacement(profile.Inputs),
+            Inputs = inputs,
             LiveStandings = liveStandings,
             Relative = relative,
             SessionFlags = sessionFlags,
             FuelStrategy = fuelStrategy,
             RaceControl = SanitizePlacement(profile.RaceControl),
-            Settings = SanitizeSettings(profile.Settings),
+            Settings = settings,
         };
     }
+
+    private static WidgetPlacement ExpandTimingPanel(WidgetPlacement placement)
+    {
+        if (placement.Width > 0.20 || placement.Height < 0.34)
+        {
+            return placement;
+        }
+
+        const double expandedWidth = 0.28;
+        var x = placement.X >= 0.5
+            ? placement.X + placement.Width - expandedWidth
+            : placement.X;
+        return placement with
+        {
+            X = Math.Clamp(x, 0, 1 - expandedWidth),
+            Width = expandedWidth,
+            Height = Math.Max(0.40, placement.Height),
+        };
+    }
+
+    private static bool Overlaps(WidgetPlacement first, WidgetPlacement second) =>
+        first.X < second.X + second.Width &&
+        first.X + first.Width > second.X &&
+        first.Y < second.Y + second.Height &&
+        first.Y + first.Height > second.Y;
 
     private static OverlayProfileSettings SanitizeSettings(
         OverlayProfileSettings? settings)
@@ -426,10 +478,17 @@ public sealed class LayoutStore
         var theme = settings.Theme is "RedFox" or "HighContrast" or "Black"
             ? settings.Theme
             : "RedFox";
+        var density = Enum.TryParse<OverlayDensity>(
+            settings.VisualDensity,
+            true,
+            out var parsedDensity)
+                ? parsedDensity.ToString()
+                : OverlayDensity.Auto.ToString();
         return settings with
         {
             Theme = theme,
-            RefreshRateHz = Math.Clamp(settings.RefreshRateHz <= 10 ? 30 : settings.RefreshRateHz, 10, 60),
+            VisualDensity = density,
+            RefreshRateHz = Math.Clamp(settings.RefreshRateHz < 30 ? 120 : settings.RefreshRateHz, 30, 144),
             GridSnapPixels = Math.Clamp(settings.GridSnapPixels, 0, 50),
             FuelReserveLaps = Math.Clamp(settings.FuelReserveLaps, 0, 5),
             EnergyReservePercent = Math.Clamp(settings.EnergyReservePercent, 0, 25),
@@ -445,6 +504,14 @@ public sealed class LayoutStore
                 settings.EstimatedTireChangeSeconds,
                 0,
                 180),
+            BackgroundOpacity = Math.Clamp(
+                settings.BackgroundOpacity <= 0 ? 0.94 : settings.BackgroundOpacity,
+                0.35,
+                1),
+            PedalHistorySeconds = Math.Clamp(
+                settings.PedalHistorySeconds <= 0 ? 5 : settings.PedalHistorySeconds,
+                3,
+                10),
         };
     }
 

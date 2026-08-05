@@ -1,9 +1,15 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
+    <ProjectReference Include="..\LmuOverlay.DirectX\LmuOverlay.DirectX.csproj" />
     <ProjectReference Include="..\LmuOverlay.Core\LmuOverlay.Core.csproj" />
     <ProjectReference Include="..\LmuOverlay.Domain\LmuOverlay.Domain.csproj" />
     <ProjectReference Include="..\LmuOverlay.LmuSharedMemory\LmuOverlay.LmuSharedMemory.csproj" />
     <ProjectReference Include="..\LmuOverlay.Widgets\LmuOverlay.Widgets.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
+      <_Parameter1>LmuOverlay.Desktop.Tests</_Parameter1>
+    </AssemblyAttribute>
   </ItemGroup>
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
