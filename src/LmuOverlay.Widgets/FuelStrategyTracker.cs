@@ -41,6 +41,9 @@ public sealed record FuelStrategyWidgetState(
     public string PitPlan { get; init; } = string.Empty;
     public string TirePlan { get; init; } = string.Empty;
     public string AlternativePlan { get; init; } = string.Empty;
+    public string FlagScenario { get; init; } = string.Empty;
+    public string WeatherScenario { get; init; } = string.Empty;
+    public string TrafficScenario { get; init; } = string.Empty;
 }
 
 public sealed record FuelStrategyOptions(
@@ -60,6 +63,7 @@ public sealed class FuelStrategyTracker
     private readonly Queue<double> _virtualEnergySamples = new();
     private readonly Queue<double> _paceSamples = new();
     private readonly Queue<double> _tireWearSamples = new();
+    private readonly Queue<double> _rainSamples = new();
     private string _trackName = string.Empty;
     private int _sessionCode = int.MinValue;
     private int _lastCompletedLaps = -1;
@@ -68,6 +72,7 @@ public sealed class FuelStrategyTracker
     private double _lapStartVirtualEnergy;
     private double _previousVirtualEnergy;
     private double _previousMaximumTireWear;
+    private DateTimeOffset _lastRainSampleAt = DateTimeOffset.MinValue;
 
     public FuelStrategyWidgetState Update(
         LmuTelemetrySnapshot snapshot,
@@ -93,6 +98,8 @@ public sealed class FuelStrategyTracker
                 player.FuelLiters,
                 MaximumTireWear(player.TireWear));
         }
+
+        CaptureRainSample(session.Weather.RainIntensity, snapshot.CapturedAt);
 
         var refueled = player.FuelLiters > _previousFuel + 0.5;
         var virtualEnergy = NormalizeVirtualEnergy(player.VirtualEnergy);
@@ -232,7 +239,7 @@ public sealed class FuelStrategyTracker
                 ? Math.Max(1, (int)Math.Floor(
                     player.FuelCapacityLiters / projectedConsumption))
                 : int.MaxValue;
-        var strategy = EnduranceStrategyPlanner.Calculate(new(
+        var strategyInput = new EnduranceStrategyInput(
             completedLaps,
             lapsToFinish,
             Math.Max(1, fuelLapsUntilPit),
@@ -248,7 +255,24 @@ public sealed class FuelStrategyTracker
             maximumWear,
             tireWearPerLap,
             Math.Clamp(options.TireWearLimitFraction, 0.2, 0.95),
-            Math.Max(0, options.AvailableTireSets)));
+            Math.Max(0, options.AvailableTireSets));
+        var strategy = EnduranceStrategyPlanner.Calculate(strategyInput);
+        var scenarioAdvice = RaceScenarioAdvisor.Calculate(
+            strategyInput,
+            strategy,
+            new(
+                session.GamePhase,
+                session.Weather.RainIntensity,
+                session.Weather.AveragePathWetness,
+                LinearTrend(_rainSamples),
+                player.GapToCarAheadSeconds,
+                player.GapToCarBehindSeconds,
+                completedLaps,
+                lapsUntilPit,
+                suggestedPitLap,
+                maximumWear,
+                Math.Clamp(options.TireWearLimitFraction, 0.2, 0.95),
+                FormatTireCompound(player)));
         var estimatedPitStops = strategy.Available ? strategy.Stops : 0;
         var pitLoss = estimatedPitStops *
             Math.Clamp(options.EstimatedPitLossSeconds, 0, 600);
@@ -294,6 +318,9 @@ public sealed class FuelStrategyTracker
             PitPlan = strategy.PitPlan,
             TirePlan = strategy.TirePlan,
             AlternativePlan = strategy.AlternativeSummary,
+            FlagScenario = scenarioAdvice.FlagState,
+            WeatherScenario = scenarioAdvice.Weather,
+            TrafficScenario = scenarioAdvice.Traffic,
         };
     }
 
@@ -312,6 +339,7 @@ public sealed class FuelStrategyTracker
         _virtualEnergySamples.Clear();
         _paceSamples.Clear();
         _tireWearSamples.Clear();
+        _rainSamples.Clear();
         _trackName = session.TrackName;
         _sessionCode = session.SessionCode;
         _lastCompletedLaps = completedLaps;
@@ -320,6 +348,41 @@ public sealed class FuelStrategyTracker
         _lapStartVirtualEnergy = 0;
         _previousVirtualEnergy = 0;
         _previousMaximumTireWear = maximumTireWear;
+        _lastRainSampleAt = DateTimeOffset.MinValue;
+    }
+
+    private void CaptureRainSample(double rainIntensity, DateTimeOffset capturedAt)
+    {
+        if (_lastRainSampleAt != DateTimeOffset.MinValue &&
+            capturedAt - _lastRainSampleAt < TimeSpan.FromSeconds(1))
+        {
+            return;
+        }
+
+        _rainSamples.Enqueue(Math.Clamp(rainIntensity, 0, 1));
+        while (_rainSamples.Count > 20)
+        {
+            _rainSamples.Dequeue();
+        }
+
+        _lastRainSampleAt = capturedAt;
+    }
+
+    private static string FormatTireCompound(LmuPlayerTelemetry player)
+    {
+        var front = player.FrontTireCompound.Trim();
+        var rear = player.RearTireCompound.Trim();
+        if (front.Length == 0 && rear.Length == 0)
+        {
+            return "UNKNOWN";
+        }
+
+        return string.Equals(front, rear, StringComparison.OrdinalIgnoreCase) ||
+               rear.Length == 0
+            ? front
+            : front.Length == 0
+                ? rear
+                : $"{front}/{rear}";
     }
 
     private static void EnqueueSample(Queue<double> samples, double value)

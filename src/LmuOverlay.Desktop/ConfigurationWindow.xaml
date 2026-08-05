@@ -3,11 +3,13 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="LMU Overlay — Configuração"
         Width="900" Height="780"
-        MinWidth="820" MinHeight="700"
+        MinWidth="620" MinHeight="480"
         WindowStartupLocation="CenterScreen"
         Background="#FF0B1117"
         Foreground="White">
-    <Grid Margin="22">
+    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                  HorizontalScrollBarVisibility="Auto">
+    <Grid Margin="22" MinWidth="760">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -29,6 +31,7 @@
                    Margin="0,14,0,5" />
         <Grid Grid.Row="2" Margin="0,0,0,20">
             <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
@@ -62,6 +65,16 @@
                 <Button Content="Exportar diagnóstico"
                         Click="ExportDiagnosticsClicked" Padding="12,6" />
             </StackPanel>
+            <StackPanel Grid.Row="2" Grid.ColumnSpan="5"
+                        Orientation="Horizontal" Margin="0,9,0,0">
+                <TextBlock Text="PRESET" Foreground="#FF788795"
+                           FontWeight="Bold" FontSize="10"
+                           VerticalAlignment="Center" Margin="0,0,8,0" />
+                <ComboBox x:Name="PresetSelector" Width="180" Height="28"
+                          VerticalContentAlignment="Center" />
+                <Button Content="Aplicar preset" Click="ApplyPresetClicked"
+                        Padding="12,6" Margin="7,0,0,0" />
+            </StackPanel>
         </Grid>
         <Grid Grid.Row="3">
             <Grid.ColumnDefinitions>
@@ -83,7 +96,7 @@
             </Grid.RowDefinitions>
             <TextBlock Grid.Row="0" Grid.Column="0" Text="VISIBILIDADE"
                        Foreground="#FF788795" FontWeight="Bold" FontSize="10" />
-            <TextBlock Grid.Row="0" Grid.Column="1" Text="OPACIDADE"
+            <TextBlock Grid.Row="0" Grid.Column="1" Text="FUNDO"
                        Foreground="#FF788795" FontWeight="Bold" FontSize="10" />
             <TextBlock Grid.Row="0" Grid.Column="3" Text="ESCALA"
                        Foreground="#FF788795" FontWeight="Bold" FontSize="10" />
@@ -193,6 +206,7 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
                 <TextBlock Grid.ColumnSpan="4" Text="PERFIL, ESTRATÉGIA E DESEMPENHO"
                            Foreground="#FF788795" FontWeight="Bold" FontSize="10"
@@ -207,7 +221,7 @@
                 </StackPanel>
                 <StackPanel Grid.Row="1" Grid.Column="1" Margin="0,0,12,0">
                     <TextBlock Text="Atualização (Hz)" Foreground="#FF9BA8B5" FontSize="10" />
-                    <Slider x:Name="RefreshRate" Minimum="10" Maximum="60"
+                    <Slider x:Name="RefreshRate" Minimum="30" Maximum="144"
                             TickFrequency="1" IsSnapToTickEnabled="True" />
                     <TextBlock Text="{Binding ElementName=RefreshRate, Path=Value, StringFormat={}{0:0} Hz}" />
                 </StackPanel>
@@ -251,6 +265,31 @@
                     <TextBlock Text="Troca de pneus (s)" Foreground="#FF9BA8B5" FontSize="10" />
                     <TextBox x:Name="TireChangeSeconds" Height="27" />
                 </StackPanel>
+                <StackPanel Grid.Row="4" Grid.Column="0" Margin="0,10,12,0">
+                    <TextBlock Text="Opacidade global do fundo" Foreground="#FF9BA8B5" FontSize="10" />
+                    <Slider x:Name="BackgroundOpacity" Minimum="0.35" Maximum="1"
+                            TickFrequency="0.05" IsSnapToTickEnabled="True" />
+                    <TextBlock Text="{Binding ElementName=BackgroundOpacity, Path=Value, StringFormat={}{0:P0}}" />
+                </StackPanel>
+                <StackPanel Grid.Row="4" Grid.Column="1" Margin="0,10,12,0">
+                    <TextBlock Text="Densidade visual" Foreground="#FF9BA8B5" FontSize="10" />
+                    <ComboBox x:Name="DensitySelector" Height="27">
+                        <ComboBoxItem Content="Automática" Tag="Auto" />
+                        <ComboBoxItem Content="Compacta" Tag="Compact" />
+                        <ComboBoxItem Content="Normal" Tag="Normal" />
+                        <ComboBoxItem Content="Expandida" Tag="Expanded" />
+                    </ComboBox>
+                </StackPanel>
+                <StackPanel Grid.Row="4" Grid.Column="2" Margin="0,10,12,0">
+                    <TextBlock Text="Histórico dos pedais (s)" Foreground="#FF9BA8B5" FontSize="10" />
+                    <Slider x:Name="PedalHistory" Minimum="3" Maximum="10"
+                            TickFrequency="1" IsSnapToTickEnabled="True" />
+                    <TextBlock Text="{Binding ElementName=PedalHistory, Path=Value, StringFormat={}{0:0} s}" />
+                </StackPanel>
+                <StackPanel Grid.Row="4" Grid.Column="3" Margin="0,10,0,0">
+                    <CheckBox x:Name="PriorityAlerts" Content="Alertas prioritários" Margin="0,2" />
+                    <CheckBox x:Name="ReduceMotion" Content="Reduzir movimento" Margin="0,5,0,0" />
+                </StackPanel>
             </Grid>
         </Border>
         <DockPanel Grid.Row="5" Margin="0,20,0,0">
@@ -278,4 +317,5 @@
             </StackPanel>
         </DockPanel>
     </Grid>
+    </ScrollViewer>
 </Window>

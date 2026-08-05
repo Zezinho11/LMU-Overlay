@@ -104,7 +104,10 @@ public sealed record LmuPlayerTelemetry(
     string RearTireCompound = "",
     int FrontTireCompoundIndex = 0,
     int RearTireCompoundIndex = 0,
-    LmuVector3 LocalAcceleration = default);
+    LmuVector3 LocalAcceleration = default)
+{
+    public double ElapsedTime { get; init; }
+}
 
 public sealed record LmuWheelTemperatures(
     double FrontLeftCelsius,

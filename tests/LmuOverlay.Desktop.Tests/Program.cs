@@ -46,7 +46,7 @@ try
     Assert(loaded.RaceControl.Scale == 2,
         "Race Control scale must be clamped.");
     Assert(loaded.Settings.Theme == "RedFox", "Unknown themes must fail to RedFox.");
-    Assert(loaded.Settings.RefreshRateHz == 60, "Refresh rate must be clamped.");
+    Assert(loaded.Settings.RefreshRateHz == 100, "Valid high refresh rate must be preserved.");
     Assert(loaded.Settings.GridSnapPixels == 50, "Grid snapping must be clamped.");
     Assert(loaded.Settings.FuelReserveLaps == 5, "Fuel reserve must be clamped.");
 
@@ -89,6 +89,54 @@ try
     Assert(legacyStore.ProfileNames.Count == 1, "Migration must create one catalog profile.");
     legacyStore.Create("Migrated copy", legacyStore.Load());
     Assert(legacyStore.ProfileNames.Count == 2, "Migrated catalogs must remain writable.");
+
+    foreach (var (width, height) in new[]
+    {
+        (1280d, 720d),
+        (1920d, 1080d),
+        (2560d, 1080d),
+        (3440d, 1440d),
+        (3840d, 2160d),
+    })
+    {
+        foreach (var (name, placement) in new[]
+        {
+            ("DiagnosticWidget", LayoutProfile.Default.Diagnostic),
+            ("InputsWidget", LayoutProfile.Default.Inputs),
+            ("LiveStandingsWidget", LayoutProfile.Default.LiveStandings),
+            ("RelativeWidget", LayoutProfile.Default.Relative),
+            ("SessionFlagsWidget", LayoutProfile.Default.SessionFlags),
+            ("FuelStrategyWidget", LayoutProfile.Default.FuelStrategy),
+            ("RaceControlWidget", LayoutProfile.Default.RaceControl),
+        })
+        {
+            var spec = ResponsiveWidgetLayout.For(name);
+            var bounds = ResponsiveWidgetLayout.Calculate(width, height, placement, spec);
+            Assert(bounds.Width > 0 && bounds.Height > 0,
+                $"{name} must remain visible at {width}x{height}.");
+            Assert(bounds.X >= 0 && bounds.Y >= 0 &&
+                   bounds.X + bounds.Width <= width + 0.001 &&
+                   bounds.Y + bounds.Height <= height + 0.001,
+                $"{name} must remain inside {width}x{height}.");
+            Assert(Math.Abs(bounds.Width / bounds.Height - spec.AspectRatio) < 0.001,
+                $"{name} must preserve its aspect ratio at {width}x{height}.");
+        }
+
+        var fuelBounds = ResponsiveWidgetLayout.Calculate(
+            width,
+            height,
+            LayoutProfile.Default.FuelStrategy,
+            ResponsiveWidgetLayout.For("FuelStrategyWidget"));
+        var inputBounds = ResponsiveWidgetLayout.Calculate(
+            width,
+            height,
+            LayoutProfile.Default.Inputs,
+            ResponsiveWidgetLayout.For("InputsWidget"));
+        Assert(
+            fuelBounds.Y + fuelBounds.Height <= inputBounds.Y ||
+            inputBounds.Y + inputBounds.Height <= fuelBounds.Y,
+            $"Fuel and inputs must not overlap at {width}x{height}.");
+    }
 
     var narrowTowerPath = Path.Combine(root, "layout-v4.json");
     var versionFourProfile = LayoutProfile.Default with
@@ -183,6 +231,45 @@ try
         "The old session strip must migrate to the three-card panel.");
     Assert(migratedSession.X == 0.33,
         "The migrated session panel must stay centered.");
+
+    var oldInputProfilePath = Path.Combine(root, "layout-v14.json");
+    var oldInputProfile = LayoutProfile.Default with
+    {
+        SchemaVersion = 14,
+        Inputs = LayoutProfile.Default.Inputs with { Y = 0.47 },
+    };
+    File.WriteAllText(oldInputProfilePath, JsonSerializer.Serialize(oldInputProfile));
+    var migratedInputs = new LayoutStore(oldInputProfilePath).Load().Inputs;
+    Assert(migratedInputs.Y == 0.66,
+        "The old default input panel must migrate below fuel without overlap.");
+
+    foreach (var theme in new[] { "RedFox", "Black", "HighContrast" })
+    {
+        var palette = OverlayVisualSystem.Resolve(theme);
+        Assert(
+            OverlayVisualSystem.ContrastRatio(
+                palette.PrimaryText,
+                palette.Background) >= 4.5,
+            $"{theme} primary text must meet the visual contrast target.");
+        Assert(
+            OverlayVisualSystem.ContrastRatio(
+                palette.SecondaryText,
+                palette.Background) >= 3,
+            $"{theme} secondary text must remain distinguishable.");
+    }
+
+    Assert(
+        OverlayVisualSystem.ResolveDensity("Auto", 480, 800) == OverlayDensity.Compact,
+        "Small automatic dashboards must use compact density.");
+    Assert(
+        OverlayVisualSystem.ResolveDensity("Expanded", 480, 800) == OverlayDensity.Expanded,
+        "Explicit visual density must override automatic breakpoints.");
+    foreach (var presetName in LayoutPresets.Names)
+    {
+        var preset = LayoutPresets.Create(presetName);
+        Assert(preset.SchemaVersion == LayoutProfile.CurrentSchemaVersion,
+            $"{presetName} must use the current profile schema.");
+    }
 
     File.WriteAllText(path, "{broken");
     var corruptStore = new LayoutStore(path);

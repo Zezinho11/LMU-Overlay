@@ -55,9 +55,21 @@ public static class LmuSnapshotParser
         var vehicleModels = ParseVehicleModels(data, activeVehicles);
         var standings = ParseStandings(data, scoredVehicles, vehicleModels);
         var session = ParseSession(data);
-        var playerStanding = standings.FirstOrDefault(vehicle => vehicle.IsPlayer);
-        var player = hasPlayerVehicle && playerVehicleIndex < activeVehicles
-            ? ParsePlayer(data, playerVehicleIndex, playerStanding)
+        var playerStanding = standings.FirstOrDefault(vehicle => vehicle.IsPlayer)
+            ?? standings.FirstOrDefault(vehicle =>
+                !string.IsNullOrWhiteSpace(session.PlayerName) &&
+                string.Equals(
+                    vehicle.DriverName,
+                    session.PlayerName,
+                    StringComparison.OrdinalIgnoreCase));
+        var resolvedPlayerIndex = ResolvePlayerVehicleIndex(
+            data,
+            activeVehicles,
+            playerVehicleIndex,
+            hasPlayerVehicle,
+            playerStanding?.VehicleId);
+        var player = resolvedPlayerIndex >= 0
+            ? ParsePlayer(data, resolvedPlayerIndex, playerStanding)
             : null;
 
         return new(
@@ -72,6 +84,131 @@ public static class LmuSnapshotParser
             standings,
             DateTimeOffset.UtcNow,
             "Read-only LMU shared-memory snapshot parsed successfully.");
+    }
+
+    public static LmuTelemetrySnapshot ParseTelemetryUpdate(
+        ReadOnlySpan<byte> data,
+        LmuTelemetrySnapshot previous)
+    {
+        if (data.Length < LmuApiLayoutV1.ObjectSize ||
+            previous.State != LmuConnectionState.Connected ||
+            previous.Player is null)
+        {
+            return ParseTelemetry(data);
+        }
+
+        var scoringSequence = ReadUInt32(
+            data,
+            LmuApiLayoutV1.EventOffset(LmuApiLayoutV1.ScoringUpdateEventIndex));
+        if (scoringSequence != previous.ScoringSequence)
+        {
+            return ParseTelemetry(data);
+        }
+
+        var activeVehicles = data[LmuApiLayoutV1.ActiveVehiclesOffset];
+        var playerVehicleIndex = data[LmuApiLayoutV1.PlayerVehicleIndexOffset];
+        var hasPlayerVehicle = ReadBoolean(
+            data,
+            LmuApiLayoutV1.PlayerHasVehicleOffset);
+        var resolvedPlayerIndex = ResolvePlayerVehicleIndex(
+            data,
+            activeVehicles,
+            playerVehicleIndex,
+            hasPlayerVehicle,
+            previous.Player.VehicleId);
+        if (resolvedPlayerIndex < 0)
+        {
+            return ParseTelemetry(data);
+        }
+
+        var standing = previous.Standings.FirstOrDefault(
+            item => item.VehicleId == previous.Player.VehicleId);
+        return previous with
+        {
+            TelemetrySequence = ReadUInt32(
+                data,
+                LmuApiLayoutV1.EventOffset(LmuApiLayoutV1.TelemetryUpdateEventIndex)),
+            Player = ParsePlayer(
+                data,
+                resolvedPlayerIndex,
+                standing,
+                previous.Player),
+            CapturedAt = DateTimeOffset.UtcNow,
+        };
+    }
+
+    public static LmuTelemetrySnapshot ParsePlayerTelemetryBlock(
+        ReadOnlySpan<byte> vehicleData,
+        LmuTelemetrySnapshot previous,
+        uint telemetrySequence)
+    {
+        if (vehicleData.Length < LmuApiLayoutV1.VehicleTelemetrySize ||
+            previous.State != LmuConnectionState.Connected ||
+            previous.Player is not { } previousPlayer)
+        {
+            return previous;
+        }
+
+        if (ReadInt32(vehicleData, LmuApiLayoutV1.TelemetryVehicleIdOffset) !=
+            previousPlayer.VehicleId)
+        {
+            return previous;
+        }
+
+        var standing = previous.Standings.FirstOrDefault(
+            item => item.VehicleId == previousPlayer.VehicleId);
+        var player = ParsePlayerAtOffset(
+            vehicleData,
+            0,
+            standing,
+            previousPlayer);
+        if (player == previousPlayer && telemetrySequence == previous.TelemetrySequence)
+        {
+            return previous;
+        }
+
+        return previous with
+        {
+            TelemetrySequence = telemetrySequence,
+            Player = player,
+            CapturedAt = DateTimeOffset.UtcNow,
+        };
+    }
+
+    public static double ReadPlayerElapsedTime(ReadOnlySpan<byte> vehicleData) =>
+        vehicleData.Length >= LmuApiLayoutV1.TelemetryElapsedTimeOffset + sizeof(double)
+            ? ReadDouble(vehicleData, LmuApiLayoutV1.TelemetryElapsedTimeOffset)
+            : double.NaN;
+
+    private static int ResolvePlayerVehicleIndex(
+        ReadOnlySpan<byte> data,
+        int activeVehicles,
+        int reportedIndex,
+        bool hasReportedVehicle,
+        int? playerVehicleId)
+    {
+        if (hasReportedVehicle && reportedIndex < activeVehicles)
+        {
+            return reportedIndex;
+        }
+
+        if (playerVehicleId is not { } vehicleId)
+        {
+            return -1;
+        }
+
+        for (var index = 0; index < activeVehicles; index++)
+        {
+            var telemetryOffset = LmuApiLayoutV1.VehicleTelemetryOffset(index);
+            if (ReadInt32(
+                    data,
+                    telemetryOffset + LmuApiLayoutV1.TelemetryVehicleIdOffset) == vehicleId)
+            {
+                return index;
+            }
+        }
+
+        return -1;
     }
 
     private static LmuSessionSnapshot ParseSession(ReadOnlySpan<byte> data)
@@ -190,20 +327,30 @@ public static class LmuSnapshotParser
     private static LmuPlayerTelemetry ParsePlayer(
         ReadOnlySpan<byte> data,
         int playerVehicleIndex,
-        LmuVehicleStanding? standing)
+        LmuVehicleStanding? standing,
+        LmuPlayerTelemetry? metadataSource = null)
     {
         var offset = LmuApiLayoutV1.VehicleTelemetryOffset(playerVehicleIndex);
+        return ParsePlayerAtOffset(data, offset, standing, metadataSource);
+    }
+
+    private static LmuPlayerTelemetry ParsePlayerAtOffset(
+        ReadOnlySpan<byte> data,
+        int offset,
+        LmuVehicleStanding? standing,
+        LmuPlayerTelemetry? metadataSource = null)
+    {
         var velocity = ReadVector3(
             data,
             offset + LmuApiLayoutV1.TelemetryLocalVelocityOffset);
 
         return new(
             ReadInt32(data, offset + LmuApiLayoutV1.TelemetryVehicleIdOffset),
-            ReadText(
+            metadataSource?.VehicleName ?? ReadText(
                 data,
                 offset + LmuApiLayoutV1.VehicleNameOffset,
                 LmuApiLayoutV1.VehicleNameLength),
-            ReadText(
+            metadataSource?.VehicleModel ?? ReadText(
                 data,
                 offset + LmuApiLayoutV1.TelemetryVehicleModelOffset,
                 LmuApiLayoutV1.TelemetryVehicleModelLength),
@@ -260,18 +407,23 @@ public static class LmuSnapshotParser
                 ReadWheelWear(data, offset, 1),
                 ReadWheelWear(data, offset, 2),
                 ReadWheelWear(data, offset, 3)),
-            ParseDamage(data, offset),
-            ReadText(
+            metadataSource?.Damage ?? ParseDamage(data, offset),
+            metadataSource?.FrontTireCompound ?? ReadText(
                 data,
                 offset + LmuApiLayoutV1.TelemetryFrontTireCompoundNameOffset,
                 LmuApiLayoutV1.TelemetryTireCompoundNameLength),
-            ReadText(
+            metadataSource?.RearTireCompound ?? ReadText(
                 data,
                 offset + LmuApiLayoutV1.TelemetryRearTireCompoundNameOffset,
                 LmuApiLayoutV1.TelemetryTireCompoundNameLength),
             data[offset + LmuApiLayoutV1.TelemetryFrontTireCompoundIndexOffset],
             data[offset + LmuApiLayoutV1.TelemetryRearTireCompoundIndexOffset],
-            ReadVector3(data, offset + LmuApiLayoutV1.TelemetryLocalAccelerationOffset));
+            ReadVector3(data, offset + LmuApiLayoutV1.TelemetryLocalAccelerationOffset))
+        {
+            ElapsedTime = ReadDouble(
+                data,
+                offset + LmuApiLayoutV1.TelemetryElapsedTimeOffset),
+        };
     }
 
     private static LmuDamageSnapshot ParseDamage(
@@ -327,13 +479,29 @@ public static class LmuSnapshotParser
     private static double ReadWheelTemperature(
         ReadOnlySpan<byte> data,
         int telemetryOffset,
-        int wheelIndex) =>
-        ReadDouble(
-            data,
-            telemetryOffset +
+        int wheelIndex)
+    {
+        var innerLayerOffset = telemetryOffset +
             LmuApiLayoutV1.TelemetryWheelArrayOffset +
             (wheelIndex * LmuApiLayoutV1.TelemetryWheelSize) +
-            LmuApiLayoutV1.TelemetryWheelCarcassTemperatureOffset) - 273.15;
+            LmuApiLayoutV1.TelemetryWheelInnerLayerTemperatureOffset;
+        var totalKelvin = 0d;
+        for (var index = 0;
+             index < LmuApiLayoutV1.TelemetryWheelInnerLayerTemperatureCount;
+             index++)
+        {
+            var kelvin = ReadDouble(data, innerLayerOffset + (index * sizeof(double)));
+            if (!double.IsFinite(kelvin) || kelvin <= 0)
+            {
+                return 0;
+            }
+
+            totalKelvin += kelvin;
+        }
+
+        return totalKelvin /
+            LmuApiLayoutV1.TelemetryWheelInnerLayerTemperatureCount - 273.15;
+    }
 
     private static double ReadWheelWear(
         ReadOnlySpan<byte> data,

@@ -10,14 +10,16 @@
         ShowInTaskbar="False"
         UseLayoutRounding="True"
         SnapsToDevicePixels="True"
-        TextOptions.TextFormattingMode="Display"
+        TextOptions.TextFormattingMode="Ideal"
+        TextOptions.TextRenderingMode="Auto"
+        Typography.NumeralAlignment="Tabular"
+        Typography.NumeralStyle="Lining"
         RenderOptions.BitmapScalingMode="HighQuality"
         Topmost="True">
     <Canvas x:Name="OverlayCanvas" Background="Transparent">
         <Border x:Name="DiagnosticWidget"
-                MinWidth="360"
-                MinHeight="220"
                 Padding="6"
+                ClipToBounds="True"
                 CornerRadius="15"
                 Background="#FF020304"
                 BorderBrush="#FF272D31"
@@ -28,6 +30,7 @@
             <Grid>
                 <Viewbox Stretch="Uniform" StretchDirection="Both">
                     <Grid Width="800" Height="480" TextElement.FontFamily="Bahnschrift"
+                          TextElement.FontSize="12"
                           Background="#FF030506">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="28" />
@@ -71,13 +74,13 @@
                 <Grid Grid.Row="1" Margin="24,0,24,6">
                     <StackPanel HorizontalAlignment="Left" VerticalAlignment="Center">
                         <TextBlock x:Name="TrackText" Text="LMU"
-                                   Foreground="White" FontSize="10" FontWeight="Bold"
+                                   Foreground="White" FontSize="12" FontWeight="Bold"
                                    TextTrimming="CharacterEllipsis" />
                         <TextBlock x:Name="EnvironmentText" Text="TRACK --  AIR --  RAIN --%"
-                                   Foreground="#FF97A4B2" FontSize="8" />
+                                    Foreground="#FF97A4B2" FontSize="10" />
                     </StackPanel>
                     <TextBlock Text="REDFOX RACING" Foreground="White"
-                               FontWeight="Bold" FontSize="24"
+                               FontWeight="Bold" FontSize="28"
                                HorizontalAlignment="Center" />
                     <Border HorizontalAlignment="Right" VerticalAlignment="Center"
                             BorderBrush="#FF32B9A7" BorderThickness="1"
@@ -97,25 +100,25 @@
                             BorderBrush="#FF343A3D" BorderThickness="1">
                     <StackPanel>
                         <TextBlock x:Name="PositionText" Text="POS --"
-                                   Foreground="#FF42D3A6" FontWeight="Bold" FontSize="14" />
+                                   Foreground="#FF42D3A6" FontWeight="Bold" FontSize="17" />
                         <TextBlock x:Name="LapText" Text="LAP --"
-                                   Foreground="White" FontSize="13" Margin="0,3,0,0" />
+                                   Foreground="White" FontSize="15" Margin="0,3,0,0" />
                         <TextBlock x:Name="DeltaText" Text="DELTA --"
                                    Foreground="#FFFFCA6A" FontWeight="Bold"
-                                   FontSize="13" Margin="0,6,0,0" />
+                                   FontSize="15" Margin="0,6,0,0" />
                         <TextBlock x:Name="FuelText" Text="FUEL --.- L"
-                                   Foreground="#FFD2D9E0" FontSize="11" Margin="0,4,0,0" />
+                                   Foreground="#FFD2D9E0" FontSize="13" Margin="0,4,0,0" />
                         <TextBlock x:Name="VirtualEnergyDashText" Text="VIRTUAL ENERGY --%"
-                                   Foreground="#FFDA40E8" FontSize="11" Margin="0,2,0,0" />
+                                   Foreground="#FFDA40E8" FontSize="13" Margin="0,2,0,0" />
                         <TextBlock x:Name="BrakeBiasText" Text="BRAKE BIAS --.-%"
-                                   Foreground="#FFD2D9E0" FontSize="11" Margin="0,2,0,0" />
+                                   Foreground="#FFD2D9E0" FontSize="13" Margin="0,2,0,0" />
                         <TextBlock x:Name="SessionModeText" Text="SESSION --"
-                                   Foreground="#FF42D3A6" FontSize="11" FontWeight="Bold"
+                                   Foreground="#FF42D3A6" FontSize="13" FontWeight="Bold"
                                    Margin="0,8,0,0" />
                         <TextBlock x:Name="SessionTimeText" Text="--:--:--"
-                                   Foreground="White" FontSize="12" />
+                                   Foreground="White" FontSize="14" />
                         <TextBlock x:Name="PenaltyDashText" Text="PENALTY CLEAR"
-                                   Foreground="#FF42D3A6" FontSize="10" FontWeight="Bold"
+                                   Foreground="#FF42D3A6" FontSize="12" FontWeight="Bold"
                                    Margin="0,5,0,0" />
                     </StackPanel>
                     </Border>
@@ -124,7 +127,7 @@
                             BorderBrush="#FF3C4246" BorderThickness="1">
                     <StackPanel HorizontalAlignment="Center">
                         <TextBlock x:Name="SpeedText" Text="--- KM/H"
-                                   Foreground="#FFE1E5E7" FontSize="20"
+                                   Foreground="#FFE1E5E7" FontSize="24"
                                    FontWeight="SemiBold" HorizontalAlignment="Center" />
                         <Border x:Name="PitLimiterIndicator"
                                 Visibility="Collapsed"
@@ -141,10 +144,10 @@
                                        FontWeight="Bold" />
                         </Border>
                         <TextBlock x:Name="GearText" Text="N"
-                                   Foreground="White" FontSize="76" FontWeight="Bold"
+                                   Foreground="White" FontSize="92" FontWeight="Bold"
                                    LineHeight="70" HorizontalAlignment="Center" />
                         <TextBlock x:Name="RpmText" Text="RPM ----"
-                                   Foreground="#FFD2D9E0" FontSize="12"
+                                   Foreground="#FFD2D9E0" FontSize="14"
                                    HorizontalAlignment="Center" />
                     </StackPanel>
                     </Border>
@@ -153,43 +156,43 @@
                             BorderBrush="#FF343A3D" BorderThickness="1">
                     <StackPanel>
                         <TextBlock x:Name="CurrentLapText" Text="CURRENT --:--.---"
-                                   Foreground="White" FontSize="12" />
+                                   Foreground="White" FontSize="14" />
                         <TextBlock x:Name="LastLapText" Text="LAST --:--.---"
-                                   Foreground="#FFD2D9E0" FontSize="11" Margin="0,3,0,0" />
+                                   Foreground="#FFD2D9E0" FontSize="13" Margin="0,3,0,0" />
                         <TextBlock x:Name="BestLapText" Text="BEST --:--.---"
-                                   Foreground="#FF42D3A6" FontSize="11" Margin="0,2,0,0" />
+                                   Foreground="#FF42D3A6" FontSize="13" Margin="0,2,0,0" />
                         <primitives:UniformGrid Columns="4" Margin="0,8,0,0">
                             <Border x:Name="TcIndicator" Padding="5,4" CornerRadius="3"
                                     Background="#FF202A33" Margin="0,0,3,0">
                                 <StackPanel>
                                     <TextBlock x:Name="TcIndicatorText" Text="TC"
                                                Foreground="#FF788795" FontWeight="Bold"
-                                               FontSize="9" HorizontalAlignment="Center" />
+                                                FontSize="10" HorizontalAlignment="Center" />
                                     <TextBlock x:Name="TcLevelText" Text="--"
                                                Foreground="White" FontWeight="Bold"
-                                               FontSize="15" HorizontalAlignment="Center" />
+                                                FontSize="18" HorizontalAlignment="Center" />
                                 </StackPanel>
                             </Border>
                             <Border Padding="5,4" CornerRadius="3"
                                     Background="#FF202A33" Margin="0,0,3,0">
                                 <StackPanel>
                                     <TextBlock Text="SLIP" Foreground="#FF788795"
-                                               FontWeight="Bold" FontSize="9"
+                                               FontWeight="Bold" FontSize="10"
                                                HorizontalAlignment="Center" />
                                     <TextBlock x:Name="TcSlipLevelText" Text="--"
                                                Foreground="White" FontWeight="Bold"
-                                               FontSize="15" HorizontalAlignment="Center" />
+                                                FontSize="18" HorizontalAlignment="Center" />
                                 </StackPanel>
                             </Border>
                             <Border Padding="5,4" CornerRadius="3"
                                     Background="#FF202A33" Margin="0,0,3,0">
                                 <StackPanel>
                                     <TextBlock Text="CUT" Foreground="#FF788795"
-                                               FontWeight="Bold" FontSize="9"
+                                               FontWeight="Bold" FontSize="10"
                                                HorizontalAlignment="Center" />
                                     <TextBlock x:Name="TcCutLevelText" Text="--"
                                                Foreground="White" FontWeight="Bold"
-                                               FontSize="15" HorizontalAlignment="Center" />
+                                                FontSize="18" HorizontalAlignment="Center" />
                                 </StackPanel>
                             </Border>
                             <Border x:Name="AbsIndicator" Padding="5,4" CornerRadius="3"
@@ -197,25 +200,25 @@
                                 <StackPanel>
                                     <TextBlock x:Name="AbsIndicatorText" Text="ABS"
                                                Foreground="#FF788795" FontWeight="Bold"
-                                               FontSize="9" HorizontalAlignment="Center" />
+                                                FontSize="10" HorizontalAlignment="Center" />
                                     <TextBlock x:Name="AbsLevelText" Text="--"
                                                Foreground="White" FontWeight="Bold"
-                                               FontSize="15" HorizontalAlignment="Center" />
+                                                FontSize="18" HorizontalAlignment="Center" />
                                 </StackPanel>
                             </Border>
                         </primitives:UniformGrid>
                         <TextBlock x:Name="EngineTempsText" Text="OIL --°  WATER --°"
-                                   Foreground="#FFD2D9E0" FontSize="10" Margin="0,6,0,0" />
+                                   Foreground="#FFD2D9E0" FontSize="12" Margin="0,6,0,0" />
                     </StackPanel>
                     </Border>
                 </Grid>
                 <Grid Grid.Row="3" Margin="24,7,24,10">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="214" />
-                        <ColumnDefinition Width="248" />
-                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition x:Name="SectorColumn" Width="214" />
+                        <ColumnDefinition x:Name="TireColumn" Width="270" />
+                        <ColumnDefinition x:Name="TelemetryColumn" Width="*" />
                     </Grid.ColumnDefinitions>
-                    <Border Grid.Column="0" Margin="3" Background="#FF0B0E0F"
+                    <Border x:Name="SectorPanel" Grid.Column="0" Margin="3" Background="#FF0B0E0F"
                             BorderBrush="#FF3C4246" BorderThickness="1">
                         <Grid>
                             <Grid.RowDefinitions>
@@ -225,7 +228,7 @@
                             </Grid.RowDefinitions>
                             <Border Background="#FF12D9E5">
                                 <TextBlock Text="SECTORS" Foreground="#FF031013"
-                                           FontSize="13" FontWeight="Bold"
+                                           FontSize="15" FontWeight="Bold"
                                            HorizontalAlignment="Center"
                                            VerticalAlignment="Center" />
                             </Border>
@@ -237,12 +240,12 @@
                                 <StackPanel>
                                     <TextBlock Text="LAST" Foreground="#FF7F8C99" FontSize="8" />
                                     <TextBlock x:Name="SectorLastLapText" Text="--:--.---"
-                                               Foreground="White" FontSize="14" FontWeight="Bold" />
+                                                Foreground="White" FontSize="16" FontWeight="Bold" />
                                 </StackPanel>
                                 <StackPanel Grid.Column="1">
                                     <TextBlock Text="BEST" Foreground="#FF7F8C99" FontSize="8" />
                                     <TextBlock x:Name="SectorBestLapText" Text="--:--.---"
-                                               Foreground="#FFB84BDF" FontSize="14" FontWeight="Bold" />
+                                                Foreground="#FFB84BDF" FontSize="16" FontWeight="Bold" />
                                 </StackPanel>
                             </Grid>
                             <Grid Grid.Row="2" Margin="8,1,8,5">
@@ -266,14 +269,14 @@
                             </Grid>
                         </Grid>
                     </Border>
-                    <Border Grid.Column="1" Margin="3" Background="#FF15191B"
+                    <Border x:Name="TirePanel" Grid.Column="1" Margin="3" Background="#FF15191B"
                             BorderBrush="#FFE1972F" BorderThickness="1">
                         <Grid>
                             <Border Height="25" VerticalAlignment="Top"
                                     Margin="0" Panel.ZIndex="2"
                                     Background="#FFD78421">
                                 <TextBlock Text="TYRE TEMP / WEAR" Foreground="White"
-                                           FontSize="11" FontWeight="Bold" HorizontalAlignment="Center"
+                                           FontSize="14" FontWeight="Bold" HorizontalAlignment="Center"
                                            VerticalAlignment="Center" />
                             </Border>
                             <Grid Margin="10,31,10,25">
@@ -288,84 +291,84 @@
                                 <StackPanel Grid.Row="0" Grid.Column="0"
                                             Orientation="Horizontal"
                                             HorizontalAlignment="Center">
-                                    <TextBlock Text="FL" Foreground="White" FontSize="11"
-                                               FontWeight="Bold" Width="20" />
-                                    <Grid Width="10" Height="17">
+                                    <TextBlock Text="FL" Foreground="White" FontSize="12"
+                                               FontWeight="Bold" Width="22" />
+                                    <Grid Width="15" Height="24">
                                         <Border x:Name="FrontLeftTireIcon"
-                                                CornerRadius="3"
+                                                CornerRadius="4"
                                                 Background="#FF485460" />
-                                        <Rectangle Height="1" Margin="2,0"
+                                        <Rectangle Height="2" Margin="3,0"
                                                    Fill="#99070B0D"
                                                    VerticalAlignment="Center" />
                                     </Grid>
                                     <TextBlock x:Name="FrontLeftTireText"
                                                Text="FL --° · D --%" Foreground="#FFE7EAEC"
-                                               FontSize="11" FontWeight="SemiBold"
-                                               Margin="5,0,0,0" />
+                                               FontSize="14" FontWeight="SemiBold"
+                                               Margin="6,0,0,0" VerticalAlignment="Center" />
                                 </StackPanel>
                                 <StackPanel Grid.Row="0" Grid.Column="1"
                                             Orientation="Horizontal"
                                             HorizontalAlignment="Center">
-                                    <TextBlock Text="FR" Foreground="White" FontSize="11"
-                                               FontWeight="Bold" Width="20" />
-                                    <Grid Width="10" Height="17">
+                                    <TextBlock Text="FR" Foreground="White" FontSize="12"
+                                               FontWeight="Bold" Width="22" />
+                                    <Grid Width="15" Height="24">
                                         <Border x:Name="FrontRightTireIcon"
-                                                CornerRadius="3"
+                                                CornerRadius="4"
                                                 Background="#FF485460" />
-                                        <Rectangle Height="1" Margin="2,0"
+                                        <Rectangle Height="2" Margin="3,0"
                                                    Fill="#99070B0D"
                                                    VerticalAlignment="Center" />
                                     </Grid>
                                     <TextBlock x:Name="FrontRightTireText"
                                                Text="FR --° · D --%" Foreground="#FFE7EAEC"
-                                               FontSize="11" FontWeight="SemiBold"
-                                               Margin="5,0,0,0" />
+                                               FontSize="14" FontWeight="SemiBold"
+                                               Margin="6,0,0,0" VerticalAlignment="Center" />
                                 </StackPanel>
                                 <StackPanel Grid.Row="1" Grid.Column="0"
                                             Orientation="Horizontal"
                                             HorizontalAlignment="Center">
-                                    <TextBlock Text="RL" Foreground="White" FontSize="11"
-                                               FontWeight="Bold" Width="20" />
-                                    <Grid Width="10" Height="17">
+                                    <TextBlock Text="RL" Foreground="White" FontSize="12"
+                                               FontWeight="Bold" Width="22" />
+                                    <Grid Width="15" Height="24">
                                         <Border x:Name="RearLeftTireIcon"
-                                                CornerRadius="3"
+                                                CornerRadius="4"
                                                 Background="#FF485460" />
-                                        <Rectangle Height="1" Margin="2,0"
+                                        <Rectangle Height="2" Margin="3,0"
                                                    Fill="#99070B0D"
                                                    VerticalAlignment="Center" />
                                     </Grid>
                                     <TextBlock x:Name="RearLeftTireText"
                                                Text="RL --° · D --%" Foreground="#FFE7EAEC"
-                                               FontSize="11" FontWeight="SemiBold"
-                                               Margin="5,0,0,0" />
+                                               FontSize="14" FontWeight="SemiBold"
+                                               Margin="6,0,0,0" VerticalAlignment="Center" />
                                 </StackPanel>
                                 <StackPanel Grid.Row="1" Grid.Column="1"
                                             Orientation="Horizontal"
                                             HorizontalAlignment="Center">
-                                    <TextBlock Text="RR" Foreground="White" FontSize="11"
-                                               FontWeight="Bold" Width="20" />
-                                    <Grid Width="10" Height="17">
+                                    <TextBlock Text="RR" Foreground="White" FontSize="12"
+                                               FontWeight="Bold" Width="22" />
+                                    <Grid Width="15" Height="24">
                                         <Border x:Name="RearRightTireIcon"
-                                                CornerRadius="3"
+                                                CornerRadius="4"
                                                 Background="#FF485460" />
-                                        <Rectangle Height="1" Margin="2,0"
+                                        <Rectangle Height="2" Margin="3,0"
                                                    Fill="#99070B0D"
                                                    VerticalAlignment="Center" />
                                     </Grid>
                                     <TextBlock x:Name="RearRightTireText"
                                                Text="RR --° · D --%" Foreground="#FFE7EAEC"
-                                               FontSize="11" FontWeight="SemiBold"
-                                               Margin="5,0,0,0" />
+                                               FontSize="14" FontWeight="SemiBold"
+                                               Margin="6,0,0,0" VerticalAlignment="Center" />
                                 </StackPanel>
                             </Grid>
                             <TextBlock x:Name="TireCompoundText"
                                        Text="COMPOUND --" Foreground="#FFFFCA6A"
-                                       FontSize="9" FontWeight="Bold"
+                                       FontSize="12" FontWeight="Bold"
                                        HorizontalAlignment="Center"
                                        VerticalAlignment="Bottom" Margin="0,0,0,7" />
                         </Grid>
                     </Border>
-                    <Border Grid.Column="2" Margin="3" Background="#FF0B0E0F"
+                    <Border x:Name="TelemetryPanel" Grid.Column="2" Margin="3" Background="#FF0B0E0F"
                             BorderBrush="#FF12D9E5" BorderThickness="1">
                         <Grid>
                             <Grid.RowDefinitions>
@@ -375,7 +378,7 @@
                             </Grid.RowDefinitions>
                             <Border Background="#FF12D9E5">
                                 <TextBlock Text="TELEMETRY" Foreground="#FF031013"
-                                           FontSize="13" FontWeight="Bold"
+                                           FontSize="15" FontWeight="Bold"
                                            HorizontalAlignment="Center"
                                            VerticalAlignment="Center" />
                             </Border>
@@ -392,11 +395,11 @@
                                 </Grid.ColumnDefinitions>
                                 <Canvas Width="230" Height="102" HorizontalAlignment="Stretch"
                                         Background="#FF080B0D" ClipToBounds="True">
-                                    <Line X1="0" Y1="25" X2="230" Y2="25" Stroke="#FF30373E" StrokeThickness="1" />
-                                    <Line X1="0" Y1="51" X2="230" Y2="51" Stroke="#FF30373E" StrokeThickness="1" />
-                                    <Line X1="0" Y1="76" X2="230" Y2="76" Stroke="#FF30373E" StrokeThickness="1" />
-                                    <Polyline x:Name="ThrottleTrace" Stroke="#FF00F23D" StrokeThickness="3" />
-                                    <Polyline x:Name="BrakeTrace" Stroke="#FFFF2738" StrokeThickness="3" />
+                                    <Image x:Name="PedalGraphImage"
+                                           Width="230" Height="102"
+                                           Stretch="None"
+                                           SnapsToDevicePixels="True"
+                                           RenderOptions.BitmapScalingMode="NearestNeighbor" />
                                 </Canvas>
                                 <Canvas Grid.Column="1" Width="58" Height="102" Background="#FF080B0D">
                                     <Line X1="29" Y1="8" X2="29" Y2="94" Stroke="#FF5B6570" StrokeDashArray="2,4" />
@@ -430,7 +433,7 @@
                                   DragCompleted="ResizeThumbDragCompleted" />
             </Grid>
         </Border>
-        <Border x:Name="InputsWidget" Padding="10" CornerRadius="8"
+        <Border x:Name="InputsWidget" Padding="10,5" CornerRadius="8"
                 Background="#DD101820" BorderBrush="#FF42D3A6" BorderThickness="1"
                 MouseLeftButtonDown="WidgetMouseLeftButtonDown"
                 MouseMove="WidgetMouseMove"
@@ -439,7 +442,7 @@
                 <StackPanel>
                     <TextBlock Text="INPUTS" Foreground="#FF42D3A6" FontWeight="Bold" FontSize="11" />
                     <TextBlock x:Name="InputsText" Text="THR --  BRK --  STR --"
-                               Foreground="White" FontSize="12" Margin="0,6,0,0" />
+                               Foreground="White" FontSize="12" Margin="0,2,0,0" />
                 </StackPanel>
                 <primitives:Thumb x:Name="InputsResizeThumb" Tag="InputsWidget"
                                   Width="18" Height="18" Panel.ZIndex="10"
@@ -450,14 +453,14 @@
                                   DragCompleted="ResizeThumbDragCompleted" />
             </Grid>
         </Border>
-        <Border x:Name="LiveStandingsWidget" Padding="0" CornerRadius="4"
-                Background="#F5070B18" BorderThickness="0"
+        <Border x:Name="LiveStandingsWidget" Padding="0" CornerRadius="0" ClipToBounds="True"
+                Background="Transparent" BorderThickness="0"
                 MouseLeftButtonDown="WidgetMouseLeftButtonDown"
                 MouseMove="WidgetMouseMove"
                 MouseLeftButtonUp="WidgetMouseLeftButtonUp">
             <Grid>
-                <Viewbox Stretch="Uniform">
-                    <Grid Width="260" Height="410" Background="#F5070B18">
+                <Viewbox Stretch="Uniform" StretchDirection="Both">
+                    <Grid Width="260" Height="410" Background="Transparent">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="22" />
                             <RowDefinition Height="*" />
@@ -501,14 +504,14 @@
                                   DragCompleted="ResizeThumbDragCompleted" />
             </Grid>
         </Border>
-        <Border x:Name="RelativeWidget" Padding="0" CornerRadius="4"
-                Background="#F5070B18" BorderThickness="0"
+        <Border x:Name="RelativeWidget" Padding="0" CornerRadius="0" ClipToBounds="True"
+                Background="Transparent" BorderThickness="0"
                 MouseLeftButtonDown="WidgetMouseLeftButtonDown"
                 MouseMove="WidgetMouseMove"
                 MouseLeftButtonUp="WidgetMouseLeftButtonUp">
             <Grid>
-                <Viewbox Stretch="Uniform">
-                    <Grid Width="260" Height="410" Background="#F5070B18">
+                <Viewbox Stretch="Uniform" StretchDirection="Both">
+                    <Grid Width="260" Height="410" Background="Transparent">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="34" />
                             <RowDefinition Height="*" />
@@ -707,7 +710,7 @@
                 MouseLeftButtonUp="WidgetMouseLeftButtonUp">
             <Grid>
                 <Viewbox Stretch="Uniform">
-                    <Grid Width="500" Height="340" Background="#F20A0F1A">
+                    <Grid Width="500" Height="400" Background="#F20A0F1A">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="34" />
                             <RowDefinition Height="54" />
@@ -716,6 +719,7 @@
                             <RowDefinition Height="38" />
                             <RowDefinition Height="52" />
                             <RowDefinition Height="80" />
+                            <RowDefinition Height="60" />
                             <RowDefinition Height="18" />
                         </Grid.RowDefinitions>
                         <Border Grid.Row="0" Background="#FF1B2441">
@@ -878,7 +882,27 @@
                                            Foreground="#FF91A0B7" FontFamily="Bahnschrift" FontSize="9" />
                             </Grid>
                         </Border>
-                        <TextBlock x:Name="FuelSamplesText" Grid.Row="7"
+                        <Border Grid.Row="7" Margin="10,2" Padding="9,3"
+                                Background="#FF0D1422" BorderBrush="#FF34415A" BorderThickness="1">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition /><RowDefinition /><RowDefinition />
+                                </Grid.RowDefinitions>
+                                <TextBlock x:Name="FlagScenarioText"
+                                           Text="FLAGS · LEARNING"
+                                           Foreground="#FFFFCA6A" FontFamily="Bahnschrift"
+                                           FontSize="9" FontWeight="Bold" />
+                                <TextBlock x:Name="WeatherScenarioText" Grid.Row="1"
+                                           Text="WEATHER · LEARNING"
+                                           Foreground="#FF8BC5FF" FontFamily="Bahnschrift"
+                                           FontSize="9" FontWeight="Bold" />
+                                <TextBlock x:Name="TrafficScenarioText" Grid.Row="2"
+                                           Text="TRAFFIC · LEARNING"
+                                           Foreground="#FF42D3A6" FontFamily="Bahnschrift"
+                                           FontSize="9" FontWeight="Bold" />
+                            </Grid>
+                        </Border>
+                        <TextBlock x:Name="FuelSamplesText" Grid.Row="8"
                                    Text="COMPLETE A LAP TO CALCULATE"
                                    Foreground="#FF718096" FontFamily="Bahnschrift"
                                    FontSize="8" Margin="10,0"
@@ -969,6 +993,40 @@
                                   Visibility="Collapsed"
                                   DragDelta="ResizeThumbDragDelta"
                                   DragCompleted="ResizeThumbDragCompleted" />
+            </Grid>
+        </Border>
+        <Border x:Name="PriorityAlert"
+                Width="460" Height="58"
+                Canvas.Top="24"
+                Panel.ZIndex="100"
+                Visibility="Collapsed"
+                IsHitTestVisible="False"
+                CornerRadius="5"
+                BorderThickness="2"
+                Padding="14,7"
+                Background="#F2182535"
+                BorderBrush="#FF12D9E5">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="42" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock x:Name="PriorityAlertIcon" Text="i"
+                           FontFamily="Bahnschrift" FontWeight="Bold" FontSize="27"
+                           Foreground="White" VerticalAlignment="Center"
+                           HorizontalAlignment="Center" />
+                <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="7,0">
+                    <TextBlock x:Name="PriorityAlertText" Text="INFORMATION"
+                               FontFamily="Bahnschrift" FontWeight="Bold" FontSize="15"
+                               Foreground="White" />
+                    <TextBlock x:Name="PriorityAlertDetail" Text=""
+                               FontFamily="Bahnschrift" FontSize="10"
+                               Foreground="#FFE1E6EB" />
+                </StackPanel>
+                <TextBlock Grid.Column="2" Text="REDFOX"
+                           FontFamily="Bahnschrift" FontWeight="Bold" FontSize="9"
+                           Foreground="#FFE1E6EB" VerticalAlignment="Center" />
             </Grid>
         </Border>
     </Canvas>

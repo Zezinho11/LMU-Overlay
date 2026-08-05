@@ -40,6 +40,9 @@ jobs:
       - run: dotnet run --no-build --configuration Release --project tests/LmuOverlay.Domain.Tests
       - run: dotnet run --no-build --configuration Release --project tests/LmuOverlay.LmuSharedMemory.Tests
       - run: dotnet run --no-build --configuration Release --project tests/LmuOverlay.Widgets.Tests
+      - run: dotnet run --no-build --configuration Release --project tests/LmuOverlay.SteamVr.Tests
+      - name: Short telemetry soak gate
+        run: dotnet run --no-build --configuration Release --project tools/LmuOverlay.SoakTest -- --duration-seconds 5
       - name: Package portable Windows release
         shell: pwsh
         run: ./scripts/package-release.ps1 -Version "${{ steps.version.outputs.value }}"

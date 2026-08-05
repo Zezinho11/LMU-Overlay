@@ -1,5 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
+    <ProjectReference Include="..\LmuOverlay.DirectX\LmuOverlay.DirectX.csproj" />
     <ProjectReference Include="..\LmuOverlay.Core\LmuOverlay.Core.csproj" />
     <ProjectReference Include="..\LmuOverlay.Domain\LmuOverlay.Domain.csproj" />
     <ProjectReference Include="..\LmuOverlay.LmuSharedMemory\LmuOverlay.LmuSharedMemory.csproj" />

@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.IO.MemoryMappedFiles;
+using System.Diagnostics;
 using System.Runtime.Versioning;
 using LmuOverlay.Contracts;
 using LmuOverlay.Domain;
@@ -12,8 +13,11 @@ public sealed class LmuSharedMemoryReader : ILmuTelemetrySource
     private readonly MemoryMappedFile? _map;
     private readonly MemoryMappedViewAccessor? _view;
     private readonly byte[] _buffer = new byte[LmuApiLayoutV1.ObjectSize];
+    private readonly byte[] _playerBuffer = new byte[LmuApiLayoutV1.VehicleTelemetrySize];
     private readonly LmuConnectionState? _startupFailureState;
     private readonly string _startupFailureDetail = string.Empty;
+    private LmuTelemetrySnapshot? _lastSnapshot;
+    private long _lastFullParseTimestamp;
 
     public LmuSharedMemoryReader()
     {
@@ -81,14 +85,28 @@ public sealed class LmuSharedMemoryReader : ILmuTelemetrySource
                 "LMU shared-memory view was not opened.");
         }
 
+        var now = Stopwatch.GetTimestamp();
+        var requiresFullRead = _lastSnapshot is null ||
+            _lastFullParseTimestamp == 0 ||
+            now - _lastFullParseTimestamp >= Stopwatch.Frequency / 5;
+        if (!requiresFullRead && TryReadPlayerTelemetryBlock() is { } fastSnapshot)
+        {
+            _lastSnapshot = fastSnapshot;
+            return fastSnapshot;
+        }
+
+        return ReadFullSnapshot();
+    }
+
+    private LmuTelemetrySnapshot ReadFullSnapshot()
+    {
+        var view = _view ?? throw new ObjectDisposedException(nameof(LmuSharedMemoryReader));
         for (var attempt = 0; attempt < 3; attempt++)
         {
-            var scoringBefore = _view.ReadUInt32(
+            var scoringBefore = view.ReadUInt32(
                 LmuApiLayoutV1.EventOffset(LmuApiLayoutV1.ScoringUpdateEventIndex));
-            var telemetryBefore = _view.ReadUInt32(
-                LmuApiLayoutV1.EventOffset(LmuApiLayoutV1.TelemetryUpdateEventIndex));
 
-            var bytesRead = _view.ReadArray(0, _buffer, 0, _buffer.Length);
+            var bytesRead = view.ReadArray(0, _buffer, 0, _buffer.Length);
             if (bytesRead != _buffer.Length)
             {
                 return LmuTelemetrySnapshot.Unavailable(
@@ -96,20 +114,113 @@ public sealed class LmuSharedMemoryReader : ILmuTelemetrySource
                     $"Expected {_buffer.Length} bytes, read {bytesRead}.");
             }
 
-            var scoringAfter = _view.ReadUInt32(
+            var scoringAfter = view.ReadUInt32(
                 LmuApiLayoutV1.EventOffset(LmuApiLayoutV1.ScoringUpdateEventIndex));
-            var telemetryAfter = _view.ReadUInt32(
-                LmuApiLayoutV1.EventOffset(LmuApiLayoutV1.TelemetryUpdateEventIndex));
 
-            if (scoringBefore == scoringAfter && telemetryBefore == telemetryAfter)
+            // Scoring and telemetry are independent producer streams. Requiring
+            // both counters to remain stable while copying the whole mapping made
+            // fast telemetry collisions trigger a one-second reconnect. Guard the
+            // scoring copy here, then overlay a separately guarded player block.
+            if (scoringBefore == scoringAfter)
             {
-                return LmuSnapshotParser.ParseTelemetry(_buffer);
+                _lastSnapshot = LmuSnapshotParser.ParseTelemetry(_buffer);
+                _lastFullParseTimestamp = Stopwatch.GetTimestamp();
+                if (_lastSnapshot.State == LmuConnectionState.Connected &&
+                    TryReadPlayerTelemetryBlock() is { } playerSnapshot)
+                {
+                    _lastSnapshot = playerSnapshot;
+                }
+
+                return _lastSnapshot;
             }
         }
 
         return LmuTelemetrySnapshot.Unavailable(
             LmuConnectionState.InvalidData,
-            "LMU updated the snapshot during three consecutive read attempts.");
+            "LMU updated scoring during three consecutive read attempts.");
+    }
+
+    private LmuTelemetrySnapshot? TryReadPlayerTelemetryBlock()
+    {
+        if (_view is null || _lastSnapshot?.Player is not { } previousPlayer)
+        {
+            return null;
+        }
+
+        var activeVehicles = _view.ReadByte(LmuApiLayoutV1.ActiveVehiclesOffset);
+        var reportedIndex = _view.ReadByte(LmuApiLayoutV1.PlayerVehicleIndexOffset);
+        var hasReportedVehicle = _view.ReadBoolean(LmuApiLayoutV1.PlayerHasVehicleOffset);
+        var playerIndex = ResolvePlayerIndex(
+            activeVehicles,
+            reportedIndex,
+            hasReportedVehicle,
+            previousPlayer.VehicleId);
+        if (playerIndex < 0)
+        {
+            return null;
+        }
+
+        for (var attempt = 0; attempt < 3; attempt++)
+        {
+            var telemetryBefore = _view.ReadUInt32(
+                LmuApiLayoutV1.EventOffset(LmuApiLayoutV1.TelemetryUpdateEventIndex));
+            var bytesRead = _view.ReadArray(
+                LmuApiLayoutV1.VehicleTelemetryOffset(playerIndex),
+                _playerBuffer,
+                0,
+                _playerBuffer.Length);
+            var telemetryAfter = _view.ReadUInt32(
+                LmuApiLayoutV1.EventOffset(LmuApiLayoutV1.TelemetryUpdateEventIndex));
+            if (bytesRead == _playerBuffer.Length && telemetryBefore == telemetryAfter)
+            {
+                var sourceElapsedTime = LmuSnapshotParser.ReadPlayerElapsedTime(
+                    _playerBuffer);
+                if (double.IsFinite(sourceElapsedTime) &&
+                    sourceElapsedTime == previousPlayer.ElapsedTime)
+                {
+                    return _lastSnapshot;
+                }
+
+                return LmuSnapshotParser.ParsePlayerTelemetryBlock(
+                    _playerBuffer,
+                    _lastSnapshot,
+                    telemetryAfter);
+            }
+        }
+
+        return null;
+    }
+
+    private int ResolvePlayerIndex(
+        int activeVehicles,
+        int reportedIndex,
+        bool hasReportedVehicle,
+        int playerVehicleId)
+    {
+        if (_view is null)
+        {
+            return -1;
+        }
+
+        if (hasReportedVehicle && reportedIndex < activeVehicles &&
+            _view.ReadInt32(
+                LmuApiLayoutV1.VehicleTelemetryOffset(reportedIndex) +
+                LmuApiLayoutV1.TelemetryVehicleIdOffset) == playerVehicleId)
+        {
+            return reportedIndex;
+        }
+
+        for (var index = 0; index < activeVehicles; index++)
+        {
+            if (_view.ReadInt32(
+                    LmuApiLayoutV1.VehicleTelemetryOffset(index) +
+                    LmuApiLayoutV1.TelemetryVehicleIdOffset) == playerVehicleId)
+            {
+                return index;
+            }
+        }
+
+        return -1;
     }
 
     public void Dispose()

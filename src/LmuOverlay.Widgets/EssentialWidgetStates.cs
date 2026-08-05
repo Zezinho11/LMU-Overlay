@@ -171,6 +171,9 @@ public static class EssentialWidgetStateFactory
 
         var session = snapshot.Session;
         var playerStanding = snapshot.Standings.FirstOrDefault(item => item.IsPlayer);
+        var currentElapsedTime = player.ElapsedTime > 0
+            ? player.ElapsedTime
+            : session?.CurrentElapsedTime ?? 0;
         return new(
             true,
             player.SpeedKilometersPerHour,
@@ -184,9 +187,8 @@ public static class EssentialWidgetStateFactory
             player.LapNumber,
             session?.TrackName ?? string.Empty,
             player.DeltaBestSeconds,
-            session is not null &&
-            session.CurrentElapsedTime >= player.LapStartElapsedTime
-                ? session.CurrentElapsedTime - player.LapStartElapsedTime
+            currentElapsedTime >= player.LapStartElapsedTime
+                ? currentElapsedTime - player.LapStartElapsedTime
                 : 0,
             playerStanding?.LastLapTimeSeconds ?? 0,
             playerStanding?.BestLapTimeSeconds ?? 0,
@@ -223,8 +225,8 @@ public static class EssentialWidgetStateFactory
             VirtualEnergyFraction = Math.Clamp(player.VirtualEnergy, 0, 1),
             SectorTimes = CreateSectorTimes(
                 playerStanding,
-                session is not null && session.CurrentElapsedTime >= player.LapStartElapsedTime
-                    ? session.CurrentElapsedTime - player.LapStartElapsedTime
+                currentElapsedTime >= player.LapStartElapsedTime
+                    ? currentElapsedTime - player.LapStartElapsedTime
                     : 0),
         };
     }
@@ -461,30 +463,92 @@ public static class EssentialWidgetStateFactory
         LmuTelemetrySnapshot snapshot,
         int carsEachSide = 4)
     {
-        var ordered = snapshot.Standings.OrderBy(item => item.Position).ToArray();
-        var playerIndex = Array.FindIndex(ordered, item => item.IsPlayer);
-        if (playerIndex < 0)
+        var player = snapshot.Standings.FirstOrDefault(item => item.IsPlayer) ??
+            snapshot.Standings.FirstOrDefault(item =>
+                item.VehicleId == snapshot.Player?.VehicleId);
+        var lapLength = snapshot.Session?.LapLengthMeters ?? 0;
+        if (player is null || !double.IsFinite(lapLength) || lapLength <= 100)
         {
             return new RelativeWidgetState(Array.Empty<RelativeRowState>());
         }
 
-        var player = ordered[playerIndex];
-        var start = Math.Max(0, playerIndex - Math.Max(1, carsEachSide));
-        var end = Math.Min(ordered.Length - 1, playerIndex + Math.Max(1, carsEachSide));
-        var rows = ordered[start..(end + 1)]
-            .Select(item => new RelativeRowState(
+        var referenceLapSeconds = new[]
+            {
+                player.LastLapTimeSeconds,
+                player.BestLapTimeSeconds,
+            }
+            .FirstOrDefault(value => double.IsFinite(value) && value is > 20 and < 1_800);
+        if (referenceLapSeconds <= 0)
+        {
+            var lapTimes = snapshot.Standings
+                .SelectMany(item => new[] { item.LastLapTimeSeconds, item.BestLapTimeSeconds })
+                .Where(value => double.IsFinite(value) && value is > 20 and < 1_800)
+                .OrderBy(value => value)
+                .ToArray();
+            referenceLapSeconds = lapTimes.Length == 0
+                ? 120
+                : lapTimes[lapTimes.Length / 2];
+        }
+
+        var metersPerSecond = lapLength / referenceLapSeconds;
+        var relative = snapshot.Standings
+            .Where(item => item.IsPlayer || !item.IsInGarage)
+            .Select(item => new
+            {
+                Standing = item,
+                DistanceMeters = CircularDistance(
+                    item.LapDistanceMeters - player.LapDistanceMeters,
+                    lapLength),
+            })
+            .ToArray();
+        var count = Math.Max(1, carsEachSide);
+        var selected = relative
+            .Where(item => item.DistanceMeters > 0)
+            .OrderBy(item => item.DistanceMeters)
+            .Take(count)
+            .Concat(relative.Where(item => item.Standing.VehicleId == player.VehicleId))
+            .Concat(relative
+                .Where(item => item.DistanceMeters < 0)
+                .OrderByDescending(item => item.DistanceMeters)
+                .Take(count))
+            .OrderByDescending(item => item.DistanceMeters)
+            .ToArray();
+        var rows = selected
+            .Select(entry =>
+            {
+                var item = entry.Standing;
+                return new RelativeRowState(
                 item.Position,
                 item.DriverName,
                 AbbreviateRelativeDriverName(item.DriverName),
                 item.VehicleClass,
                 AbbreviateVehicleClass(item.VehicleClass),
                 ExtractCarNumber(item.VehicleName, item.VehicleModel),
-                item.IsPlayer ? 0 : item.GapToLeaderSeconds - player.GapToLeaderSeconds,
-                player.CompletedLaps - item.CompletedLaps,
-                item.IsPlayer,
-                item.IsInPits || item.PitState is not LmuPitState.None))
+                item.VehicleId == player.VehicleId
+                    ? 0
+                    : -entry.DistanceMeters / metersPerSecond,
+                0,
+                item.VehicleId == player.VehicleId,
+                item.IsInPits || item.PitState is not LmuPitState.None);
+            })
             .ToArray();
         return new RelativeWidgetState(rows);
+    }
+
+    private static double CircularDistance(double distanceMeters, double lapLength)
+    {
+        var halfLap = lapLength / 2;
+        if (distanceMeters > halfLap)
+        {
+            return distanceMeters - lapLength;
+        }
+
+        if (distanceMeters < -halfLap)
+        {
+            return distanceMeters + lapLength;
+        }
+
+        return distanceMeters;
     }
 
     private static string AbbreviateRelativeDriverName(string driverName)

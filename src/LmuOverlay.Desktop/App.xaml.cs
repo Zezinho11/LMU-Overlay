@@ -1,17 +1,21 @@
 using System.Drawing;
+using System.Diagnostics;
+using System.Windows.Media;
 using System.Windows.Threading;
 using LmuOverlay.Core;
 using LmuOverlay.Domain;
+using LmuOverlay.DirectX;
 using LmuOverlay.LmuSharedMemory;
+using LmuOverlay.Widgets;
 using WinForms = System.Windows.Forms;
 
 namespace LmuOverlay.Desktop;
 
 public partial class App
 {
-    private readonly DispatcherTimer _timer = new(DispatcherPriority.Render)
+    private readonly DispatcherTimer _windowTimer = new(DispatcherPriority.Background)
     {
-        Interval = TimeSpan.FromMilliseconds(1000d / 30),
+        Interval = TimeSpan.FromMilliseconds(100),
     };
 
     private OverlayWindow? _overlay;
@@ -20,23 +24,89 @@ public partial class App
     private WinForms.NotifyIcon? _trayIcon;
     private Icon? _trayIconImage;
     private TelemetryRuntime? _telemetryRuntime;
+    private NativeDashboardRenderer? _nativeDashboard;
     private bool _isExiting;
+    private System.Windows.Rect? _gameBounds;
+    private long _lastRenderedAt;
+    private long _lastSlowUpdateAt;
+    private LmuTelemetrySnapshot? _lastRenderedSnapshot;
+    private long _nativeDashboardSequence;
+    private NativeDashboardConfiguration? _nativeDashboardConfiguration;
+    private readonly SectorReferenceTracker _nativeSectorReferenceTracker = new();
 
     protected override void OnStartup(System.Windows.StartupEventArgs e)
     {
         base.OnStartup(e);
         DispatcherUnhandledException += (_, args) =>
             CrashLogWriter.TryWrite(args.Exception);
+        if (e.Args.FirstOrDefault() == "--capture-visual-baselines")
+        {
+            StartVisualBaselineCapture(e.Args.Skip(1).FirstOrDefault());
+            return;
+        }
+
         _overlay = new OverlayWindow(new LayoutStore());
+        _nativeDashboard = new NativeDashboardRenderer();
         _toolbar = new OverlayToolbarWindow(_overlay, ShowConfiguration);
         _telemetryRuntime = new TelemetryRuntime(
             () => new LmuSharedMemoryReader(),
-            TimeSpan.FromMilliseconds(16),
+            TimeSpan.FromMilliseconds(4),
             TimeSpan.FromSeconds(1));
+        _telemetryRuntime.SnapshotPublished += OnTelemetrySnapshot;
         _telemetryRuntime.Start();
         CreateTrayIcon();
-        _timer.Tick += OnTick;
-        _timer.Start();
+        _windowTimer.Tick += OnWindowTick;
+        _windowTimer.Start();
+        CompositionTarget.Rendering += OnRendering;
+    }
+
+    private void StartVisualBaselineCapture(string? outputDirectory)
+    {
+        var destination = string.IsNullOrWhiteSpace(outputDirectory)
+            ? System.IO.Path.Combine(AppContext.BaseDirectory, "visual-baselines")
+            : System.IO.Path.GetFullPath(outputDirectory);
+        var temporaryProfile = System.IO.Path.Combine(
+            System.IO.Path.GetTempPath(),
+            "lmu-overlay-visual-qa",
+            $"{Guid.NewGuid():N}.json");
+        _overlay = new OverlayWindow(new LayoutStore(temporaryProfile))
+        {
+            ShowActivated = false,
+        };
+        _overlay.Loaded += (_, _) => Dispatcher.BeginInvoke(() =>
+        {
+            _overlay.SetEditMode(true);
+            var unavailable = LmuTelemetrySnapshot.Unavailable(
+                LmuConnectionState.Disconnected,
+                "Visual baseline");
+            foreach (var (name, width, height) in new[]
+            {
+                ("720p", 1280d, 720d),
+                ("1080p", 1920d, 1080d),
+                ("ultrawide", 3440d, 1440d),
+                ("1440p", 2560d, 1440d),
+                ("4k", 3840d, 2160d),
+            })
+            {
+                _overlay.UpdateFrame(new System.Windows.Rect(0, 0, width, height), unavailable);
+                _overlay.CapturePng(
+                    System.IO.Path.Combine(destination, $"overlay-{name}.png"),
+                    (int)width,
+                    (int)height);
+            }
+
+            _overlay.Close();
+            try
+            {
+                System.IO.File.Delete(temporaryProfile);
+            }
+            catch (System.IO.IOException)
+            {
+            }
+
+            Shutdown();
+        });
+        _overlay.Show();
     }
 
     private void CreateTrayIcon()
@@ -88,7 +158,7 @@ public partial class App
         }
     }
 
-    private void OnTick(object? sender, EventArgs e)
+    private void OnWindowTick(object? sender, EventArgs e)
     {
         if (_overlay is null)
         {
@@ -103,13 +173,6 @@ public partial class App
         {
             _overlay.UpdateRuntimeHealth(_telemetryRuntime.Health);
         }
-        var requestedInterval = TimeSpan.FromMilliseconds(
-            1000d / Math.Clamp(_overlay.RequestedRefreshRateHz, 10, 60));
-        if (Math.Abs((_timer.Interval - requestedInterval).TotalMilliseconds) >= 1)
-        {
-            _timer.Interval = requestedInterval;
-        }
-
         var gameBounds = LmuWindowTracker.TryGetClientBounds();
         if (gameBounds is null && snapshot.State == LmuConnectionState.Connected)
         {
@@ -126,13 +189,77 @@ public partial class App
 
         if (gameBounds is null)
         {
+            _gameBounds = null;
+            Volatile.Write(ref _nativeDashboardConfiguration, null);
+            _nativeDashboard?.Hide(
+                Interlocked.Increment(ref _nativeDashboardSequence));
             _overlay.SetGameAvailable(false);
             _toolbar?.SetGameAvailable(false);
             return;
         }
 
-        _overlay.UpdateFrame(gameBounds.Value, snapshot);
+        _gameBounds = gameBounds;
+        Volatile.Write(
+            ref _nativeDashboardConfiguration,
+            new NativeDashboardConfiguration(
+                _overlay.GetNativeDashboardBounds(gameBounds.Value),
+                _overlay.NativeDashboardShouldBeVisible));
         _toolbar?.UpdateForGame(gameBounds.Value);
+        var sinceRender = Stopwatch.GetTimestamp() - _lastRenderedAt;
+        if (!_overlay.IsVisible ||
+            sinceRender > Stopwatch.Frequency / 5)
+        {
+            RenderLatest(forceSlowUpdate: true);
+        }
+    }
+
+    private void OnRendering(object? sender, EventArgs e)
+    {
+        if (_overlay is null || _gameBounds is null)
+        {
+            return;
+        }
+
+        var now = Stopwatch.GetTimestamp();
+        var refreshRate = Math.Clamp(_overlay.RequestedRefreshRateHz, 30, 144);
+        var minimumTicks = Stopwatch.Frequency / (double)refreshRate;
+        if (_lastRenderedAt > 0 && now - _lastRenderedAt < minimumTicks)
+        {
+            return;
+        }
+
+        RenderLatest(forceSlowUpdate: false);
+    }
+
+    private void RenderLatest(bool forceSlowUpdate)
+    {
+        if (_overlay is null || _gameBounds is null)
+        {
+            return;
+        }
+
+        var now = Stopwatch.GetTimestamp();
+        var slowUpdate = forceSlowUpdate ||
+            _lastSlowUpdateAt == 0 ||
+            now - _lastSlowUpdateAt >= Stopwatch.Frequency / 5;
+        var snapshot = _telemetryRuntime?.Latest
+            ?? LmuTelemetrySnapshot.Unavailable(
+                LmuConnectionState.Disconnected,
+                "Waiting for LMU shared memory.");
+        if (ReferenceEquals(snapshot, _lastRenderedSnapshot) && !slowUpdate)
+        {
+            _lastRenderedAt = now;
+            return;
+        }
+
+        _overlay.SetNativeDashboardActive(_nativeDashboard?.IsAvailable == true);
+        _overlay.UpdateFrame(_gameBounds.Value, snapshot, slowUpdate);
+        _lastRenderedSnapshot = snapshot;
+        _lastRenderedAt = now;
+        if (slowUpdate)
+        {
+            _lastSlowUpdateAt = now;
+        }
     }
 
     private void ExitApplication()
@@ -143,8 +270,15 @@ public partial class App
         }
 
         _isExiting = true;
-        _timer.Stop();
+        CompositionTarget.Rendering -= OnRendering;
+        _windowTimer.Stop();
+        if (_telemetryRuntime is not null)
+        {
+            _telemetryRuntime.SnapshotPublished -= OnTelemetrySnapshot;
+        }
         _telemetryRuntime?.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        _nativeDashboard?.Dispose();
+        _nativeDashboard = null;
         _configurationWindow?.Close();
         _toolbar?.Close();
         _overlay?.Close();
@@ -160,6 +294,34 @@ public partial class App
 
         Shutdown();
     }
+
+    private void OnTelemetrySnapshot(LmuTelemetrySnapshot snapshot)
+    {
+        var renderer = _nativeDashboard;
+        var configuration = Volatile.Read(ref _nativeDashboardConfiguration);
+        if (renderer is null || configuration is null)
+        {
+            return;
+        }
+
+        var dashboard = EssentialWidgetStateFactory.CreateDashboard(snapshot);
+        dashboard = dashboard with
+        {
+            SectorTimes = _nativeSectorReferenceTracker.Update(
+                snapshot,
+                dashboard.SectorTimes),
+        };
+        renderer.Publish(new NativeDashboardFrame(
+            dashboard,
+            configuration.Bounds,
+            configuration.Visible && renderer.IsAvailable,
+            Interlocked.Increment(ref _nativeDashboardSequence),
+            Stopwatch.GetTimestamp()));
+    }
+
+    private sealed record NativeDashboardConfiguration(
+        NativeDashboardBounds Bounds,
+        bool Visible);
 
     protected override void OnExit(System.Windows.ExitEventArgs e)
     {

@@ -405,17 +405,31 @@ public sealed class LayoutStore
             };
         }
 
+        var inputs = SanitizePlacement(profile.Inputs);
+        if (profile.SchemaVersion < 15 &&
+            Math.Abs(inputs.X - 0.025) < 0.001 &&
+            Math.Abs(inputs.Y - 0.47) < 0.001)
+        {
+            inputs = inputs with { Y = 0.66 };
+        }
+
+        var settings = SanitizeSettings(profile.Settings);
+        if (profile.SchemaVersion < 16 && settings.RefreshRateHz <= 60)
+        {
+            settings = settings with { RefreshRateHz = 120 };
+        }
+
         return profile with
         {
             SchemaVersion = LayoutProfile.CurrentSchemaVersion,
             Diagnostic = diagnostic,
-            Inputs = SanitizePlacement(profile.Inputs),
+            Inputs = inputs,
             LiveStandings = liveStandings,
             Relative = relative,
             SessionFlags = sessionFlags,
             FuelStrategy = fuelStrategy,
             RaceControl = SanitizePlacement(profile.RaceControl),
-            Settings = SanitizeSettings(profile.Settings),
+            Settings = settings,
         };
     }
 
@@ -426,10 +440,17 @@ public sealed class LayoutStore
         var theme = settings.Theme is "RedFox" or "HighContrast" or "Black"
             ? settings.Theme
             : "RedFox";
+        var density = Enum.TryParse<OverlayDensity>(
+            settings.VisualDensity,
+            true,
+            out var parsedDensity)
+                ? parsedDensity.ToString()
+                : OverlayDensity.Auto.ToString();
         return settings with
         {
             Theme = theme,
-            RefreshRateHz = Math.Clamp(settings.RefreshRateHz <= 10 ? 30 : settings.RefreshRateHz, 10, 60),
+            VisualDensity = density,
+            RefreshRateHz = Math.Clamp(settings.RefreshRateHz < 30 ? 120 : settings.RefreshRateHz, 30, 144),
             GridSnapPixels = Math.Clamp(settings.GridSnapPixels, 0, 50),
             FuelReserveLaps = Math.Clamp(settings.FuelReserveLaps, 0, 5),
             EnergyReservePercent = Math.Clamp(settings.EnergyReservePercent, 0, 25),
@@ -445,6 +466,14 @@ public sealed class LayoutStore
                 settings.EstimatedTireChangeSeconds,
                 0,
                 180),
+            BackgroundOpacity = Math.Clamp(
+                settings.BackgroundOpacity <= 0 ? 0.94 : settings.BackgroundOpacity,
+                0.35,
+                1),
+            PedalHistorySeconds = Math.Clamp(
+                settings.PedalHistorySeconds <= 0 ? 5 : settings.PedalHistorySeconds,
+                3,
+                10),
         };
     }
 

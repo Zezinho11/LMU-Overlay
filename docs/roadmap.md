@@ -36,9 +36,13 @@
 - [x] Add the diagnostic, dashboard, inputs, standings, relative, and
   session/flags widgets.
 - [x] Expose and test read-time and memory budgets in privacy-safe diagnostics.
-- [ ] Add long-running frame-time, allocation, and idle-CPU soak-test gates.
+- [x] Add stable start-to-start telemetry pacing plus automated read-time,
+  cadence, allocation, working-set, and CPU soak-test gates.
 - [x] Move telemetry acquisition off the UI thread, reuse shared-memory buffers,
   isolate read failures, and expose runtime health counters.
+- [x] Move the latency-critical dashboard from WPF to a native Win32,
+  Direct3D 11, Direct2D/DirectWrite and DirectComposition renderer while
+  retaining WPF as the editor and compatibility fallback.
 
 ## Phase 3 — product coverage
 
@@ -69,8 +73,12 @@
 
 ## Phase 4 — SteamVR
 
-- Implement the separate SteamVR `IVROverlay` host.
-- Reuse the same widget/layout runtime via submitted textures.
+- [x] Implement a separate SteamVR `IVROverlay` host with runtime discovery,
+  clean lifecycle, a head-relative transform and raw texture submission.
+- [ ] Reuse every widget/layout surface through submitted textures. The initial
+  multi-widget preview now reuses the shared dashboard, standings, relative,
+  fuel-strategy and session/weather states with independent persistent VR
+  placement; smaller widget parity remains.
 - Add world/dashboard transforms, opacity/scale controls, interaction, and VR
   performance tests.
 

@@ -1,6 +1,6 @@
 # ADR 0003: SteamVR overlay host
 
-- Status: planned
+- Status: accepted; foundation implemented
 - Date: 2026-07-28
 
 ## Decision
@@ -17,5 +17,7 @@ telemetry or widgets.
 
 ## Consequences
 
-SteamVR lifecycle, texture submission, transforms, controller interaction, and
-performance require their own integration tests. VR is not part of Phase 0.
+The first host implements the separate OpenVR lifecycle, `IVROverlay_028`, raw
+RGBA texture submission, a head-relative transform, clean teardown and a small
+telemetry preview. Full widget texture composition, profile controls,
+interaction and headset performance validation remain incremental milestones.

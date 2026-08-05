@@ -4,13 +4,16 @@ param(
     [string]$Version,
     [string]$Configuration = "Release",
     [string]$Runtime = "win-x64",
-    [string]$OutputDirectory = "artifacts"
+    [string]$OutputDirectory = "artifacts",
+    [string]$DotnetExecutable = "dotnet"
 )
 
 $ErrorActionPreference = "Stop"
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $artifacts = Join-Path $projectRoot $OutputDirectory
 $publishDirectory = Join-Path $artifacts "publish"
+$desktopPublishDirectory = Join-Path $publishDirectory "desktop"
+$steamVrPublishDirectory = Join-Path $publishDirectory "steamvr"
 $packageName = "LMU-Overlay-$Version-$Runtime"
 $packageDirectory = Join-Path $artifacts $packageName
 $archivePath = Join-Path $artifacts "$packageName.zip"
@@ -37,21 +40,29 @@ New-Item -ItemType Directory -Path $publishDirectory -Force | Out-Null
 New-Item -ItemType Directory -Path $packageDirectory -Force | Out-Null
 
 $desktopProject = Join-Path $projectRoot "src/LmuOverlay.Desktop/LmuOverlay.Desktop.csproj"
+$steamVrProject = Join-Path $projectRoot "src/LmuOverlay.SteamVr/LmuOverlay.SteamVr.csproj"
 $nugetConfig = Join-Path $projectRoot "NuGet.Config"
 
-dotnet restore $desktopProject `
+& $DotnetExecutable restore $desktopProject `
     --runtime $Runtime `
     --configfile $nugetConfig
 if ($LASTEXITCODE -ne 0) {
     throw "dotnet restore failed with exit code $LASTEXITCODE."
 }
 
-dotnet publish $desktopProject `
+& $DotnetExecutable restore $steamVrProject `
+    --runtime $Runtime `
+    --configfile $nugetConfig
+if ($LASTEXITCODE -ne 0) {
+    throw "SteamVR dotnet restore failed with exit code $LASTEXITCODE."
+}
+
+& $DotnetExecutable publish $desktopProject `
     --configuration $Configuration `
     --runtime $Runtime `
     --self-contained true `
     --no-restore `
-    --output $publishDirectory `
+    --output $desktopPublishDirectory `
     -p:Version=$Version `
     -p:PublishSingleFile=true `
     -p:IncludeNativeLibrariesForSelfExtract=true `
@@ -61,20 +72,43 @@ if ($LASTEXITCODE -ne 0) {
     throw "dotnet publish failed with exit code $LASTEXITCODE."
 }
 
-$executablePath = Join-Path $publishDirectory "LmuOverlay.Desktop.exe"
+& $DotnetExecutable publish $steamVrProject `
+    --configuration $Configuration `
+    --runtime $Runtime `
+    --self-contained true `
+    --no-restore `
+    --output $steamVrPublishDirectory `
+    -p:Version=$Version `
+    -p:PublishSingleFile=true `
+    -p:IncludeNativeLibrariesForSelfExtract=true `
+    -p:DebugType=None `
+    -p:DebugSymbols=false
+if ($LASTEXITCODE -ne 0) {
+    throw "SteamVR dotnet publish failed with exit code $LASTEXITCODE."
+}
+
+$executablePath = Join-Path $desktopPublishDirectory "LmuOverlay.Desktop.exe"
 if (-not (Test-Path -LiteralPath $executablePath)) {
     throw "Published executable was not created at $executablePath."
 }
+$steamVrExecutablePath = Join-Path $steamVrPublishDirectory "LmuOverlay.SteamVr.exe"
+if (-not (Test-Path -LiteralPath $steamVrExecutablePath)) {
+    throw "Published SteamVR executable was not created at $steamVrExecutablePath."
+}
 
-Copy-Item -Path (Join-Path $publishDirectory "*") -Destination $packageDirectory -Recurse
+Copy-Item -Path (Join-Path $desktopPublishDirectory "*") -Destination $packageDirectory -Recurse
+Copy-Item -Path (Join-Path $steamVrPublishDirectory "*") -Destination $packageDirectory -Recurse
 Copy-Item -LiteralPath (Join-Path $projectRoot "README.md") -Destination $packageDirectory
 Copy-Item -LiteralPath (Join-Path $projectRoot "CHANGELOG.md") -Destination $packageDirectory
 Copy-Item -LiteralPath (Join-Path $projectRoot "SECURITY.md") -Destination $packageDirectory
 Copy-Item -LiteralPath (Join-Path $projectRoot "LICENSE") -Destination $packageDirectory
+Copy-Item -LiteralPath (Join-Path $projectRoot "THIRD-PARTY-NOTICES.md") -Destination $packageDirectory
 Copy-Item -LiteralPath (Join-Path $projectRoot "docs/desktop/quick-start.md") `
     -Destination (Join-Path $packageDirectory "QUICK-START.md")
 Copy-Item -LiteralPath (Join-Path $projectRoot "docs/eac/safety-model.md") `
     -Destination (Join-Path $packageDirectory "EAC-SAFETY.md")
+Copy-Item -LiteralPath (Join-Path $projectRoot "docs/steamvr/quick-start.md") `
+    -Destination (Join-Path $packageDirectory "STEAMVR-QUICK-START.md")
 
 Compress-Archive -LiteralPath $packageDirectory -DestinationPath $archivePath
 $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $archivePath).Hash.ToLowerInvariant()
