@@ -176,7 +176,12 @@ public sealed record LmuVehicleStanding(
     double LastSector1Seconds = 0,
     double LastSector2CumulativeSeconds = 0,
     double CurrentSector1Seconds = 0,
-    double CurrentSector2CumulativeSeconds = 0);
+    double CurrentSector2CumulativeSeconds = 0,
+    string FrontTireCompound = "",
+    string RearTireCompound = "",
+    int FrontTireCompoundIndex = 0,
+    int RearTireCompoundIndex = 0,
+    double VirtualEnergyFraction = -1);
 
 public readonly record struct LmuVector3(double X, double Y, double Z)
 {

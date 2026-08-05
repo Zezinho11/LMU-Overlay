@@ -3,7 +3,7 @@
 Extensible telemetry overlay for **Le Mans Ultimate**, designed around the game's
 official shared-memory interface and a strict anti-cheat-safe boundary.
 
-> Project status: `0.4.0-preview.1` functional desktop preview with public
+> Project status: `0.4.0-preview.5` functional desktop preview with public
 > Windows packaging.
 > Extended live-race validation and complete SteamVR widget parity remain planned.
 
@@ -33,6 +33,10 @@ revalidated after LMU, EAC, SteamVR, or overlay changes.
   DirectWrite and DirectComposition. New telemetry snapshots travel directly
   from the dedicated 240 Hz capture thread to a latest-frame GPU renderer;
   WPF remains the editor, configuration UI and automatic compatibility fallback.
+- Native Live Standings and Relative surfaces share a Direct3D device, preserve
+  the approved wider timing-tower appearance and transparent unused area, and redraw only
+  for new LMU scoring data or layout changes. Their WPF versions remain available
+  automatically in edit mode and as a graphics compatibility fallback.
 - Duplicate LMU frames are reused without reparsing, while new player telemetry
   follows an allocation-light path and the graph emits at most one visual point
   per horizontal pixel.
@@ -44,6 +48,9 @@ revalidated after LMU, EAC, SteamVR, or overlay changes.
   Studio 397 files.
 - Movable/resizable RedFox dashboard, Live Standings, Relative, Fuel & Virtual
   Energy strategy, Race Control/damage, inputs, and session/weather/flag widgets.
+- Session type and remaining time on Live Standings, qualifying-specific
+  best-lap gaps by class, per-car tire/Virtual Energy status, and the official LMU Timing
+  history optimal lap on the dashboard.
 - Weighted race strategy with conservative consumption, configurable reserves,
   manual race distance, stint limits, multi-stop and pit-loss projection.
 - Per-profile widget scale, theme, refresh rate, magnetic grid, privacy-safe

@@ -25,6 +25,7 @@ public partial class App
     private Icon? _trayIconImage;
     private TelemetryRuntime? _telemetryRuntime;
     private NativeDashboardRenderer? _nativeDashboard;
+    private NativeTimingRenderer? _nativeTiming;
     private bool _isExiting;
     private System.Windows.Rect? _gameBounds;
     private long _lastRenderedAt;
@@ -32,7 +33,13 @@ public partial class App
     private LmuTelemetrySnapshot? _lastRenderedSnapshot;
     private long _nativeDashboardSequence;
     private NativeDashboardConfiguration? _nativeDashboardConfiguration;
+    private long _nativeTimingSequence;
+    private IReadOnlyList<LmuVehicleStanding>? _nativeTimingStandingsSource;
+    private LiveStandingsWidgetState? _nativeLiveStandingsState;
+    private RelativeWidgetState? _nativeRelativeState;
+    private NativeTimingConfiguration? _lastNativeTimingConfiguration;
     private readonly SectorReferenceTracker _nativeSectorReferenceTracker = new();
+    private readonly OfficialTimingOptimalProvider _officialTimingOptimal = new();
 
     protected override void OnStartup(System.Windows.StartupEventArgs e)
     {
@@ -47,6 +54,7 @@ public partial class App
 
         _overlay = new OverlayWindow(new LayoutStore());
         _nativeDashboard = new NativeDashboardRenderer();
+        _nativeTiming = new NativeTimingRenderer();
         _toolbar = new OverlayToolbarWindow(_overlay, ShowConfiguration);
         _telemetryRuntime = new TelemetryRuntime(
             () => new LmuSharedMemoryReader(),
@@ -193,6 +201,8 @@ public partial class App
             Volatile.Write(ref _nativeDashboardConfiguration, null);
             _nativeDashboard?.Hide(
                 Interlocked.Increment(ref _nativeDashboardSequence));
+            _nativeTiming?.Hide(
+                Interlocked.Increment(ref _nativeTimingSequence));
             _overlay.SetGameAvailable(false);
             _toolbar?.SetGameAvailable(false);
             return;
@@ -204,6 +214,7 @@ public partial class App
             new NativeDashboardConfiguration(
                 _overlay.GetNativeDashboardBounds(gameBounds.Value),
                 _overlay.NativeDashboardShouldBeVisible));
+        PublishNativeTiming(snapshot, gameBounds.Value);
         _toolbar?.UpdateForGame(gameBounds.Value);
         var sinceRender = Stopwatch.GetTimestamp() - _lastRenderedAt;
         if (!_overlay.IsVisible ||
@@ -253,7 +264,13 @@ public partial class App
         }
 
         _overlay.SetNativeDashboardActive(_nativeDashboard?.IsAvailable == true);
-        _overlay.UpdateFrame(_gameBounds.Value, snapshot, slowUpdate);
+        _overlay.SetNativeTimingActive(_nativeTiming?.IsAvailable == true);
+        _officialTimingOptimal.Update(snapshot);
+        _overlay.UpdateFrame(
+            _gameBounds.Value,
+            snapshot,
+            slowUpdate,
+            _officialTimingOptimal.GetOptimal(snapshot));
         _lastRenderedSnapshot = snapshot;
         _lastRenderedAt = now;
         if (slowUpdate)
@@ -279,6 +296,9 @@ public partial class App
         _telemetryRuntime?.DisposeAsync().AsTask().GetAwaiter().GetResult();
         _nativeDashboard?.Dispose();
         _nativeDashboard = null;
+        _nativeTiming?.Dispose();
+        _nativeTiming = null;
+        _officialTimingOptimal.Dispose();
         _configurationWindow?.Close();
         _toolbar?.Close();
         _overlay?.Close();
@@ -304,12 +324,15 @@ public partial class App
             return;
         }
 
+        _officialTimingOptimal.Update(snapshot);
         var dashboard = EssentialWidgetStateFactory.CreateDashboard(snapshot);
+        var trackedSectors = _nativeSectorReferenceTracker.Update(
+            snapshot,
+            dashboard.SectorTimes);
         dashboard = dashboard with
         {
-            SectorTimes = _nativeSectorReferenceTracker.Update(
-                snapshot,
-                dashboard.SectorTimes),
+            SectorTimes = trackedSectors,
+            OptimalLapTimeSeconds = _officialTimingOptimal.GetOptimal(snapshot),
         };
         renderer.Publish(new NativeDashboardFrame(
             dashboard,
@@ -319,9 +342,67 @@ public partial class App
             Stopwatch.GetTimestamp()));
     }
 
+    private void PublishNativeTiming(
+        LmuTelemetrySnapshot snapshot,
+        System.Windows.Rect gameBounds)
+    {
+        var renderer = _nativeTiming;
+        var overlay = _overlay;
+        if (renderer is null || overlay is null)
+        {
+            return;
+        }
+
+        var configuration = new NativeTimingConfiguration(
+            overlay.GetNativeLiveStandingsBounds(gameBounds),
+            overlay.NativeLiveStandingsShouldBeVisible && renderer.IsAvailable,
+            overlay.NativeLiveStandingsOpacity,
+            overlay.GetNativeRelativeBounds(gameBounds),
+            overlay.NativeRelativeShouldBeVisible && renderer.IsAvailable,
+            overlay.NativeRelativeOpacity);
+        var standingsChanged = !ReferenceEquals(
+            _nativeTimingStandingsSource,
+            snapshot.Standings);
+        if (!standingsChanged && configuration == _lastNativeTimingConfiguration)
+        {
+            return;
+        }
+
+        if (standingsChanged ||
+            _nativeLiveStandingsState is null ||
+            _nativeRelativeState is null)
+        {
+            _nativeTimingStandingsSource = snapshot.Standings;
+            _nativeLiveStandingsState =
+                EssentialWidgetStateFactory.CreateLiveStandings(snapshot);
+            _nativeRelativeState =
+                EssentialWidgetStateFactory.CreateRelative(snapshot);
+        }
+
+        _lastNativeTimingConfiguration = configuration;
+        renderer.Publish(new NativeTimingFrame(
+            _nativeLiveStandingsState,
+            configuration.LiveStandingsBounds,
+            configuration.LiveStandingsVisible,
+            configuration.LiveStandingsOpacity,
+            _nativeRelativeState,
+            configuration.RelativeBounds,
+            configuration.RelativeVisible,
+            configuration.RelativeOpacity,
+            Interlocked.Increment(ref _nativeTimingSequence)));
+    }
+
     private sealed record NativeDashboardConfiguration(
         NativeDashboardBounds Bounds,
         bool Visible);
+
+    private sealed record NativeTimingConfiguration(
+        NativeDashboardBounds LiveStandingsBounds,
+        bool LiveStandingsVisible,
+        double LiveStandingsOpacity,
+        NativeDashboardBounds RelativeBounds,
+        bool RelativeVisible,
+        double RelativeOpacity);
 
     protected override void OnExit(System.Windows.ExitEventArgs e)
     {

@@ -6,6 +6,16 @@ Directory.CreateDirectory(root);
 
 try
 {
+    using (var timingHistory = JsonDocument.Parse(
+        """{"42":[{"sectorTime1":30,"sectorTime2":70,"lapTime":120},{"sectorTime1":29,"sectorTime2":71,"lapTime":119}]}"""))
+    {
+        Assert(
+            Math.Abs(OfficialTimingOptimalProvider.ParseOptimal(
+                timingHistory.RootElement,
+                42) - 117) < 0.0001,
+            "Optimal must use the same per-sector history calculation as LMU Timing.");
+    }
+
     var path = Path.Combine(root, "layout.json");
     var store = new LayoutStore(path);
     Assert(store.Load() == LayoutProfile.Default, "Missing profile must load defaults.");
@@ -160,8 +170,10 @@ try
     }));
     var narrowTowerStore = new LayoutStore(narrowTowerPath);
     var migratedTower = narrowTowerStore.Load().LiveStandings;
-    Assert(migratedTower.Width == 0.16, "The old wide standings layout must migrate.");
-    Assert(migratedTower.X == 0.81, "The narrow timing tower must remain right aligned.");
+    Assert(Math.Abs(migratedTower.Width - 0.28) < 0.0001,
+        "The old standings layout must migrate to the wider panel.");
+    Assert(Math.Abs(migratedTower.X - 0.69) < 0.0001,
+        "The wider timing panel must remain right aligned.");
 
     var fuelPanelPath = Path.Combine(root, "layout-v5.json");
     var versionFiveProfile = LayoutProfile.Default with
@@ -204,10 +216,12 @@ try
     }));
     var relativeTowerStore = new LayoutStore(relativeTowerPath);
     var migratedRelative = relativeTowerStore.Load().Relative;
-    Assert(migratedRelative.Width == 0.16 && migratedRelative.Height == 0.40,
-        "The old relative box must migrate to the timing-tower proportions.");
-    Assert(migratedRelative.X == 0.64 && migratedRelative.Y == 0.05,
-        "The relative tower must migrate beside live standings.");
+    Assert(Math.Abs(migratedRelative.Width - 0.28) < 0.0001 &&
+           Math.Abs(migratedRelative.Height - 0.40) < 0.0001,
+        "The old relative box must migrate to the wider timing proportions.");
+    Assert(Math.Abs(migratedRelative.X - 0.40) < 0.0001 &&
+           Math.Abs(migratedRelative.Y - 0.05) < 0.0001,
+        "The wider relative panel must migrate beside live standings without overlap.");
 
     var sessionPanelPath = Path.Combine(root, "layout-v7.json");
     var versionSevenProfile = LayoutProfile.Default with

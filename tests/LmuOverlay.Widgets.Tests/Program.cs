@@ -99,7 +99,11 @@ var standings = new[]
 {
     Standing(1, "Leader", 1, 0, false, false, lapDistanceMeters: 700),
     Standing(2, "John Suzuki", 2, 3.2, true, false,
-        vehicleName: "Porsche 963 #6", lapDistanceMeters: 1_000),
+        vehicleName: "Porsche 963 #6", lapDistanceMeters: 1_000) with
+    {
+        BestSector1Seconds = 30,
+        BestSector2CumulativeSeconds = 70,
+    },
     Standing(3, "Pitting", 14, 5.7, false, true, lapDistanceMeters: 1_300),
 };
 var session = new LmuSessionSnapshot(
@@ -133,6 +137,8 @@ Assert(relative.Rows[1].ClassAbbreviation == "HYP",
     "Relative must expose a compact multiclass badge.");
 Assert(relative.Rows[1].CarNumber == "6",
     "Relative must use only explicit official race numbers.");
+Assert(string.IsNullOrEmpty(relative.SessionName) && relative.SessionRemainingSeconds == 0,
+    "Relative must not carry a redundant session header or clock.");
 Assert(sessionFlags.FlagName == "YELLOW", "FCY must produce a yellow flag state.");
 Assert(sessionFlags.TrackGripName == "HEAVY",
     "Official RealRoad level 3 must render as heavy grip.");
@@ -144,12 +150,29 @@ Assert(sessionFlags.RemainingSeconds == 3600, "Remaining session time must be de
 Assert(raceDashboard.CurrentLapTimeSeconds == 120, "Current lap time must be derived.");
 Assert(raceDashboard.LastLapTimeSeconds == 121, "Last lap time must be preserved.");
 Assert(raceDashboard.BestLapTimeSeconds == 120, "Best lap time must be preserved.");
+Assert(raceDashboard.OptimalLapTimeSeconds == 120,
+    "Optimal lap must sum the official best sector values.");
 Assert(raceDashboard.SpeedLimiterActive,
     "Active pit limiter must be exposed to the dashboard renderer.");
 Assert(liveStandings.Classes[0].Rows[0].DriverAbbreviation == "LEA",
     "Standings must expose compact driver abbreviations.");
 Assert(liveStandings.Classes[0].Rows[0].VehicleModel == "Porsche 963",
     "Standings must preserve the telemetry vehicle model for manufacturer badges.");
+var tireFuelRow = EssentialWidgetStateFactory.CreateLiveStandings(
+    raceSnapshot with
+    {
+        Standings = standings.Select(item => item with
+        {
+            VirtualEnergyFraction = 0.78,
+            FrontTireCompound = "Medium",
+            RearTireCompound = "Medium",
+            FrontTireCompoundIndex = 2,
+        }).ToArray(),
+    }).Classes[0].Rows[0];
+Assert(Math.Abs(tireFuelRow.VirtualEnergyFraction - 0.78) < 0.0001 &&
+       tireFuelRow.TireCompound == "Medium" &&
+       tireFuelRow.TireCompoundIndex == 2,
+    "Standings must expose each car's official Virtual Energy and tire compound.");
 Assert(raceControl.RequiresAttention, "Damage must raise race-control attention.");
 Assert(raceControl.HasCriticalDamage, "Overheating must be critical damage.");
 Assert(raceControl.DamageStatus == "CRITICAL", "Critical damage must be explicit.");
@@ -167,8 +190,8 @@ var deepField = Enumerable.Range(1, 15)
 var compactStandings = EssentialWidgetStateFactory.CreateLiveStandings(
     raceSnapshot with { Standings = deepField });
 var compactRows = compactStandings.Classes[0].Rows;
-Assert(compactRows.Count == 14,
-    "A single-class standings tower must use all fourteen available car rows.");
+Assert(compactRows.Count == 12,
+    "The wider standings panel must use all twelve rows below its session header.");
 Assert(compactRows[0].ClassPosition == 1, "The class leader must always remain visible.");
 Assert(compactRows.Any(row => row.IsPlayer), "The moving window must always include the player.");
 Assert(compactRows.Single(row => row.IsPlayer).DriverAbbreviation == "COS",
@@ -183,19 +206,48 @@ var multiclassField = deepField
         Standing(101, "Hyper Leader", 16, 0, false, false) with
         {
             VehicleClass = "Hypercar",
+            VirtualEnergyFraction = 0.64,
         },
         Standing(102, "LMP2 Leader", 17, 0, false, false) with
         {
             VehicleClass = "LMP2",
+            VirtualEnergyFraction = 0.52,
         },
     })
     .ToArray();
 var multiclassStandings = EssentialWidgetStateFactory.CreateLiveStandings(
     raceSnapshot with { Standings = multiclassField });
-Assert(multiclassStandings.Classes.Sum(group => group.Rows.Count) == 13,
+Assert(multiclassStandings.Classes.Sum(group => group.Rows.Count) == 11,
     "Three-class standings must fill the tower without overflowing.");
-Assert(multiclassStandings.Classes.Single(group => group.IsPlayerClass).Rows.Count == 11,
+Assert(multiclassStandings.Classes.Single(group => group.IsPlayerClass).Rows.Count == 9,
     "Spare multiclass rows must belong to the player's class.");
+Assert(multiclassStandings.Classes
+        .Where(group => !group.IsPlayerClass)
+        .Select(group => group.Rows.Single().VirtualEnergyFraction)
+        .OrderBy(value => value)
+        .SequenceEqual(new[] { 0.52, 0.64 }),
+    "Every other-class P1 must carry that car's own Virtual Energy value.");
+
+var qualifyingSnapshot = raceSnapshot with
+{
+    Session = session with { Kind = LmuSessionKind.Qualifying },
+    Standings = new[]
+    {
+        standings[0] with { BestLapTimeSeconds = 100.000 },
+        standings[1] with { BestLapTimeSeconds = 100.500 },
+        standings[2] with { BestLapTimeSeconds = 101.200 },
+    },
+};
+var qualifyingStandings = EssentialWidgetStateFactory.CreateLiveStandings(
+    qualifyingSnapshot);
+Assert(qualifyingStandings.IsQualifying &&
+       qualifyingStandings.SessionName == "QUALIFYING" &&
+       qualifyingStandings.SessionRemainingSeconds == 3600,
+    "Timing panels must expose the official session type and remaining clock.");
+Assert(Math.Abs(qualifyingStandings.Classes[0].Rows[1].IntervalSeconds - 0.5) < 0.0001,
+    "Qualifying interval must be the best-lap difference to the class leader.");
+Assert(qualifyingStandings.Classes[0].Rows[1].LastLapTimeSeconds == 100.5,
+    "Qualifying lap column must display each driver's best lap.");
 
 var fuelTracker = new FuelStrategyTracker();
 var learning = fuelTracker.Update(raceSnapshot);

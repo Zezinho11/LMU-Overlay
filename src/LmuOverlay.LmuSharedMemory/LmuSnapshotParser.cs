@@ -52,8 +52,8 @@ public static class LmuSnapshotParser
             };
         }
 
-        var vehicleModels = ParseVehicleModels(data, activeVehicles);
-        var standings = ParseStandings(data, scoredVehicles, vehicleModels);
+        var vehicleMetadata = ParseVehicleMetadata(data, activeVehicles);
+        var standings = ParseStandings(data, scoredVehicles, vehicleMetadata);
         var session = ParseSession(data);
         var playerStanding = standings.FirstOrDefault(vehicle => vehicle.IsPlayer)
             ?? standings.FirstOrDefault(vehicle =>
@@ -241,14 +241,18 @@ public static class LmuSnapshotParser
     private static LmuVehicleStanding[] ParseStandings(
         ReadOnlySpan<byte> data,
         int vehicleCount,
-        IReadOnlyDictionary<int, string> vehicleModels)
+        IReadOnlyDictionary<int, VehicleMetadata> vehicleMetadata)
     {
         var standings = new LmuVehicleStanding[vehicleCount];
         for (var index = 0; index < vehicleCount; index++)
         {
             var offset = LmuApiLayoutV1.VehicleScoringOffset(index);
+            var vehicleId = ReadInt32(
+                data,
+                offset + LmuApiLayoutV1.ScoringVehicleIdOffset);
+            vehicleMetadata.TryGetValue(vehicleId, out var metadata);
             standings[index] = new(
-                ReadInt32(data, offset + LmuApiLayoutV1.ScoringVehicleIdOffset),
+                vehicleId,
                 ReadText(
                     data,
                     offset + LmuApiLayoutV1.ScoringDriverNameOffset,
@@ -257,9 +261,7 @@ public static class LmuSnapshotParser
                     data,
                     offset + LmuApiLayoutV1.ScoringVehicleNameOffset,
                     LmuApiLayoutV1.ScoringVehicleNameLength),
-                vehicleModels.GetValueOrDefault(
-                    ReadInt32(data, offset + LmuApiLayoutV1.ScoringVehicleIdOffset),
-                    string.Empty),
+                metadata?.VehicleModel ?? string.Empty,
                 ReadText(
                     data,
                     offset + LmuApiLayoutV1.ScoringVehicleClassOffset,
@@ -289,17 +291,22 @@ public static class LmuSnapshotParser
                 ReadDouble(data, offset + LmuApiLayoutV1.ScoringLastSector1Offset),
                 ReadDouble(data, offset + LmuApiLayoutV1.ScoringLastSector2Offset),
                 ReadDouble(data, offset + LmuApiLayoutV1.ScoringCurrentSector1Offset),
-                ReadDouble(data, offset + LmuApiLayoutV1.ScoringCurrentSector2Offset));
+                ReadDouble(data, offset + LmuApiLayoutV1.ScoringCurrentSector2Offset),
+                metadata?.FrontTireCompound ?? string.Empty,
+                metadata?.RearTireCompound ?? string.Empty,
+                metadata?.FrontTireCompoundIndex ?? 0,
+                metadata?.RearTireCompoundIndex ?? 0,
+                metadata?.VirtualEnergyFraction ?? -1);
         }
 
         return standings;
     }
 
-    private static IReadOnlyDictionary<int, string> ParseVehicleModels(
+    private static IReadOnlyDictionary<int, VehicleMetadata> ParseVehicleMetadata(
         ReadOnlySpan<byte> data,
         int vehicleCount)
     {
-        var models = new Dictionary<int, string>(vehicleCount);
+        var models = new Dictionary<int, VehicleMetadata>(vehicleCount);
         for (var index = 0; index < vehicleCount; index++)
         {
             var offset = LmuApiLayoutV1.VehicleTelemetryOffset(index);
@@ -314,15 +321,35 @@ public static class LmuSnapshotParser
                 data,
                 offset + LmuApiLayoutV1.TelemetryVehicleModelOffset,
                 LmuApiLayoutV1.TelemetryVehicleModelLength);
-            models[vehicleId] = string.Join(
-                " ",
-                new[] { vehicleName, vehicleModel }
-                    .Where(value => !string.IsNullOrWhiteSpace(value))
-                    .Distinct(StringComparer.OrdinalIgnoreCase));
+            models[vehicleId] = new(
+                string.Join(
+                    " ",
+                    new[] { vehicleName, vehicleModel }
+                        .Where(value => !string.IsNullOrWhiteSpace(value))
+                        .Distinct(StringComparer.OrdinalIgnoreCase)),
+                ReadText(
+                    data,
+                    offset + LmuApiLayoutV1.TelemetryFrontTireCompoundNameOffset,
+                    LmuApiLayoutV1.TelemetryTireCompoundNameLength),
+                ReadText(
+                    data,
+                    offset + LmuApiLayoutV1.TelemetryRearTireCompoundNameOffset,
+                    LmuApiLayoutV1.TelemetryTireCompoundNameLength),
+                data[offset + LmuApiLayoutV1.TelemetryFrontTireCompoundIndexOffset],
+                data[offset + LmuApiLayoutV1.TelemetryRearTireCompoundIndexOffset],
+                ReadSingle(data, offset + LmuApiLayoutV1.TelemetryVirtualEnergyOffset));
         }
 
         return models;
     }
+
+    private sealed record VehicleMetadata(
+        string VehicleModel,
+        string FrontTireCompound,
+        string RearTireCompound,
+        int FrontTireCompoundIndex,
+        int RearTireCompoundIndex,
+        double VirtualEnergyFraction);
 
     private static LmuPlayerTelemetry ParsePlayer(
         ReadOnlySpan<byte> data,

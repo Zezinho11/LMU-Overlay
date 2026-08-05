@@ -24,7 +24,7 @@ public static class ResponsiveWidgetLayout
     {
         "DiagnosticWidget" => new(800, 480, 360, 216),
         "InputsWidget" => new(360, 90, 180, 45),
-        "LiveStandingsWidget" or "RelativeWidget" => new(260, 410, 145, 229),
+        "LiveStandingsWidget" or "RelativeWidget" => new(500, 410, 280, 230),
         "SessionFlagsWidget" => new(500, 190, 250, 95),
         "FuelStrategyWidget" => new(500, 400, 250, 200),
         "RaceControlWidget" => new(430, 190, 240, 106),

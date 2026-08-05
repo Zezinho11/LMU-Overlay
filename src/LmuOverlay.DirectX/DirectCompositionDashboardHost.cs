@@ -260,9 +260,10 @@ internal sealed class DirectCompositionDashboardHost : IDisposable
             DrawText(drawing, "LIMIT", 448, 99, 58, 22, 12, _panel!, TextAlignment.Center);
         }
 
-        DrawText(drawing, $"CURRENT {FormatLap(dashboard.CurrentLapTimeSeconds)}", 548, 104, 190, 20, 13, _white!);
-        DrawText(drawing, $"LAST {FormatLap(dashboard.LastLapTimeSeconds)}", 548, 130, 190, 20, 13, _muted!);
-        DrawText(drawing, $"BEST {FormatLap(dashboard.BestLapTimeSeconds)}", 548, 156, 190, 20, 13, _green!);
+        DrawText(drawing, $"CURRENT {FormatLap(dashboard.CurrentLapTimeSeconds)}", 548, 100, 190, 20, 13, _white!);
+        DrawText(drawing, $"LAST {FormatLap(dashboard.LastLapTimeSeconds)}", 548, 123, 190, 20, 13, _muted!);
+        DrawText(drawing, $"BEST {FormatLap(dashboard.BestLapTimeSeconds)}", 548, 146, 190, 20, 13, _green!);
+        DrawText(drawing, $"OPTIMAL {FormatLap(dashboard.OptimalLapTimeSeconds)}", 548, 169, 190, 20, 13, _cyan!);
         DrawControlCards(drawing, dashboard);
         DrawText(drawing, $"OIL {dashboard.EngineOilTemperatureCelsius:0}°  WATER {dashboard.EngineWaterTemperatureCelsius:0}°", 548, 242, 190, 16, 11, _muted!);
 
@@ -342,9 +343,9 @@ internal sealed class DirectCompositionDashboardHost : IDisposable
         for (var index = 0; index < values.Length; index++)
         {
             var x = 548 + (index * 48);
-            FillRounded(drawing, x, 185, 43, 54, 4, _green!);
-            DrawText(drawing, values[index].Item1, x, 189, 43, 16, 10, _panel!, TextAlignment.Center);
-            DrawText(drawing, values[index].Item3 > 0 ? values[index].Item2.ToString() : "--", x, 207, 43, 24, 17, _white!, TextAlignment.Center);
+            FillRounded(drawing, x, 195, 43, 42, 4, _green!);
+            DrawText(drawing, values[index].Item1, x, 197, 43, 14, 9, _panel!, TextAlignment.Center);
+            DrawText(drawing, values[index].Item3 > 0 ? values[index].Item2.ToString() : "--", x, 211, 43, 21, 15, _white!, TextAlignment.Center);
         }
     }
 

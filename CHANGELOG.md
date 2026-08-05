@@ -2,6 +2,36 @@
 
 ## Unreleased
 
+- Added each car's official tire compound and telemetry Virtual Energy
+  percentage to Live Standings, with a compact compound badge, energy-condition
+  bar and explicit pit state. Other-class P1 rows use that leader's own value.
+- Removed the redundant session type and clock from Relative, leaving only its
+  position, class, driver and track-relative gap functionality.
+- Corrected dashboard `OPTIMAL` to use the read-only standings history endpoint
+  used by LMU Live Timing itself. The overlay now reproduces LMU's minimum valid
+  S1 + S2 + S3 calculation once per second instead of approximating sector 3
+  from shared-memory best-lap accumulators.
+- Fixed layout corruption when locking the overlay: edit-mode geometry is now
+  captured before WPF surfaces are collapsed for native DirectComposition, so
+  dashboard, Live Standings and Relative retain their exact size and position.
+- Widened Live Standings and Relative to a 500x410 timing-tower design, enlarged
+  their timing typography and added automatic migration for existing narrow
+  profiles without allowing the two panels to overlap.
+- Added the official session kind and remaining time to Live Standings.
+  Qualifying now displays each driver's best lap and its gap to the fastest
+  official best lap in that vehicle class; race sessions retain race intervals
+  and pit-state behavior.
+- Added `OPTIMAL` to the dashboard by summing the three official best sector
+  values already exposed by LMU's Timing data. The value remains unavailable
+  until all three valid sector references exist.
+- Migrated Live Standings and Relative from locked-race WPF visuals to two
+  independent DirectComposition surfaces backed by one shared Direct3D 11
+  device. Their approved vertical layouts, colors, badges, transparency,
+  profile bounds and edit-mode WPF representations are preserved.
+- Timing panels now rebuild and present only when LMU publishes a new immutable
+  standings set or their layout changes, avoiding redundant sorting, visual
+  tree reconstruction and GPU presentation while retaining latest-frame
+  delivery without queues.
 - Added a native low-latency dashboard renderer using a click-through Win32
   window, Direct3D 11, Direct2D/DirectWrite and a premultiplied-alpha
   DirectComposition flip swap chain. WPF remains the configuration/editor and

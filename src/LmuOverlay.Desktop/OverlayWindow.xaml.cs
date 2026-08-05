@@ -100,6 +100,7 @@ public partial class OverlayWindow : Window
     private FuelStrategyWidgetState? _alertFuelState;
     private RaceControlWidgetState? _alertRaceControlState;
     private bool _nativeDashboardActive;
+    private bool _nativeTimingActive;
 
     public OverlayWindow(LayoutStore layoutStore)
     {
@@ -140,12 +141,29 @@ public partial class OverlayWindow : Window
 
     public LmuOverlay.DirectX.NativeDashboardBounds GetNativeDashboardBounds(
         Rect gameBounds)
+        => GetNativeBounds(gameBounds, _profile.Diagnostic, DiagnosticWidget.Name);
+
+    public LmuOverlay.DirectX.NativeDashboardBounds GetNativeLiveStandingsBounds(
+        Rect gameBounds)
+        => GetNativeBounds(
+            gameBounds,
+            _profile.LiveStandings,
+            LiveStandingsWidget.Name);
+
+    public LmuOverlay.DirectX.NativeDashboardBounds GetNativeRelativeBounds(
+        Rect gameBounds)
+        => GetNativeBounds(gameBounds, _profile.Relative, RelativeWidget.Name);
+
+    private static LmuOverlay.DirectX.NativeDashboardBounds GetNativeBounds(
+        Rect gameBounds,
+        WidgetPlacement placement,
+        string widgetName)
     {
         var bounds = ResponsiveWidgetLayout.Calculate(
             gameBounds.Width,
             gameBounds.Height,
-            _profile.Diagnostic,
-            ResponsiveWidgetLayout.For(DiagnosticWidget.Name));
+            placement,
+            ResponsiveWidgetLayout.For(widgetName));
         return new(
             (int)Math.Round(gameBounds.Left + bounds.X),
             (int)Math.Round(gameBounds.Top + bounds.Y),
@@ -156,6 +174,15 @@ public partial class OverlayWindow : Window
     public bool NativeDashboardShouldBeVisible =>
         _profile.Diagnostic.Visible && !IsEditMode;
 
+    public bool NativeLiveStandingsShouldBeVisible =>
+        _profile.LiveStandings.Visible && !IsEditMode;
+    public bool NativeRelativeShouldBeVisible =>
+        _profile.Relative.Visible && !IsEditMode;
+    public double NativeLiveStandingsOpacity =>
+        _profile.LiveStandings.Opacity * _profile.Settings.BackgroundOpacity;
+    public double NativeRelativeOpacity =>
+        _profile.Relative.Opacity * _profile.Settings.BackgroundOpacity;
+
     public void SetNativeDashboardActive(bool active)
     {
         if (_nativeDashboardActive == active)
@@ -164,6 +191,17 @@ public partial class OverlayWindow : Window
         }
 
         _nativeDashboardActive = active;
+        ApplyProfile();
+    }
+
+    public void SetNativeTimingActive(bool active)
+    {
+        if (_nativeTimingActive == active)
+        {
+            return;
+        }
+
+        _nativeTimingActive = active;
         ApplyProfile();
     }
 
@@ -249,7 +287,8 @@ public partial class OverlayWindow : Window
     public void UpdateFrame(
         Rect gameBounds,
         LmuTelemetrySnapshot snapshot,
-        bool updateSlowWidgets = true)
+        bool updateSlowWidgets = true,
+        double officialOptimalLapSeconds = 0)
     {
         _lastSnapshot = snapshot;
         var boundsChanged = gameBounds != _lastGameBounds;
@@ -328,9 +367,11 @@ public partial class OverlayWindow : Window
             : IndicatorEnabledTextBrush);
         SetText(SectorLastLapText, FormatLapTime(dashboard.LastLapTimeSeconds));
         SetText(SectorBestLapText, FormatLapTime(dashboard.BestLapTimeSeconds));
-        UpdateSectorReadings(_sectorReferenceTracker.Update(
+        var trackedSectors = _sectorReferenceTracker.Update(
             snapshot,
-            dashboard.SectorTimes));
+            dashboard.SectorTimes);
+        UpdateSectorReadings(trackedSectors);
+        SetText(OptimalLapText, $"OPTIMAL {FormatLapTime(officialOptimalLapSeconds)}");
         SetText(DashboardThrottleText, dashboard.Available ? $"{dashboard.Throttle:P0}" : "--");
         SetText(DashboardBrakeText, dashboard.Available ? $"{dashboard.Brake:P0}" : "--");
         SetText(LongitudinalGText, dashboard.Available
@@ -406,8 +447,11 @@ public partial class OverlayWindow : Window
         if (updateSlowWidgets)
         {
             var sessionState = EssentialWidgetStateFactory.CreateSessionFlags(snapshot);
-            UpdateStandings(EssentialWidgetStateFactory.CreateLiveStandings(snapshot));
-            UpdateRelative(EssentialWidgetStateFactory.CreateRelative(snapshot));
+            if (!_nativeTimingActive || IsEditMode)
+            {
+                UpdateStandings(EssentialWidgetStateFactory.CreateLiveStandings(snapshot));
+                UpdateRelative(EssentialWidgetStateFactory.CreateRelative(snapshot));
+            }
             UpdateSessionFlags(sessionState);
 
             var fuelStrategy = _fuelStrategyTracker.Update(
@@ -826,6 +870,13 @@ public partial class OverlayWindow : Window
 
     public void SetEditMode(bool enabled)
     {
+        if (!enabled && IsEditMode)
+        {
+            // Capture geometry while the WPF editor surfaces still have their
+            // real arranged sizes. Native mode collapses them immediately.
+            SaveProfile();
+        }
+
         IsEditMode = enabled;
         ResizeThumb.Visibility = enabled ? Visibility.Visible : Visibility.Collapsed;
         InputsResizeThumb.Visibility = enabled ? Visibility.Visible : Visibility.Collapsed;
@@ -859,7 +910,7 @@ public partial class OverlayWindow : Window
         }
         else
         {
-            SaveProfile();
+            _layoutStore.Save(_profile);
         }
     }
 
@@ -903,8 +954,12 @@ public partial class OverlayWindow : Window
         FrameworkElement element,
         WidgetPlacement placement)
     {
+        var renderedNatively = !IsEditMode &&
+            ((element == DiagnosticWidget && _nativeDashboardActive) ||
+             ((element == LiveStandingsWidget || element == RelativeWidget) &&
+              _nativeTimingActive));
         element.Visibility = placement.Visible &&
-            !(element == DiagnosticWidget && _nativeDashboardActive && !IsEditMode)
+            !renderedNatively
                 ? Visibility.Visible
                 : Visibility.Collapsed;
         element.Opacity = 1;
@@ -928,6 +983,9 @@ public partial class OverlayWindow : Window
 
     private void UpdateStandings(LiveStandingsWidgetState standings)
     {
+        SetText(StandingsSessionText, standings.SessionName);
+        SetText(StandingsClockText, FormatSessionTime(standings.SessionRemainingSeconds));
+        SetText(StandingsLapHeading, standings.IsQualifying ? "BEST LAP" : "LAST LAP");
         var structureKey = string.Join(
             "|",
             standings.Classes.Select(category =>
@@ -1011,7 +1069,7 @@ public partial class OverlayWindow : Window
                     : Brush(19, 27, 49),
             ToolTip = $"{row.DriverName} · {row.VehicleName}",
         };
-        foreach (var width in new[] { 28d, 38d, 32d, 40d, 72d })
+        foreach (var width in new[] { 36d, 50d, 40d, 62d, 104d, 76d })
         {
             grid.ColumnDefinitions.Add(new ColumnDefinition
             {
@@ -1033,8 +1091,8 @@ public partial class OverlayWindow : Window
         var manufacturerBadge = new Border
         {
             Background = CarIconBrush(row.VehicleModel),
-            Width = 32,
-            Height = 17,
+            Width = 42,
+            Height = 19,
             CornerRadius = new CornerRadius(2),
             HorizontalAlignment = System.Windows.HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center,
@@ -1044,7 +1102,7 @@ public partial class OverlayWindow : Window
                 Foreground = System.Windows.Media.Brushes.White,
                 FontFamily = new System.Windows.Media.FontFamily("Bahnschrift"),
                 FontWeight = FontWeights.Bold,
-                FontSize = 8,
+                FontSize = 9,
                 HorizontalAlignment = System.Windows.HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
             },
@@ -1064,7 +1122,7 @@ public partial class OverlayWindow : Window
             3,
             System.Windows.Media.Brushes.White,
             FontWeights.Bold,
-            9);
+            10);
         AddStandingsText(
             grid,
             FormatLapTime(row.LastLapTimeSeconds),
@@ -1076,13 +1134,23 @@ public partial class OverlayWindow : Window
             grid,
             FormatStandingsInterval(row),
             5,
-            row.IsInPitLane
+            row.IsInPitLane && !row.IsQualifying
                 ? System.Windows.Media.Brushes.Orange
                 : System.Windows.Media.Brushes.Gainsboro,
             FontWeights.SemiBold,
-            9,
+            10,
             System.Windows.HorizontalAlignment.Right,
             new Thickness(0, 0, 4, 0));
+        AddStandingsText(
+            grid,
+            FormatTireEnergy(row),
+            6,
+            row.IsInPitLane
+                ? System.Windows.Media.Brushes.Orange
+                : TireCompoundBrush(row.TireCompound),
+            FontWeights.Bold,
+            9,
+            System.Windows.HorizontalAlignment.Center);
         return grid;
     }
 
@@ -1098,7 +1166,7 @@ public partial class OverlayWindow : Window
                 : Brush(19, 27, 49);
         grid.ToolTip = $"{row.DriverName} · {row.VehicleName}";
         var texts = grid.Children.OfType<TextBlock>().ToArray();
-        if (texts.Length >= 5)
+        if (texts.Length >= 6)
         {
             texts[0].Text = row.ClassPosition.ToString(
                 System.Globalization.CultureInfo.InvariantCulture);
@@ -1109,9 +1177,13 @@ public partial class OverlayWindow : Window
             texts[2].Text = row.DriverAbbreviation;
             texts[3].Text = FormatLapTime(row.LastLapTimeSeconds);
             texts[4].Text = FormatStandingsInterval(row);
-            texts[4].Foreground = row.IsInPitLane
+            texts[4].Foreground = row.IsInPitLane && !row.IsQualifying
                 ? System.Windows.Media.Brushes.Orange
                 : System.Windows.Media.Brushes.Gainsboro;
+            texts[5].Text = FormatTireEnergy(row);
+            texts[5].Foreground = row.IsInPitLane
+                ? System.Windows.Media.Brushes.Orange
+                : TireCompoundBrush(row.TireCompound);
         }
 
         var badge = grid.Children.OfType<Border>().FirstOrDefault();
@@ -1153,6 +1225,15 @@ public partial class OverlayWindow : Window
 
     private static string FormatStandingsInterval(LiveStandingsRowState row)
     {
+        if (row.IsQualifying)
+        {
+            return row.ClassPosition == 1
+                ? "LEADER"
+                : row.IntervalSeconds >= 0 && double.IsFinite(row.IntervalSeconds)
+                    ? $"+{row.IntervalSeconds:0.000}"
+                    : "--.---";
+        }
+
         if (row.IsInPitLane)
         {
             return "PIT";
@@ -1171,6 +1252,50 @@ public partial class OverlayWindow : Window
         return row.IntervalSeconds > 0 && double.IsFinite(row.IntervalSeconds)
             ? $"+{row.IntervalSeconds:0.000}"
             : "--.---";
+    }
+
+    private static string FormatTireEnergy(LiveStandingsRowState row)
+    {
+        if (row.IsInPitLane)
+        {
+            return "PIT";
+        }
+
+        var compound = TireCompoundCode(row.TireCompound);
+        var energy = row.VirtualEnergyFraction is >= 0 and <= 1 &&
+                     double.IsFinite(row.VirtualEnergyFraction)
+            ? $"{row.VirtualEnergyFraction:P0}"
+            : "--%";
+        return $"{compound}  |  {energy}";
+    }
+
+    private static string TireCompoundCode(string compound)
+    {
+        var value = compound.Trim().ToUpperInvariant();
+        return value switch
+        {
+            _ when value.Contains("SOFT", StringComparison.Ordinal) => "S",
+            _ when value.Contains("MED", StringComparison.Ordinal) => "M",
+            _ when value.Contains("HARD", StringComparison.Ordinal) => "H",
+            _ when value.Contains("WET", StringComparison.Ordinal) => "W",
+            _ when value.Contains("INTER", StringComparison.Ordinal) => "I",
+            { Length: > 0 } => value[..Math.Min(3, value.Length)],
+            _ => "--",
+        };
+    }
+
+    private static System.Windows.Media.Brush TireCompoundBrush(string compound)
+    {
+        var code = TireCompoundCode(compound);
+        return code switch
+        {
+            "S" => System.Windows.Media.Brushes.Red,
+            "M" => System.Windows.Media.Brushes.Gold,
+            "H" => System.Windows.Media.Brushes.White,
+            "W" => System.Windows.Media.Brushes.DeepSkyBlue,
+            "I" => System.Windows.Media.Brushes.LimeGreen,
+            _ => System.Windows.Media.Brushes.Gainsboro,
+        };
     }
 
     private static System.Windows.Media.Brush CarIconBrush(string vehicleName)
@@ -1286,7 +1411,7 @@ public partial class OverlayWindow : Window
         var classBrush = RelativeClassBrush(row.ClassAbbreviation);
         var grid = new Grid
         {
-            Height = 40,
+            Height = 37,
             Background = row.IsPlayer
                 ? playerBackground
                 : rowIndex % 2 == 0
@@ -1295,7 +1420,7 @@ public partial class OverlayWindow : Window
             ToolTip =
                 $"P{row.OverallPosition} · {row.DriverName} · {row.VehicleClass}",
         };
-        foreach (var width in new[] { 36d, 40d })
+        foreach (var width in new[] { 52d, 60d })
         {
             grid.ColumnDefinitions.Add(new ColumnDefinition
             {
@@ -1306,12 +1431,12 @@ public partial class OverlayWindow : Window
         grid.ColumnDefinitions.Add(new ColumnDefinition());
         grid.ColumnDefinitions.Add(new ColumnDefinition
         {
-            Width = new GridLength(62),
+            Width = new GridLength(118),
         });
 
         var numberBadge = new Border
         {
-            Width = 30,
+            Width = 44,
             Height = 25,
             CornerRadius = new CornerRadius(3, 0, 0, 3),
             Background = classBrush,
@@ -1324,7 +1449,7 @@ public partial class OverlayWindow : Window
                 Foreground = System.Windows.Media.Brushes.White,
                 FontFamily = new System.Windows.Media.FontFamily("Bahnschrift"),
                 FontWeight = FontWeights.Bold,
-                FontSize = 12,
+                FontSize = 13,
                 HorizontalAlignment = System.Windows.HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
             },
@@ -1334,7 +1459,7 @@ public partial class OverlayWindow : Window
 
         var classBadge = new Border
         {
-            Width = 36,
+            Width = 54,
             Height = 25,
             CornerRadius = new CornerRadius(0, 3, 3, 0),
             Background = System.Windows.Media.Brushes.White,
@@ -1346,7 +1471,7 @@ public partial class OverlayWindow : Window
                 Foreground = classBrush,
                 FontFamily = new System.Windows.Media.FontFamily("Bahnschrift"),
                 FontWeight = FontWeights.Bold,
-                FontSize = 10,
+                FontSize = 11,
                 HorizontalAlignment = System.Windows.HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
             },
@@ -1360,7 +1485,7 @@ public partial class OverlayWindow : Window
             Foreground = foreground,
             FontFamily = new System.Windows.Media.FontFamily("Bahnschrift"),
             FontWeight = FontWeights.Bold,
-            FontSize = 12,
+            FontSize = 13,
             TextTrimming = TextTrimming.CharacterEllipsis,
             VerticalAlignment = VerticalAlignment.Center,
             Margin = new Thickness(5, 0, 3, 0),
@@ -1378,7 +1503,7 @@ public partial class OverlayWindow : Window
                 : foreground,
             FontFamily = new System.Windows.Media.FontFamily("Bahnschrift"),
             FontWeight = FontWeights.Bold,
-            FontSize = 12,
+            FontSize = 13,
             HorizontalAlignment = System.Windows.HorizontalAlignment.Right,
             VerticalAlignment = VerticalAlignment.Center,
             Margin = new Thickness(0, 0, 8, 0),

@@ -161,7 +161,9 @@
                                    Foreground="#FFD2D9E0" FontSize="13" Margin="0,3,0,0" />
                         <TextBlock x:Name="BestLapText" Text="BEST --:--.---"
                                    Foreground="#FF42D3A6" FontSize="13" Margin="0,2,0,0" />
-                        <primitives:UniformGrid Columns="4" Margin="0,8,0,0">
+                        <TextBlock x:Name="OptimalLapText" Text="OPTIMAL --:--.---"
+                                   Foreground="#FF12D9E5" FontSize="13" Margin="0,2,0,0" />
+                        <primitives:UniformGrid Columns="4" Margin="0,4,0,0">
                             <Border x:Name="TcIndicator" Padding="5,4" CornerRadius="3"
                                     Background="#FF202A33" Margin="0,0,3,0">
                                 <StackPanel>
@@ -460,27 +462,40 @@
                 MouseLeftButtonUp="WidgetMouseLeftButtonUp">
             <Grid>
                 <Viewbox Stretch="Uniform" StretchDirection="Both">
-                    <Grid Width="260" Height="410" Background="Transparent">
+                    <Grid Width="500" Height="410" Background="Transparent">
                         <Grid.RowDefinitions>
+                            <RowDefinition Height="46" />
                             <RowDefinition Height="22" />
                             <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
-                        <Grid Grid.Row="0" Background="#FF17213B">
+                        <Grid Grid.Row="0" Background="#E6121C32" Margin="0">
+                            <TextBlock x:Name="StandingsSessionText" Text="SESSION"
+                                       Foreground="White" FontFamily="Bahnschrift"
+                                       FontWeight="Bold" FontSize="18"
+                                       Margin="14,0" VerticalAlignment="Center" />
+                            <TextBlock x:Name="StandingsClockText" Text="--:--"
+                                       Foreground="White" FontFamily="Bahnschrift"
+                                       FontWeight="Bold" FontSize="20"
+                                       Margin="14,0" HorizontalAlignment="Right"
+                                       VerticalAlignment="Center" />
+                        </Grid>
+                        <Grid Grid.Row="1" Background="#FF17213B">
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="28" />
-                                <ColumnDefinition Width="38" />
-                                <ColumnDefinition Width="32" />
+                                <ColumnDefinition Width="36" />
+                                <ColumnDefinition Width="50" />
                                 <ColumnDefinition Width="40" />
-                                <ColumnDefinition Width="72" />
+                                <ColumnDefinition Width="62" />
+                                <ColumnDefinition Width="104" />
+                                <ColumnDefinition Width="76" />
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
                             <TextBlock Grid.Column="0" Text="P" />
                             <TextBlock Grid.Column="1" Text="MFR" />
                             <TextBlock Grid.Column="2" Text="NO." />
                             <TextBlock Grid.Column="3" Text="DRV" />
-                            <TextBlock Grid.Column="4" Text="LAST LAP" />
-                            <TextBlock Grid.Column="5" Text="INTERVAL"
-                                       HorizontalAlignment="Right" Margin="0,0,8,0" />
+                            <TextBlock x:Name="StandingsLapHeading" Grid.Column="4" Text="LAST LAP" />
+                            <TextBlock Grid.Column="5" Text="GAP" />
+                            <TextBlock Grid.Column="6" Text="TYRE / NRG" />
                             <Grid.Resources>
                                 <Style TargetType="TextBlock">
                                     <Setter Property="VerticalAlignment" Value="Center" />
@@ -492,7 +507,7 @@
                                 </Style>
                             </Grid.Resources>
                         </Grid>
-                        <StackPanel x:Name="StandingsRows" Grid.Row="1" />
+                        <StackPanel x:Name="StandingsRows" Grid.Row="2" />
                     </Grid>
                 </Viewbox>
                 <primitives:Thumb x:Name="LiveStandingsResizeThumb" Tag="LiveStandingsWidget"
@@ -511,16 +526,16 @@
                 MouseLeftButtonUp="WidgetMouseLeftButtonUp">
             <Grid>
                 <Viewbox Stretch="Uniform" StretchDirection="Both">
-                    <Grid Width="260" Height="410" Background="Transparent">
+                    <Grid Width="500" Height="410" Background="Transparent">
                         <Grid.RowDefinitions>
-                            <RowDefinition Height="34" />
+                            <RowDefinition Height="24" />
                             <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
                         <Border Grid.Row="0" Background="#FF1B2441">
                             <Grid Margin="10,0">
                                 <TextBlock Text="RELATIVE" Foreground="White"
                                            FontFamily="Bahnschrift"
-                                           FontWeight="Bold" FontSize="14"
+                                           FontWeight="Bold" FontSize="10"
                                            VerticalAlignment="Center" />
                                 <TextBlock Text="GAP" Foreground="#FF91A0B7"
                                            FontFamily="Bahnschrift"

@@ -73,12 +73,22 @@ WriteDouble(data, telemetry + LmuApiLayoutV1.TelemetrySteeringOffset, -0.2);
 WriteDouble(data, telemetry + LmuApiLayoutV1.TelemetryClutchOffset, 0);
 WriteDouble(data, telemetry + LmuApiLayoutV1.TelemetryFuelOffset, 50);
 WriteDouble(data, telemetry + LmuApiLayoutV1.TelemetryFuelCapacityOffset, 100);
+WriteText(
+    data,
+    telemetry + LmuApiLayoutV1.TelemetryFrontTireCompoundNameOffset,
+    "Medium");
+WriteText(
+    data,
+    telemetry + LmuApiLayoutV1.TelemetryRearTireCompoundNameOffset,
+    "Medium");
+data[telemetry + LmuApiLayoutV1.TelemetryFrontTireCompoundIndexOffset] = 2;
+data[telemetry + LmuApiLayoutV1.TelemetryRearTireCompoundIndexOffset] = 2;
 WriteDouble(data, telemetry + LmuApiLayoutV1.TelemetryRearBrakeBiasOffset, 0.43);
 WriteDouble(data, telemetry + LmuApiLayoutV1.TelemetryDeltaBestOffset, -0.2);
 WriteDouble(data, telemetry + LmuApiLayoutV1.TelemetryBatteryChargeOffset, 0.6);
 WriteSingle(data, telemetry + LmuApiLayoutV1.TelemetryRegenerationOffset, 25);
 WriteSingle(data, telemetry + LmuApiLayoutV1.TelemetryStateOfChargeOffset, 0.65f);
-WriteSingle(data, telemetry + LmuApiLayoutV1.TelemetryVirtualEnergyOffset, 42);
+WriteSingle(data, telemetry + LmuApiLayoutV1.TelemetryVirtualEnergyOffset, 0.78f);
 WriteSingle(data, telemetry + LmuApiLayoutV1.TelemetryGapToCarAheadOffset, 1.2f);
 WriteSingle(data, telemetry + LmuApiLayoutV1.TelemetryGapToCarBehindOffset, 0.8f);
 WriteInt32(data, telemetry + LmuApiLayoutV1.TelemetryCurrentSectorOffset, 1);
@@ -195,6 +205,12 @@ Require(
     snapshot.Standings[0].VehicleModel == "Porsche 963 963",
     "Standing vehicle model must be joined from telemetry by vehicle id");
 Require(snapshot.Standings[0].FuelFraction == 128d / 255d, "Scoring fuel fraction");
+Require(snapshot.Standings[0].FrontTireCompound == "Medium",
+    "Standing tire compound must be joined from vehicle telemetry by id");
+Require(snapshot.Standings[0].FrontTireCompoundIndex == 2,
+    "Standing tire compound index must be joined from vehicle telemetry by id");
+Require(Math.Abs(snapshot.Standings[0].VirtualEnergyFraction - 0.78) < 0.0001,
+    "Standing virtual energy must be joined from vehicle telemetry by id");
 
 WriteUInt32(data, LmuApiLayoutV1.EventOffset(LmuApiLayoutV1.TelemetryUpdateEventIndex), 10);
 WriteDouble(data, telemetry + LmuApiLayoutV1.TelemetryElapsedTimeOffset, 1_000.02);

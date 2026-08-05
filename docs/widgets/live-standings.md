@@ -9,8 +9,8 @@ without copying proprietary visual assets.
 
 The widget displays one section per vehicle class in a WEC-style timing tower:
 
-- the complete widget dynamically fits thirteen or fourteen visible cars,
-  depending on how many class bands are required;
+- the complete widget dynamically fits up to twelve cars in one class, or
+  eleven cars when additional class bands are required;
 - the player's class fills every row left after compact leaders from the other
   two race classes are included;
 - P1 remains fixed while a moving window follows the player up and down the
@@ -21,6 +21,14 @@ The widget displays one section per vehicle class in a WEC-style timing tower:
   explicit race number when available, a three-character driver abbreviation,
   last lap, interval to the previous car, and pit-lane state;
 - compact non-player-class leaders always show their time and pit indicator.
+- every visible row shows the official front/rear compound reported for that
+  vehicle and its telemetry Virtual Energy percentage; pit state replaces this compact
+  status while the car is in pit lane.
+
+The top bar shows the official session kind and remaining session time. During
+qualifying, the lap column changes to `BEST LAP` and the interval is the
+difference between each car's official best lap and the fastest official best
+lap in its class. Pit state does not replace that qualifying gap.
 
 The player's class appears first. Other classes follow in a stable order so the
 screen does not jump unnecessarily while positions change.
@@ -40,10 +48,16 @@ scoring row with the official telemetry vehicle model by vehicle ID, then use a
 known three-letter code and brand color. Unknown models render `---` rather than
 misrepresenting a team-name abbreviation as a manufacturer.
 
-The timing tower uses a narrow 260x410 vertical design surface without side
-rails, a branding header, or a horizontal footer. The column headings are
-followed directly by the colored class band. Existing version-4 layouts using
-the former wide default are migrated to the narrow right-aligned footprint.
+Virtual Energy and compound names are joined by official vehicle ID from each
+corresponding LMU telemetry block. The same rule applies to the compact P1 row
+for every non-player class: it displays that leader's own energy and compound,
+never values copied from the player.
+
+The timing tower uses a wider 500x410 design surface without side rails, a
+branding header, or a horizontal footer. The session header and column headings
+are followed directly by the colored class band. Existing narrow layouts are
+migrated to the wider footprint while preserving their right edge and avoiding
+overlap with Relative.
 
 ## Layout and configuration
 
@@ -55,7 +69,7 @@ configuration will include:
 - class colors and abbreviations;
 - configurable maximum visible cars;
 - last-lap versus best-lap emphasis;
-- optional session clock and track-condition header.
+- optional track-condition header.
 
 ## Acceptance checks
 

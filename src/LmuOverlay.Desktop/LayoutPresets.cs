@@ -40,8 +40,8 @@ public static class LayoutPresets
             "Multiclass" => profile with
             {
                 Diagnostic = profile.Diagnostic with { Width = 0.33, Height = 0.35 },
-                LiveStandings = profile.LiveStandings with { Width = 0.19, Height = 0.52 },
-                Relative = profile.Relative with { Width = 0.19, Height = 0.52 },
+                LiveStandings = profile.LiveStandings with { Width = 0.30, Height = 0.48 },
+                Relative = profile.Relative with { Width = 0.30, Height = 0.48 },
                 FuelStrategy = profile.FuelStrategy with { Visible = false },
                 Settings = profile.Settings with { VisualDensity = "Compact" },
             },

@@ -9,7 +9,7 @@ public sealed record LayoutProfile(
     WidgetPlacement SessionFlags,
     WidgetPlacement FuelStrategy)
 {
-    public const int CurrentSchemaVersion = 16;
+    public const int CurrentSchemaVersion = 17;
 
     public WidgetPlacement RaceControl { get; init; } =
         new(0.35, 0.25, 0.26, 0.18, 1, 0.96, true);
@@ -20,8 +20,8 @@ public sealed record LayoutProfile(
         CurrentSchemaVersion,
         new WidgetPlacement(0.025, 0.05, 0.38, 0.40, 1, 0.96, true),
         new WidgetPlacement(0.025, 0.66, 0.22, 0.10, 1, 0.92, true),
-        new WidgetPlacement(0.81, 0.05, 0.16, 0.40, 1, 0.96, true),
-        new WidgetPlacement(0.64, 0.05, 0.16, 0.40, 1, 0.96, true),
+        new WidgetPlacement(0.69, 0.05, 0.28, 0.40, 1, 0.96, true),
+        new WidgetPlacement(0.40, 0.05, 0.28, 0.40, 1, 0.96, true),
         new WidgetPlacement(0.33, 0.05, 0.30, 0.18, 1, 0.96, true),
         new WidgetPlacement(0.025, 0.38, 0.30, 0.25, 1, 0.96, true));
 }

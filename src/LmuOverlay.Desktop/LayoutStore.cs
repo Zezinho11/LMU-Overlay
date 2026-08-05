@@ -391,6 +391,19 @@ public sealed class LayoutStore
             };
         }
 
+        if (profile.SchemaVersion < 17)
+        {
+            liveStandings = ExpandTimingPanel(liveStandings);
+            relative = ExpandTimingPanel(relative);
+            if (Overlaps(liveStandings, relative))
+            {
+                relative = relative with
+                {
+                    X = Math.Max(0, liveStandings.X - relative.Width - 0.01),
+                };
+            }
+        }
+
         var sessionFlags = SanitizePlacement(profile.SessionFlags);
         if (profile.SchemaVersion < 8 &&
             Math.Abs(sessionFlags.Width - 0.28) < 0.001 &&
@@ -432,6 +445,31 @@ public sealed class LayoutStore
             Settings = settings,
         };
     }
+
+    private static WidgetPlacement ExpandTimingPanel(WidgetPlacement placement)
+    {
+        if (placement.Width > 0.20 || placement.Height < 0.34)
+        {
+            return placement;
+        }
+
+        const double expandedWidth = 0.28;
+        var x = placement.X >= 0.5
+            ? placement.X + placement.Width - expandedWidth
+            : placement.X;
+        return placement with
+        {
+            X = Math.Clamp(x, 0, 1 - expandedWidth),
+            Width = expandedWidth,
+            Height = Math.Max(0.40, placement.Height),
+        };
+    }
+
+    private static bool Overlaps(WidgetPlacement first, WidgetPlacement second) =>
+        first.X < second.X + second.Width &&
+        first.X + first.Width > second.X &&
+        first.Y < second.Y + second.Height &&
+        first.Y + first.Height > second.Y;
 
     private static OverlayProfileSettings SanitizeSettings(
         OverlayProfileSettings? settings)

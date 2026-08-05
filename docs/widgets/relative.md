@@ -6,10 +6,12 @@ official race number when explicitly available, compact driver name, class and
 class abbreviation, signed relative gap, lap difference, player highlight, and
 pit state.
 
-The vertical tower shares the Live Standings 260x410 design proportion and
-shows up to four cars ahead, the player, and four cars behind. GT3, Hypercar,
-and LMP2 use distinct class badges. The player row is highlighted, pit state
-replaces the gap with `PIT`, and missing official race numbers remain `--`.
+The tower shares the Live Standings 500x410 design proportion and shows up to
+four cars ahead, the player, and four cars behind. It deliberately omits the
+session kind and clock because those belong to Live Standings and the session
+widget. GT3, Hypercar, and LMP2 use distinct class badges.
+The player row is highlighted, pit state replaces the gap with `PIT`, and
+missing official race numbers remain `--`.
 
 Same-lap gaps are derived from each car's official gap-to-leader value. Lap
 differences remain explicit so a lapped car is never presented as a normal

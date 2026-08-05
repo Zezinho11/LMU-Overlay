@@ -44,7 +44,10 @@ public sealed record DashboardWidgetState(
     int OutstandingPenalties = 0,
     string TireCompound = "",
     DashboardSectorTimes SectorTimes = default,
-    double VirtualEnergyFraction = 0);
+    double VirtualEnergyFraction = 0)
+{
+    public double OptimalLapTimeSeconds { get; init; }
+}
 
 public readonly record struct DashboardSectorTimes(
     double CurrentSector1Seconds,
@@ -55,7 +58,18 @@ public readonly record struct DashboardSectorTimes(
     double LastSector3Seconds,
     double BestSector1Seconds,
     double BestSector2Seconds,
-    double BestSector3Seconds);
+    double BestSector3Seconds)
+{
+    public double OptimalLapTimeSeconds =>
+        IsValid(BestSector1Seconds) &&
+        IsValid(BestSector2Seconds) &&
+        IsValid(BestSector3Seconds)
+            ? BestSector1Seconds + BestSector2Seconds + BestSector3Seconds
+            : 0;
+
+    private static bool IsValid(double seconds) =>
+        seconds > 0 && double.IsFinite(seconds);
+}
 
 public sealed record InputsWidgetState(
     bool Available,
@@ -68,7 +82,10 @@ public sealed record InputsWidgetState(
 
 public sealed record LiveStandingsWidgetState(
     string PlayerClass,
-    IReadOnlyList<LiveStandingsClassState> Classes);
+    IReadOnlyList<LiveStandingsClassState> Classes,
+    string SessionName = "",
+    double SessionRemainingSeconds = 0,
+    bool IsQualifying = false);
 
 public sealed record LiveStandingsClassState(
     string ClassName,
@@ -89,10 +106,16 @@ public sealed record LiveStandingsRowState(
     double LastLapTimeSeconds,
     double BestLapTimeSeconds,
     bool IsPlayer,
-    bool IsInPitLane);
+    bool IsInPitLane,
+    bool IsQualifying = false,
+    double VirtualEnergyFraction = -1,
+    string TireCompound = "",
+    int TireCompoundIndex = 0);
 
 public sealed record RelativeWidgetState(
-    IReadOnlyList<RelativeRowState> Rows);
+    IReadOnlyList<RelativeRowState> Rows,
+    string SessionName = "",
+    double SessionRemainingSeconds = 0);
 
 public sealed record RelativeRowState(
     int OverallPosition,
@@ -151,7 +174,7 @@ public enum WeatherConditionKind
 
 public static class EssentialWidgetStateFactory
 {
-    private const int LiveStandingsContentHeight = 388;
+    private const int LiveStandingsContentHeight = 342;
     private const int LiveStandingsClassHeaderHeight = 18;
     private const int LiveStandingsRowHeight = 25;
     private const int MaximumOtherClasses = 2;
@@ -174,6 +197,11 @@ public static class EssentialWidgetStateFactory
         var currentElapsedTime = player.ElapsedTime > 0
             ? player.ElapsedTime
             : session?.CurrentElapsedTime ?? 0;
+        var sectorTimes = CreateSectorTimes(
+            playerStanding,
+            currentElapsedTime >= player.LapStartElapsedTime
+                ? currentElapsedTime - player.LapStartElapsedTime
+                : 0);
         return new(
             true,
             player.SpeedKilometersPerHour,
@@ -223,11 +251,8 @@ public static class EssentialWidgetStateFactory
             OutstandingPenalties = playerStanding?.Penalties ?? 0,
             TireCompound = FormatTireCompound(player),
             VirtualEnergyFraction = Math.Clamp(player.VirtualEnergy, 0, 1),
-            SectorTimes = CreateSectorTimes(
-                playerStanding,
-                currentElapsedTime >= player.LapStartElapsedTime
-                    ? currentElapsedTime - player.LapStartElapsedTime
-                    : 0),
+            SectorTimes = sectorTimes,
+            OptimalLapTimeSeconds = sectorTimes.OptimalLapTimeSeconds,
         };
     }
 
@@ -316,6 +341,7 @@ public static class EssentialWidgetStateFactory
     public static LiveStandingsWidgetState CreateLiveStandings(
         LmuTelemetrySnapshot snapshot)
     {
+        var isQualifying = snapshot.Session?.Kind == LmuSessionKind.Qualifying;
         var ordered = snapshot.Standings
             .OrderBy(item => item.Position)
             .ToArray();
@@ -358,6 +384,11 @@ public static class EssentialWidgetStateFactory
                     playerClass,
                     StringComparison.OrdinalIgnoreCase);
                 var classOrder = group.OrderBy(item => item.Position).ToArray();
+                var classBestLap = classOrder
+                    .Select(item => item.BestLapTimeSeconds)
+                    .Where(value => value > 0 && double.IsFinite(value))
+                    .DefaultIfEmpty(0)
+                    .Min();
                 var visible = isPlayerClass
                     ? SelectPlayerClassWindow(classOrder, playerClassLimit)
                     : classOrder.Take(1);
@@ -370,12 +401,18 @@ public static class EssentialWidgetStateFactory
                     ExtractCarNumber(item.VehicleName, item.VehicleModel),
                     item.CompletedLaps,
                     item.GapToLeaderSeconds,
-                    item.GapToNextSeconds,
-                    item.LapsBehindNext,
-                    item.LastLapTimeSeconds,
+                    isQualifying && classBestLap > 0 && item.BestLapTimeSeconds > 0
+                        ? Math.Max(0, item.BestLapTimeSeconds - classBestLap)
+                        : item.GapToNextSeconds,
+                    isQualifying ? 0 : item.LapsBehindNext,
+                    isQualifying ? item.BestLapTimeSeconds : item.LastLapTimeSeconds,
                     item.BestLapTimeSeconds,
                     item.IsPlayer,
-                    item.IsInPits || item.PitState is not LmuPitState.None))
+                    item.IsInPits || item.PitState is not LmuPitState.None,
+                    isQualifying,
+                    NormalizeVirtualEnergy(item.VirtualEnergyFraction),
+                    FormatStandingTireCompound(item),
+                    item.FrontTireCompoundIndex))
                     .ToArray();
                 return new LiveStandingsClassState(
                     group.Key,
@@ -386,7 +423,14 @@ public static class EssentialWidgetStateFactory
             .ThenBy(item => item.ClassName, StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
-        return new LiveStandingsWidgetState(playerClass, classes);
+        return new LiveStandingsWidgetState(
+            playerClass,
+            classes,
+            snapshot.Session is { } session
+                ? FormatSessionKind(session.Kind)
+                : "SESSION",
+            SessionRemaining(snapshot.Session),
+            isQualifying);
     }
 
     private static IEnumerable<LmuVehicleStanding> SelectPlayerClassWindow(
@@ -595,6 +639,23 @@ public static class EssentialWidgetStateFactory
                 : $"{front} / {rear}";
     }
 
+    private static string FormatStandingTireCompound(LmuVehicleStanding standing)
+    {
+        var front = standing.FrontTireCompound.Trim();
+        var rear = standing.RearTireCompound.Trim();
+        if (front.Length == 0 && rear.Length == 0)
+        {
+            return string.Empty;
+        }
+
+        return string.Equals(front, rear, StringComparison.OrdinalIgnoreCase) ||
+               rear.Length == 0
+            ? front
+            : front.Length == 0
+                ? rear
+                : $"{front}/{rear}";
+    }
+
     private static DashboardSectorTimes CreateSectorTimes(
         LmuVehicleStanding? standing,
         double currentLapSeconds)
@@ -746,6 +807,13 @@ public static class EssentialWidgetStateFactory
         _ => kind.ToString().ToUpperInvariant(),
     };
 
+    private static double SessionRemaining(LmuSessionSnapshot? session) =>
+        session is { EndElapsedTime: > 0 } &&
+        double.IsFinite(session.EndElapsedTime) &&
+        double.IsFinite(session.CurrentElapsedTime)
+            ? Math.Max(0, session.EndElapsedTime - session.CurrentElapsedTime)
+            : 0;
+
     private static string FormatGamePhase(LmuGamePhase phase) => phase switch
     {
         LmuGamePhase.BeforeSession => "BEFORE SESSION",
@@ -759,4 +827,9 @@ public static class EssentialWidgetStateFactory
     };
 
     private static double ClampInput(double value) => Math.Clamp(value, 0, 1);
+
+    private static double NormalizeVirtualEnergy(double value) =>
+        double.IsFinite(value) && value is >= 0 and <= 1
+            ? value
+            : -1;
 }
