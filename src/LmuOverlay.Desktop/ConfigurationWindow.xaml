@@ -221,7 +221,13 @@
                         <ComboBoxItem Content="RedFox" Tag="RedFox" />
                         <ComboBoxItem Content="Preto" Tag="Black" />
                         <ComboBoxItem Content="Alto contraste" Tag="HighContrast" />
+                        <ComboBoxItem Content="Visão de cores segura" Tag="ColorVisionSafe" />
                         <ComboBoxItem Content="Personalizado" Tag="Custom" />
+                    </ComboBox>
+                    <TextBlock Text="Idioma / Language" Foreground="#FF9BA8B5" FontSize="10" Margin="0,7,0,0" />
+                    <ComboBox x:Name="LanguageSelector" Height="28" SelectionChanged="LanguageSelector_OnSelectionChanged">
+                        <ComboBoxItem Content="Português (Brasil)" Tag="pt-BR" />
+                        <ComboBoxItem Content="English" Tag="en-US" />
                     </ComboBox>
                 </StackPanel>
                 <StackPanel Grid.Row="1" Grid.Column="1" Margin="0,0,12,0">

@@ -48,16 +48,17 @@ public static class VrDashboardTexture
 
     private static void DrawTop(VrCanvas c, DashboardWidgetState d, VrRenderStyle s)
     {
+        string T(OverlayTextKey key) => OverlayText.Get(s.Language, key);
         Panel(c, 38, 118, 330, 270);
         Panel(c, 382, 118, 430, 270);
         Panel(c, 826, 118, 336, 270);
         var f = s.DashboardTextScale;
-        c.Text(d.Available ? $"POS {d.Position}" : "POS --", 26 * f, s.Positive, new(60, 138, 210, 34), true);
-        c.Text(d.Available ? $"LAP {d.LapNumber}" : "LAP --", 23 * f, s.PrimaryText, new(60, 176, 210, 32), true);
-        c.Text(d.Available ? $"DELTA {d.DeltaBestSeconds:+0.000;-0.000;0.000}" : "DELTA --", 23 * f, s.Attention, new(60, 214, 280, 32), true);
-        c.Text(d.Available ? $"FUEL {d.FuelLiters:0.0} L" : "FUEL --.- L", 20 * f, s.SecondaryText, new(60, 254, 275, 28), true);
-        c.Text(d.Available ? $"VIRTUAL ENERGY {d.VirtualEnergyFraction:P0}" : "VIRTUAL ENERGY --", 20 * f, Color.Magenta, new(60, 289, 280, 28), true);
-        c.Text(d.Available ? $"BRAKE BIAS {(1 - d.RearBrakeBiasFraction):P1}" : "BRAKE BIAS --", 20 * f, s.SecondaryText, new(60, 324, 280, 28), true);
+        c.Text($"{T(OverlayTextKey.Position)} {(d.Available ? d.Position.ToString() : "--")}", 26 * f, s.Positive, new(60, 138, 210, 34), true);
+        c.Text($"{T(OverlayTextKey.Lap)} {(d.Available ? d.LapNumber.ToString() : "--")}", 23 * f, s.PrimaryText, new(60, 176, 210, 32), true);
+        c.Text(d.Available ? $"{T(OverlayTextKey.Delta)} {d.DeltaBestSeconds:+0.000;-0.000;0.000}" : $"{T(OverlayTextKey.Delta)} --", 23 * f, s.Attention, new(60, 214, 280, 32), true);
+        c.Text(d.Available ? $"{T(OverlayTextKey.Fuel)} {d.FuelLiters:0.0} L" : $"{T(OverlayTextKey.Fuel)} --.- L", 19 * f, s.SecondaryText, new(60, 254, 290, 28), true);
+        c.Text(d.Available ? $"{T(OverlayTextKey.VirtualEnergy)} {d.VirtualEnergyFraction:P0}" : $"{T(OverlayTextKey.VirtualEnergy)} --", 18 * f, Color.Magenta, new(60, 289, 295, 28), true);
+        c.Text(d.Available ? $"{T(OverlayTextKey.BrakeBias)} {(1 - d.RearBrakeBiasFraction):P1}" : $"{T(OverlayTextKey.BrakeBias)} --", 18 * f, s.SecondaryText, new(60, 324, 295, 28), true);
 
         c.Text(d.Available ? $"{d.SpeedKilometersPerHour:0} KM/H" : "--- KM/H", 31 * f,
             s.SecondaryText, new(410, 128, 374, 44), true, StringAlignment.Center);
@@ -71,10 +72,10 @@ public static class VrDashboardTexture
             c.Text("LIMIT", 18 * f, s.Background, new(690, 132, 94, 38), true, StringAlignment.Center);
         }
 
-        c.Text($"CURRENT {Lap(d.CurrentLapTimeSeconds)}", 19 * f, s.PrimaryText, new(848, 135, 290, 30), true);
-        c.Text($"LAST {Lap(d.LastLapTimeSeconds)}", 19 * f, s.SecondaryText, new(848, 169, 290, 30), true);
-        c.Text($"BEST {Lap(d.BestLapTimeSeconds)}", 19 * f, s.Positive, new(848, 203, 290, 30), true);
-        c.Text($"OPTIMAL {Lap(d.OptimalLapTimeSeconds)}", 19 * f, s.Information, new(848, 237, 290, 30), true);
+        c.Text($"{T(OverlayTextKey.Current)} {Lap(d.CurrentLapTimeSeconds)}", 19 * f, s.PrimaryText, new(848, 135, 290, 30), true);
+        c.Text($"{T(OverlayTextKey.Last)} {Lap(d.LastLapTimeSeconds)}", 19 * f, s.SecondaryText, new(848, 169, 290, 30), true);
+        c.Text($"{T(OverlayTextKey.Best)} {Lap(d.BestLapTimeSeconds)}", 19 * f, s.Positive, new(848, 203, 290, 30), true);
+        c.Text($"{T(OverlayTextKey.Optimal)} {Lap(d.OptimalLapTimeSeconds)}", 19 * f, s.Information, new(848, 237, 290, 30), true);
         var controls = new[]
         {
             ("TC", d.TractionControlLevel, d.TractionControlMaximum, d.TractionControlActive),
@@ -97,7 +98,7 @@ public static class VrDashboardTexture
     {
         Panel(c, 38, 404, 330, 270);
         c.Fill(s.Information, 38, 404, 330, 38);
-        c.Text("SECTORS", 18 * s.DashboardTextScale, s.Background, new(38, 404, 330, 38), true, StringAlignment.Center);
+        c.Text(OverlayText.Get(s.Language, OverlayTextKey.Sectors), 18 * s.DashboardTextScale, s.Background, new(38, 404, 330, 38), true, StringAlignment.Center);
         var values = new[]
         {
             (d.SectorTimes.CurrentSector1Seconds, d.SectorTimes.BestSector1Seconds),
@@ -119,7 +120,7 @@ public static class VrDashboardTexture
     {
         Panel(c, 382, 404, 430, 270);
         c.Fill(s.Attention, 382, 404, 430, 38);
-        c.Text("TYRE TEMP / WEAR", 18 * s.DashboardTextScale, s.Background, new(382, 404, 430, 38), true, StringAlignment.Center);
+        c.Text(OverlayText.Get(s.Language, OverlayTextKey.TyreTempWear), 18 * s.DashboardTextScale, s.Background, new(382, 404, 430, 38), true, StringAlignment.Center);
         var tires = new[]
         {
             ("FL", d.TireTemperatures.FrontLeftCelsius, d.TireWear.FrontLeftFraction, 410f, 470f),
@@ -135,7 +136,7 @@ public static class VrDashboardTexture
             c.Text(d.Available ? $"{tire.Item2:0}° · {(1 - tire.Item3):P0}" : "--° · --%",
                 20 * s.DashboardTextScale, s.PrimaryText, new(tire.Item4 + 82, tire.Item5, 112, 34), true);
         }
-        c.Text($"COMPOUND {(string.IsNullOrWhiteSpace(d.TireCompound) ? "--" : d.TireCompound.ToUpperInvariant())}",
+        c.Text($"{OverlayText.Get(s.Language, OverlayTextKey.Compound)} {(string.IsNullOrWhiteSpace(d.TireCompound) ? "--" : d.TireCompound.ToUpperInvariant())}",
             16 * s.DashboardTextScale, s.Attention, new(410, 630, 374, 25), true, StringAlignment.Center);
     }
 
@@ -147,9 +148,9 @@ public static class VrDashboardTexture
     {
         Panel(c, 826, 404, 336, 270);
         c.Fill(s.Information, 826, 404, 336, 38);
-        c.Text("TELEMETRY", 18 * s.DashboardTextScale, s.Background, new(826, 404, 336, 38), true, StringAlignment.Center);
-        c.Text($"THR {d.Throttle:P0}", 17 * s.DashboardTextScale, s.Positive, new(846, 451, 110, 28), true);
-        c.Text($"BRK {d.Brake:P0}", 17 * s.DashboardTextScale, s.Critical, new(963, 451, 110, 28), true);
+        c.Text(OverlayText.Get(s.Language, OverlayTextKey.Telemetry), 18 * s.DashboardTextScale, s.Background, new(826, 404, 336, 38), true, StringAlignment.Center);
+        c.Text($"{OverlayText.Get(s.Language, OverlayTextKey.Throttle)} {d.Throttle:P0}", 17 * s.DashboardTextScale, s.Positive, new(846, 451, 110, 28), true);
+        c.Text($"{OverlayText.Get(s.Language, OverlayTextKey.Brake)} {d.Brake:P0}", 17 * s.DashboardTextScale, s.Critical, new(963, 451, 110, 28), true);
         c.Text($"GX {d.LateralAccelerationG:+0.0;-0.0;0.0}  GY {d.LongitudinalAccelerationG:+0.0;-0.0;0.0}",
             15 * s.DashboardTextScale, s.SecondaryText, new(846, 482, 290, 25), true);
         const float left = 846, top = 518, width = 290, height = 125;

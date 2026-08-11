@@ -475,7 +475,7 @@ public sealed class LayoutStore
         OverlayProfileSettings? settings)
     {
         settings ??= new();
-        var theme = settings.Theme is "RedFox" or "HighContrast" or "Black" or "Custom"
+        var theme = settings.Theme is "RedFox" or "HighContrast" or "ColorVisionSafe" or "Black" or "Custom"
             ? settings.Theme
             : "RedFox";
         var density = Enum.TryParse<OverlayDensity>(
@@ -486,6 +486,7 @@ public sealed class LayoutStore
                 : OverlayDensity.Auto.ToString();
         return settings with
         {
+            Language = LmuOverlay.Widgets.OverlayText.Normalize(settings.Language),
             Theme = theme,
             CustomAccentColor = OverlayVisualSystem.NormalizeHexColor(
                 settings.CustomAccentColor,

@@ -390,7 +390,7 @@ try
     Assert(migratedInputs.Y == 0.66,
         "The old default input panel must migrate below fuel without overlap.");
 
-    foreach (var theme in new[] { "RedFox", "Black", "HighContrast" })
+    foreach (var theme in new[] { "RedFox", "Black", "HighContrast", "ColorVisionSafe" })
     {
         var palette = OverlayVisualSystem.Resolve(theme);
         Assert(
@@ -404,6 +404,11 @@ try
                 palette.Background) >= 3,
             $"{theme} secondary text must remain distinguishable.");
     }
+    var colorSafe = OverlayVisualSystem.Resolve("ColorVisionSafe");
+    Assert(colorSafe.Information != colorSafe.Attention &&
+           colorSafe.Attention != colorSafe.Critical &&
+           colorSafe.Critical != colorSafe.Positive,
+        "Color-vision-safe semantic states must use distinct Okabe-Ito colors.");
 
     Assert(
         OverlayVisualSystem.ResolveDensity("Auto", 480, 800) == OverlayDensity.Compact,

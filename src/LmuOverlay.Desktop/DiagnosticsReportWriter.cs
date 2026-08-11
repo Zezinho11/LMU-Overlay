@@ -8,6 +8,17 @@ using LmuOverlay.Domain;
 
 namespace LmuOverlay.Desktop;
 
+public sealed record DesktopPresentationHealth(
+    PresentationHostHealth Dashboard,
+    PresentationHostHealth Inputs,
+    PresentationHostHealth Timing)
+{
+    private static readonly PresentationHostHealth Unavailable =
+        new(false, 0, null, string.Empty);
+    public static DesktopPresentationHealth Empty { get; } =
+        new(Unavailable, Unavailable, Unavailable);
+}
+
 public static class DiagnosticsReportWriter
 {
     private static readonly JsonSerializerOptions Options = new()
@@ -19,6 +30,7 @@ public static class DiagnosticsReportWriter
         string path,
         LmuTelemetrySnapshot snapshot,
         TelemetryRuntimeHealth health,
+        DesktopPresentationHealth presentation,
         LayoutProfile profile,
         string activeProfile)
     {
@@ -60,6 +72,8 @@ public static class DiagnosticsReportWriter
                 health.LastReadMilliseconds,
                 health.AverageReadMilliseconds,
                 health.MaximumReadMilliseconds,
+                health.P99ReadMilliseconds,
+                health.StaleAgeMilliseconds,
                 health.LastSuccessfulRead,
                 health.LastError,
                 WorkingSetMegabytes = process.WorkingSet64 / 1024d / 1024d,
@@ -74,6 +88,12 @@ public static class DiagnosticsReportWriter
                 budget.AverageReadLimitMilliseconds,
                 budget.MaximumReadLimitMilliseconds,
                 budget.WorkingSetLimitMegabytes,
+            },
+            Presentation = new
+            {
+                Dashboard = presentation.Dashboard,
+                Inputs = presentation.Inputs,
+                Timing = presentation.Timing,
             },
             Layout = new
             {

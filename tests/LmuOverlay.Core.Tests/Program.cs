@@ -23,6 +23,10 @@ await using (var runtime = new TelemetryRuntime(
     Require(runtime.Health.Reconnects >= 2, "Runtime reconnects after unavailable reads");
     Require(runtime.Latest.State == LmuConnectionState.Disconnected, "Runtime publishes latest frame");
     Require(runtime.Health.LastReadMilliseconds >= 0, "Runtime records read duration");
+    Require(runtime.Health.P99ReadMilliseconds >= 0,
+        "Runtime exposes bounded p99 read latency.");
+    Require(runtime.Health.StaleAgeMilliseconds >= 0,
+        "Runtime exposes the age of the last successful sample.");
 }
 
 var healthyBudget = RuntimePerformanceBudget.Evaluate(
@@ -61,7 +65,8 @@ await using (var eventRuntime = new TelemetryRuntime(
         TimeSpan.FromSeconds(1));
     eventSource.Signal();
     await WaitUntilAsync(
-        () => eventRuntime.Health.EventWakeups >= 1,
+        () => eventRuntime.Health.EventWakeups >= 1 &&
+              eventRuntime.Health.SuccessfulReads >= 2,
         TimeSpan.FromSeconds(1));
     Require(eventRuntime.Health.SuccessfulReads >= 2,
         "Named event wake must trigger an immediate telemetry read.");

@@ -67,6 +67,16 @@ public static class OverlayVisualSystem
 
     public static OverlayThemePalette Resolve(string theme) => theme switch
     {
+        "ColorVisionSafe" => new(
+            Color.FromRgb(8, 14, 24),
+            Color.FromRgb(18, 28, 42),
+            Color.FromRgb(86, 180, 233),
+            Colors.White,
+            Color.FromRgb(210, 218, 226),
+            Color.FromRgb(0, 114, 178),
+            Color.FromRgb(230, 159, 0),
+            Color.FromRgb(213, 94, 0),
+            Color.FromRgb(0, 158, 115)),
         "HighContrast" => new(
             Colors.Black,
             Color.FromRgb(10, 10, 10),

@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+## 0.6.5 - 2026-08-11
+
+- Added per-profile Brazilian Portuguese/English localization through one
+  shared catalog used by WPF, native Desktop renderers and SteamVR, including
+  automatic migration of existing profiles to `pt-BR`.
+- Added a mandatory Desktop/SteamVR presentation capability manifest and CI
+  parity gate so future shared features cannot ship in only one host.
+- Added automatic Direct3D/DirectComposition device-loss recovery with bounded
+  exponential backoff, matching SteamVR compositor reconnect behavior.
+- Added p99 read latency, stale-frame age and presentation recovery health to
+  privacy-safe Desktop and SteamVR diagnostics.
+- Added a color-vision-safe Okabe-Ito semantic palette and preset shared by
+  Desktop and SteamVR.
+- Added a nightly one-hour cadence/allocation/CPU/working-set soak gate and made
+  working-set growth an enforced budget.
+- Added combined Desktop/SteamVR SPDX SBOM generation and GitHub Sigstore
+  provenance plus SBOM attestations to the release workflow.
+
 ## 0.6.0 - 2026-08-11
 
 - Completed SteamVR parity for Dashboard, Inputs, Live Standings, Relative,

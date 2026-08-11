@@ -10,6 +10,7 @@ public static class LayoutPresets
         "Multiclass",
         "VR Compact",
         "High Contrast",
+        "Color Vision Safe",
         "Minimal",
         "Broadcast",
         "Endurance Pro",
@@ -62,6 +63,15 @@ public static class LayoutPresets
                 {
                     Theme = "HighContrast",
                     BackgroundOpacity = 1,
+                    VisualDensity = "Normal",
+                },
+            },
+            "Color Vision Safe" => profile with
+            {
+                Settings = profile.Settings with
+                {
+                    Theme = "ColorVisionSafe",
+                    BackgroundOpacity = 0.98,
                     VisualDensity = "Normal",
                 },
             },

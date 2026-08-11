@@ -18,6 +18,8 @@ public sealed record TelemetryRuntimeHealth(
     public long EventTimeouts { get; init; }
     public long DuplicateSnapshots { get; init; }
     public long PublishedSnapshots { get; init; }
+    public double P99ReadMilliseconds { get; init; }
+    public double StaleAgeMilliseconds { get; init; }
 }
 
 public sealed class TelemetryRuntime : IAsyncDisposable
@@ -43,6 +45,8 @@ public sealed class TelemetryRuntime : IAsyncDisposable
     private long _eventTimeouts;
     private long _duplicateSnapshots;
     private long _publishedSnapshots;
+    private readonly long[] _recentReadTicks = new long[512];
+    private long _readSampleSequence;
 
     public TelemetryRuntime(
         Func<ILmuTelemetrySource> sourceFactory,
@@ -89,6 +93,11 @@ public sealed class TelemetryRuntime : IAsyncDisposable
                 EventTimeouts = Interlocked.Read(ref _eventTimeouts),
                 DuplicateSnapshots = Interlocked.Read(ref _duplicateSnapshots),
                 PublishedSnapshots = Interlocked.Read(ref _publishedSnapshots),
+                P99ReadMilliseconds = ReadPercentileMilliseconds(0.99),
+                StaleAgeMilliseconds = successfulUtcTicks > 0
+                    ? Math.Max(0, (DateTimeOffset.UtcNow.UtcTicks - successfulUtcTicks) /
+                        (double)TimeSpan.TicksPerMillisecond)
+                    : 0,
             };
         }
     }
@@ -213,6 +222,10 @@ public sealed class TelemetryRuntime : IAsyncDisposable
     {
         Interlocked.Exchange(ref _lastReadTicks, elapsedTicks);
         Interlocked.Add(ref _totalReadTicks, elapsedTicks);
+        var sample = Interlocked.Increment(ref _readSampleSequence) - 1;
+        Volatile.Write(
+            ref _recentReadTicks[(int)(sample % _recentReadTicks.Length)],
+            elapsedTicks);
         var maximum = Interlocked.Read(ref _maximumReadTicks);
         while (elapsedTicks > maximum)
         {
@@ -227,6 +240,25 @@ public sealed class TelemetryRuntime : IAsyncDisposable
 
             maximum = observed;
         }
+    }
+
+    private double ReadPercentileMilliseconds(double percentile)
+    {
+        var available = (int)Math.Min(
+            Interlocked.Read(ref _readSampleSequence),
+            _recentReadTicks.Length);
+        if (available <= 0) return 0;
+        var samples = new long[available];
+        for (var index = 0; index < available; index++)
+        {
+            samples[index] = Volatile.Read(ref _recentReadTicks[index]);
+        }
+        Array.Sort(samples);
+        var position = Math.Clamp(
+            (int)Math.Ceiling(percentile * available) - 1,
+            0,
+            available - 1);
+        return ToMilliseconds(samples[position]);
     }
 
     private void Publish(LmuTelemetrySnapshot snapshot)

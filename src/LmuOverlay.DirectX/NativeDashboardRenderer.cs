@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using LmuOverlay.Core;
 
 namespace LmuOverlay.DirectX;
 
@@ -10,8 +11,10 @@ public sealed class NativeDashboardRenderer : IDisposable
     private readonly Thread _thread;
     private NativeDashboardFrame _latest;
     private bool _hasLatest;
-    private Exception? _startupFailure;
+    private Exception? _lastFailure;
     private int _ready;
+    private long _recoveryAttempts;
+    private long _lastRecoveredUtcTicks;
 
     public NativeDashboardRenderer()
     {
@@ -27,9 +30,15 @@ public sealed class NativeDashboardRenderer : IDisposable
 
     public bool IsAvailable =>
         Volatile.Read(ref _ready) == 1 &&
-        _startupFailure is null &&
         _thread.IsAlive;
-    public string FailureDetail => _startupFailure?.Message ?? string.Empty;
+    public string FailureDetail => Volatile.Read(ref _lastFailure)?.Message ?? string.Empty;
+    public PresentationHostHealth Health => new(
+        IsAvailable,
+        Interlocked.Read(ref _recoveryAttempts),
+        Interlocked.Read(ref _lastRecoveredUtcTicks) is var ticks && ticks > 0
+            ? new DateTimeOffset(ticks, TimeSpan.Zero)
+            : null,
+        FailureDetail);
 
     public void Publish(NativeDashboardFrame frame)
     {
@@ -58,25 +67,39 @@ public sealed class NativeDashboardRenderer : IDisposable
 
     private void Run()
     {
-        try
+        var consecutiveFailures = 0;
+        while (!_shutdown.IsSet)
         {
-            using var host = new DirectCompositionDashboardHost();
-            Volatile.Write(ref _ready, 1);
-            while (!_shutdown.IsSet)
+            try
             {
-                _frameReady.WaitOne(8);
-                if (TryGetLatest(out var frame))
+                using var host = new DirectCompositionDashboardHost();
+                if (consecutiveFailures > 0)
                 {
-                    host.Render(frame);
+                    Interlocked.Exchange(ref _lastRecoveredUtcTicks, DateTimeOffset.UtcNow.UtcTicks);
                 }
+                consecutiveFailures = 0;
+                Volatile.Write(ref _lastFailure, null);
+                Volatile.Write(ref _ready, 1);
+                while (!_shutdown.IsSet)
+                {
+                    _frameReady.WaitOne(8);
+                    if (TryGetLatest(out var frame)) host.Render(frame);
 
-                host.PumpMessages();
+                    host.PumpMessages();
+                }
             }
-        }
-        catch (Exception exception)
-        {
-            _startupFailure = exception;
-            Volatile.Write(ref _ready, 0);
+            catch (Exception exception) when (!_shutdown.IsSet)
+            {
+                Volatile.Write(ref _ready, 0);
+                Volatile.Write(ref _lastFailure, exception);
+                Interlocked.Increment(ref _recoveryAttempts);
+                consecutiveFailures++;
+                if (_shutdown.Wait(PresentationRecoveryPolicy.DelayForFailure(consecutiveFailures))) break;
+            }
+            finally
+            {
+                Volatile.Write(ref _ready, 0);
+            }
         }
     }
 

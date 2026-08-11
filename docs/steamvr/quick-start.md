@@ -24,6 +24,9 @@ multiclass timing, fuel/Virtual Energy strategy, flags, weather, penalties,
 damage, persistent personal-best laps and sectors, and LMU's official Timing
 optimal. The active desktop profile also controls theme, custom colors, title,
 text scale, timing population, strategy inputs, pedal history and update rate.
+It also uses the active desktop profile language (`pt-BR` or `en-US`), so a
+language change is applied to Desktop and SteamVR without maintaining a second
+VR-only preference.
 
 Dashboard and Inputs render at the selected 60-120 Hz rate. Timing surfaces
 render at 10 Hz and strategy/session surfaces at 5 Hz because their source data
@@ -33,3 +36,13 @@ the host waits and reconnects automatically.
 The host locates `openvr_api.dll` beside the executable or in the user's Steam
 installation or the runtime paths registered in `openvrpaths.vrpath`. SteamVR
 may be started before or after the overlay host.
+
+For the same privacy-safe health export available on desktop, start the VR host
+with an explicit destination:
+
+```powershell
+LmuOverlay.SteamVr.exe --diagnostics .\steamvr-diagnostics.json
+```
+
+The file updates every ten seconds and includes p99 read latency, stale-frame
+age and compositor recovery attempts without driver, track or telemetry values.

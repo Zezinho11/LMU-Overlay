@@ -7,6 +7,7 @@ using WpfButton = System.Windows.Controls.Button;
 using WpfMessageBox = System.Windows.MessageBox;
 using WpfOrientation = System.Windows.Controls.Orientation;
 using WpfTextBox = System.Windows.Controls.TextBox;
+using LmuOverlay.Widgets;
 
 namespace LmuOverlay.Desktop;
 
@@ -23,6 +24,7 @@ public partial class ConfigurationWindow : Window
         PresetSelector.SelectedIndex = 0;
         RefreshProfiles();
         LoadProfile();
+        ApplyLocalization();
     }
 
     private void RefreshProfiles()
@@ -52,6 +54,14 @@ public partial class ConfigurationWindow : Window
             if (string.Equals(item.Tag?.ToString(), profile.Settings.Theme, StringComparison.Ordinal))
             {
                 ThemeSelector.SelectedItem = item;
+                break;
+            }
+        }
+        foreach (var item in LanguageSelector.Items.OfType<ComboBoxItem>())
+        {
+            if (string.Equals(item.Tag?.ToString(), profile.Settings.Language, StringComparison.OrdinalIgnoreCase))
+            {
+                LanguageSelector.SelectedItem = item;
                 break;
             }
         }
@@ -431,6 +441,8 @@ public partial class ConfigurationWindow : Window
             ?? "Auto";
         return current with
         {
+            Language = OverlayText.Normalize(
+                (LanguageSelector.SelectedItem as ComboBoxItem)?.Tag?.ToString()),
             Theme = theme,
             DashboardTitle = DashboardTitle.Text,
             CustomAccentColor = CustomAccentColor.Text,
@@ -460,6 +472,20 @@ public partial class ConfigurationWindow : Window
             TireWearLimitPercent = ParseDouble(TireWearLimit.Text, 70, 20, 95),
             EstimatedTireChangeSeconds = ParseDouble(TireChangeSeconds.Text, 15, 0, 180),
         };
+    }
+
+    private void LanguageSelector_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (!IsLoaded) return;
+        ApplyLocalization();
+    }
+
+    private void ApplyLocalization()
+    {
+        var language = (LanguageSelector.SelectedItem as ComboBoxItem)?.Tag?.ToString()
+            ?? _overlay.CurrentProfile.Settings.Language;
+        OverlayLocalization.Apply(this, language);
+        Title = OverlayText.Get(language, OverlayTextKey.ConfigureWidgets);
     }
 
     private static double ParseDouble(

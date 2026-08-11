@@ -5,6 +5,7 @@ using System.Windows.Media;
 using MediaBrush = System.Windows.Media.Brush;
 using MediaColor = System.Windows.Media.Color;
 using WpfMessageBox = System.Windows.MessageBox;
+using LmuOverlay.Widgets;
 
 namespace LmuOverlay.Desktop;
 
@@ -79,10 +80,12 @@ public partial class OverlayToolbarWindow : Window
         _refreshing = false;
 
         var editing = _overlay.IsEditMode;
-        EditButton.Content = editing ? "EDITANDO" : "EDITAR";
+        var language = _overlay.CurrentProfile.Settings.Language;
+        SettingsButton.Content = OverlayText.Get(language, OverlayTextKey.Settings);
+        EditButton.Content = OverlayText.Get(language, editing ? OverlayTextKey.Editing : OverlayTextKey.Edit);
         EditButton.Background = editing ? EditBrush : NeutralBrush;
         EditButton.BorderBrush = editing ? EditBorderBrush : NeutralBorderBrush;
-        LockButton.Content = editing ? "TRAVAR" : "TRAVADO";
+        LockButton.Content = OverlayText.Get(language, editing ? OverlayTextKey.Lock : OverlayTextKey.Locked);
         LockButton.Background = editing ? NeutralBrush : LockedBrush;
         LockButton.BorderBrush = editing
             ? NeutralBorderBrush

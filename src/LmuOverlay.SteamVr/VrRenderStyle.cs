@@ -15,7 +15,8 @@ public sealed record VrRenderStyle(
     string DashboardTitle,
     float DashboardTextScale,
     float TimingTextScale,
-    float InputsTextScale)
+    float InputsTextScale,
+    string Language)
 {
     public static VrRenderStyle From(VrDesktopSettings settings)
     {
@@ -25,6 +26,16 @@ public sealed record VrRenderStyle(
             : settings.BackgroundOpacity;
         var palette = settings.Theme switch
         {
+            "ColorVisionSafe" => new VrPalette(
+                Color.FromArgb(8, 14, 24),
+                Color.FromArgb(18, 28, 42),
+                Color.FromArgb(86, 180, 233),
+                Color.White,
+                Color.FromArgb(210, 218, 226),
+                Color.FromArgb(0, 114, 178),
+                Color.FromArgb(230, 159, 0),
+                Color.FromArgb(213, 94, 0),
+                Color.FromArgb(0, 158, 115)),
             "HighContrast" => Palette(
                 Color.Black,
                 Color.FromArgb(10, 10, 10),
@@ -52,14 +63,15 @@ public sealed record VrRenderStyle(
             palette.Accent,
             palette.Primary,
             palette.Secondary,
-            Color.FromArgb(18, 217, 229),
-            Color.FromArgb(255, 190, 64),
-            Color.FromArgb(255, 70, 75),
-            Color.FromArgb(66, 211, 166),
+            palette.Information,
+            palette.Attention,
+            palette.Critical,
+            palette.Positive,
             settings.DashboardTitle,
             (float)settings.DashboardTextScale,
             (float)settings.TimingTextScale,
-            (float)settings.InputsTextScale);
+            (float)settings.InputsTextScale,
+            settings.Language);
     }
 
     public static string NormalizeHex(string? value, string fallback)
@@ -99,7 +111,16 @@ public sealed record VrRenderStyle(
         Color card,
         Color accent,
         Color primary,
-        Color secondary) => new(background, card, accent, primary, secondary);
+        Color secondary) => new(
+            background,
+            card,
+            accent,
+            primary,
+            secondary,
+            Color.FromArgb(18, 217, 229),
+            Color.FromArgb(255, 190, 64),
+            Color.FromArgb(255, 70, 75),
+            Color.FromArgb(66, 211, 166));
 
     private static Color Parse(string value, Color fallback)
     {
@@ -138,5 +159,9 @@ public sealed record VrRenderStyle(
         Color Card,
         Color Accent,
         Color Primary,
-        Color Secondary);
+        Color Secondary,
+        Color Information,
+        Color Attention,
+        Color Critical,
+        Color Positive);
 }

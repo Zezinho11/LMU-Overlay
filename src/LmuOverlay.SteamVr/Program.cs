@@ -22,6 +22,7 @@ if (!OperatingSystem.IsWindows())
 
 var profileStore = new SteamVrProfileStore();
 var desktopSettingsReader = new DesktopProfileSettingsReader();
+var diagnosticsPath = ArgumentValue(args, "--diagnostics");
 if (args.Contains("--configure", StringComparer.OrdinalIgnoreCase) ||
     args.Contains("--configure-vr", StringComparer.OrdinalIgnoreCase))
 {
@@ -59,16 +60,28 @@ Console.CancelKeyPress += (_, eventArgs) =>
 };
 
 Console.WriteLine("SteamVR overlay host started. Press Ctrl+C to close it.");
+var vrConsecutiveFailures = 0;
+var vrRecoveryAttempts = 0L;
+var vrLastRecoveredAt = (DateTimeOffset?)null;
 while (!shutdown.IsCancellationRequested)
 {
     if (!OpenVrNative.TryConnect(out var openVr, out var detail) || openVr is null)
     {
-        Console.Error.WriteLine($"{detail} Retrying in 2 seconds...");
-        try { await Task.Delay(2_000, shutdown.Token); }
+        vrConsecutiveFailures++;
+        vrRecoveryAttempts++;
+        var delay = PresentationRecoveryPolicy.DelayForFailure(vrConsecutiveFailures);
+        Console.Error.WriteLine($"{detail} Retrying in {delay.TotalSeconds:0.00} seconds...");
+        try { await Task.Delay(delay, shutdown.Token); }
         catch (OperationCanceledException) { }
         continue;
     }
 
+    if (vrConsecutiveFailures > 0)
+    {
+        vrLastRecoveredAt = DateTimeOffset.UtcNow;
+        Console.WriteLine($"SteamVR compositor recovered after {vrConsecutiveFailures} failed attempt(s).");
+    }
+    vrConsecutiveFailures = 0;
     Console.WriteLine(detail);
     using (openVr)
     {
@@ -80,6 +93,7 @@ while (!shutdown.IsCancellationRequested)
             var lastConfigurationRead = Stopwatch.GetTimestamp();
             var lastTimingUpdate = 0L;
             var lastStrategyUpdate = 0L;
+            var lastHealthReport = Stopwatch.GetTimestamp();
             var sessionFlags = EssentialWidgetStateFactory.CreateSessionFlags(
                 LmuTelemetrySnapshot.Unavailable(LmuConnectionState.Disconnected, "Waiting."));
             var fuelStrategy = fuelTracker.Update(
@@ -91,6 +105,29 @@ while (!shutdown.IsCancellationRequested)
             while (!shutdown.IsCancellationRequested)
             {
                 var now = Stopwatch.GetTimestamp();
+                if (now - lastHealthReport >= Stopwatch.Frequency * 10)
+                {
+                    var health = telemetry.Health;
+                    var presentationHealth = new PresentationHostHealth(
+                        true,
+                        vrRecoveryAttempts,
+                        vrLastRecoveredAt,
+                        string.Empty);
+                    Console.WriteLine(
+                        $"HEALTH read p99={health.P99ReadMilliseconds:0.000} ms " +
+                        $"stale={health.StaleAgeMilliseconds:0} ms " +
+                        $"vr-recovery={vrRecoveryAttempts} " +
+                        $"last-recovered={vrLastRecoveredAt?.ToString("O") ?? "never"}");
+                    if (!string.IsNullOrWhiteSpace(diagnosticsPath))
+                    {
+                        SteamVrDiagnosticsWriter.TryWrite(
+                            diagnosticsPath,
+                            health,
+                            presentationHealth,
+                            profile);
+                    }
+                    lastHealthReport = now;
+                }
                 if (now - lastConfigurationRead >= Stopwatch.Frequency)
                 {
                     var nextProfile = profileStore.Load();
@@ -182,10 +219,12 @@ while (!shutdown.IsCancellationRequested)
         catch (OperationCanceledException) when (shutdown.IsCancellationRequested)
         {
         }
-        catch (InvalidOperationException exception)
+        catch (Exception exception) when (exception is not OperationCanceledException)
         {
             Console.Error.WriteLine($"SteamVR connection lost: {exception.Message}");
             Console.Error.WriteLine("The host will reconnect automatically.");
+            vrConsecutiveFailures++;
+            vrRecoveryAttempts++;
         }
     }
 }
@@ -204,6 +243,15 @@ static SteamVrProfile ApplyPreset(SteamVrProfile current, string[] arguments)
         "endurance" => SteamVrProfile.Endurance,
         _ => current,
     };
+}
+
+static string? ArgumentValue(string[] arguments, string name)
+{
+    var index = Array.FindIndex(arguments, value =>
+        string.Equals(value, name, StringComparison.OrdinalIgnoreCase));
+    return index >= 0 && index + 1 < arguments.Length
+        ? arguments[index + 1]
+        : null;
 }
 
 static SteamVrProfile Calibrate(SteamVrProfile current)

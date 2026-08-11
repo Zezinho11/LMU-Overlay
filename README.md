@@ -3,7 +3,8 @@
 Extensible telemetry overlay for **Le Mans Ultimate**, designed around the game's
 official shared-memory interface and a strict anti-cheat-safe boundary.
 
-> Project status: `0.6.0` desktop customization and SteamVR implementation
+> Project status: `0.6.5` desktop customization, SteamVR parity, localization
+> and runtime hardening
 > release with public Windows packaging.
 > SteamVR desktop-feature parity is implemented; extended live validation on
 > multiple headsets remains part of release qualification.
@@ -66,6 +67,8 @@ revalidated after LMU, EAC, SteamVR, or overlay changes.
   manual race distance, stint limits, multi-stop and pit-loss projection.
 - Per-profile widget scale, theme, refresh rate, magnetic grid, privacy-safe
   diagnostics export, and local crash logging.
+- Shared Brazilian Portuguese/English localization stored per profile and
+  rendered consistently by Desktop, DirectComposition and SteamVR hosts.
 - Reproducible self-contained Windows x64 ZIP releases with SHA-256 checksums.
 - Separate SteamVR host using the documented OpenVR `IVROverlay` API. Dashboard,
   Inputs, Live Standings, Relative, Fuel & Virtual Energy, Session/Weather and

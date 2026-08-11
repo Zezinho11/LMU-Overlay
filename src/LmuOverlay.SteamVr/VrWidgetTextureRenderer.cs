@@ -31,16 +31,16 @@ public static class VrWidgetTextureRenderer
         Draw(900, 380, style, canvas =>
         {
             Surface(canvas, 4, 4, 892, 372);
-            Header(canvas, "DRIVER INPUTS", state.Available ? "LIVE" : "WAITING", 900, style.InputsTextScale);
+            Header(canvas, T(style, OverlayTextKey.DriverInputs).ToUpperInvariant(), state.Available ? "LIVE" : T(style, OverlayTextKey.Waiting), 900, style.InputsTextScale);
             DrawSteeringWheel(canvas, state.Steering);
             var samples = history is { Count: > 1 }
                 ? history
                 : new[] { new VrPedalSample((float)state.Throttle, (float)state.Brake), new((float)state.Throttle, (float)state.Brake) };
             DrawPedalGraph(canvas, samples, 270, 92, 590, 185);
             var f = style.InputsTextScale;
-            ValueCard(canvas, "THR", state.Available ? state.Throttle.ToString("P0") : "--", style.Positive, 270, 292, f);
-            ValueCard(canvas, "BRK", state.Available ? state.Brake.ToString("P0") : "--", state.AbsActive ? style.Attention : style.Critical, 415, 292, f);
-            ValueCard(canvas, "CLU", state.Available ? state.Clutch.ToString("P0") : "--", style.Information, 560, 292, f);
+            ValueCard(canvas, T(style, OverlayTextKey.Throttle), state.Available ? state.Throttle.ToString("P0") : "--", style.Positive, 270, 292, f);
+            ValueCard(canvas, T(style, OverlayTextKey.Brake), state.Available ? state.Brake.ToString("P0") : "--", state.AbsActive ? style.Attention : style.Critical, 415, 292, f);
+            ValueCard(canvas, T(style, OverlayTextKey.Clutch), state.Available ? state.Clutch.ToString("P0") : "--", style.Information, 560, 292, f);
             ValueCard(canvas, "STR", state.Available ? state.Steering.ToString("+0%;-0%;0%") : "--", style.PrimaryText, 705, 292, f);
             if (state.AbsActive) Badge(canvas, "ABS", style.Attention, 784, 25, 80, 38, f);
             if (state.TractionControlActive) Badge(canvas, "TC", style.Positive, 694, 25, 80, 38, f);
@@ -72,23 +72,23 @@ public static class VrWidgetTextureRenderer
             }.Max();
             (Color Color, string Icon, string Title, string Detail)? alert =
                 raceControl.HasCriticalDamage
-                    ? (style.Critical, "!", "CRITICAL DAMAGE", raceControl.DamageStatus)
-                    : raceControl.OutstandingPenalties > 0
-                        ? (style.Critical, "!", "PENALTY", raceControl.PenaltyStatus)
+                    ? (style.Critical, "!", T(style, OverlayTextKey.CriticalDamage), raceControl.DamageStatus)
+                : raceControl.OutstandingPenalties > 0
+                        ? (style.Critical, "!", T(style, OverlayTextKey.Penalty), raceControl.PenaltyStatus)
                         : session.FlagName == "RED"
-                            ? (style.Critical, "!", "RED FLAG", "SESSION STOPPED")
+                            ? (style.Critical, "!", T(style, OverlayTextKey.RedFlag), T(style, OverlayTextKey.SessionStopped))
                             : fuel.Available && !fuel.Learning && fuel.Status == "SHORT"
-                                ? (style.Critical, "!", "ENERGY SHORTFALL", fuel.PlanSummary)
+                                ? (style.Critical, "!", T(style, OverlayTextKey.EnergyShortfall), fuel.PlanSummary)
                                 : TireTemperatureClassifier.Classify(hottestTire) == TireTemperatureBand.Critical
-                                    ? (style.Attention, "▲", "TYRE TEMPERATURE", $"HOTTEST {hottestTire:0}°C")
+                                    ? (style.Attention, "▲", T(style, OverlayTextKey.TireTemperature), $"{T(style, OverlayTextKey.Hottest)} {hottestTire:0}°C")
                                     : maximumWear >= settings.TireWearLimitPercent / 100
-                                        ? (style.Attention, "▲", "TYRE WEAR", $"MAXIMUM {maximumWear:P0}")
+                                        ? (style.Attention, "▲", T(style, OverlayTextKey.TireWear), $"{T(style, OverlayTextKey.Maximum)} {maximumWear:P0}")
                                         : session.FlagName == "YELLOW"
-                                            ? (style.Attention, "▲", "YELLOW FLAG", "NO SAFETY-CAR ASSUMPTION")
+                                            ? (style.Attention, "▲", T(style, OverlayTextKey.YellowFlag), T(style, OverlayTextKey.NoSafetyCarAssumption))
                                             : session.RainIntensity >= 0.02
                                                 ? (style.Information, "☂", session.WeatherName, $"RAIN {session.RainIntensity:P0}")
                                                 : dashboard.SpeedLimiterActive
-                                                    ? (style.Information, "P", "PIT LIMITER", "ACTIVE")
+                                                    ? (style.Information, "P", T(style, OverlayTextKey.PitLimiter), T(style, OverlayTextKey.Active))
                                                     : null;
             if (alert is null) return;
             canvas.FillRound(Color.FromArgb(248, style.Background), 4, 4, 892, 142, 16);
@@ -105,11 +105,11 @@ public static class VrWidgetTextureRenderer
     public static VrRenderedFrame LiveStandings(LiveStandingsWidgetState state, VrRenderStyle style) =>
         Draw(760, 960, style, canvas =>
         {
-            Header(canvas, state.SessionName.Length > 0 ? state.SessionName : "LIVE STANDINGS",
+            Header(canvas, state.SessionName.Length > 0 ? OverlayText.TranslateExact(style.Language, state.SessionName) : T(style, OverlayTextKey.LiveStandings).ToUpperInvariant(),
                 Clock(state.SessionRemainingSeconds), 760, style.TimingTextScale);
             var f = style.TimingTextScale;
             canvas.Fill(style.Card, 0, 82, 760, 38);
-            var headings = new[] { ("P", 0f, 52f), ("MFR", 52f, 84f), ("NO.", 136f, 60f), ("DRV", 196f, 100f), (state.IsQualifying ? "BEST LAP" : "LAST LAP", 296f, 160f), ("GAP", 456f, 120f), ("TYRE / NRG", 576f, 184f) };
+            var headings = new[] { ("P", 0f, 52f), (T(style, OverlayTextKey.Manufacturer), 52f, 84f), (T(style, OverlayTextKey.Number), 136f, 60f), (T(style, OverlayTextKey.Driver), 196f, 100f), (T(style, state.IsQualifying ? OverlayTextKey.Best : OverlayTextKey.LastLap), 296f, 160f), (T(style, OverlayTextKey.Gap), 456f, 120f), ("TYRE / NRG", 576f, 184f) };
             foreach (var item in headings)
                 canvas.Text(item.Item1, 15 * f, style.SecondaryText, new(item.Item2, 82, item.Item3, 38), true, StringAlignment.Center);
             var totalRows = Math.Max(1, state.Classes.Sum(group => group.Rows.Count));
@@ -145,7 +145,7 @@ public static class VrWidgetTextureRenderer
                 }
             }
             if (state.Classes.Sum(group => group.Rows.Count) == 0)
-                canvas.Text("WAITING FOR SESSION", 24 * f, style.SecondaryText, new(30, 410, 700, 60), true, StringAlignment.Center);
+                canvas.Text(T(style, OverlayTextKey.Waiting), 24 * f, style.SecondaryText, new(30, 410, 700, 60), true, StringAlignment.Center);
         });
 
     public static VrRenderedFrame Relative(RelativeWidgetState state) => Relative(state, DefaultStyle);
@@ -153,11 +153,11 @@ public static class VrWidgetTextureRenderer
     public static VrRenderedFrame Relative(RelativeWidgetState state, VrRenderStyle style) =>
         Draw(760, 760, style, canvas =>
         {
-            Header(canvas, "RELATIVE", "TRACK GAP", 760, style.TimingTextScale);
+            Header(canvas, T(style, OverlayTextKey.Relative).ToUpperInvariant(), T(style, OverlayTextKey.Gap), 760, style.TimingTextScale);
             var f = style.TimingTextScale;
             if (state.Rows.Count == 0)
             {
-                canvas.Text("WAITING FOR PLAYER", 24 * f, style.SecondaryText, new(30, 340, 700, 60), true, StringAlignment.Center);
+                canvas.Text(T(style, OverlayTextKey.Waiting), 24 * f, style.SecondaryText, new(30, 340, 700, 60), true, StringAlignment.Center);
                 return;
             }
             var rowHeight = Math.Min(72, 670f / state.Rows.Count);
@@ -187,22 +187,22 @@ public static class VrWidgetTextureRenderer
     public static VrRenderedFrame Fuel(FuelStrategyWidgetState state, VrRenderStyle style) =>
         Draw(1000, 780, style, canvas =>
         {
-            Header(canvas, "FUEL & VIRTUAL ENERGY", state.Status, 1000, 1);
+            Header(canvas, T(style, OverlayTextKey.FuelAndEnergy).ToUpperInvariant(), OverlayText.TranslateExact(style.Language, state.Status), 1000, 1);
             var columns = new[] { 20f, 260f, 480f, 700f, 860f };
             var widths = new[] { 240f, 220f, 220f, 160f, 120f };
-            var headers = new[] { "RESOURCE", "CURRENT", "USAGE / LAP", "RANGE", "TIME" };
+            var headers = new[] { T(style, OverlayTextKey.Resource), T(style, OverlayTextKey.Current), T(style, OverlayTextKey.UsagePerLap), T(style, OverlayTextKey.Range), T(style, OverlayTextKey.Time) };
             for (var index = 0; index < headers.Length; index++)
                 canvas.Text(headers[index], 16, style.SecondaryText, new(columns[index], 90, widths[index], 30), true, StringAlignment.Center);
-            FuelResourceRow(canvas, "FUEL", state.Available ? $"{state.FuelLiters:0.0} L" : "--",
+            FuelResourceRow(canvas, T(style, OverlayTextKey.Fuel), state.Available ? $"{state.FuelLiters:0.0} L" : "--",
                 state.Learning ? "LEARNING" : $"{state.ProjectedConsumptionLitersPerLap:0.00} L",
                 state.EstimatedRangeLaps, state.EstimatedRangeTimeSeconds, 126, style);
-            FuelResourceRow(canvas, "VIRTUAL ENERGY", state.Available ? $"{state.VirtualEnergyFraction:P0}" : "--",
+            FuelResourceRow(canvas, T(style, OverlayTextKey.VirtualEnergy), state.Available ? $"{state.VirtualEnergyFraction:P0}" : "--",
                 state.Learning ? "LEARNING" : $"{state.AverageVirtualEnergyFractionPerLap:P1}",
                 state.EstimatedVirtualEnergyRangeLaps, state.EstimatedVirtualEnergyRangeTimeSeconds, 192, style);
             canvas.Fill(style.Card, 20, 270, 960, 96);
-            canvas.Text("TO FINISH", 17, style.SecondaryText, new(40, 280, 180, 28), true);
+            canvas.Text(T(style, OverlayTextKey.ToFinish), 17, style.SecondaryText, new(40, 280, 180, 28), true);
             canvas.Text($"{state.EstimatedLapsToFinish} LAPS / {Minutes(state.EstimatedTimeToFinishSeconds)}", 25, style.PrimaryText, new(40, 310, 300, 40), true);
-            canvas.Text("TOTAL NEED / MARGIN", 17, style.SecondaryText, new(360, 280, 270, 28), true);
+            canvas.Text(T(style, OverlayTextKey.NeedMargin), 17, style.SecondaryText, new(360, 280, 270, 28), true);
             canvas.Text($"{state.RequiredFuelLiters:0.0} L / {state.FuelMarginLiters:+0.0;-0.0} L", 25,
                 state.FuelMarginLiters >= 0 ? style.Positive : style.Critical, new(360, 310, 280, 40), true);
             canvas.Text("STINT / PIT", 17, style.SecondaryText, new(680, 280, 260, 28), true);
@@ -222,11 +222,11 @@ public static class VrWidgetTextureRenderer
         Draw(1100, 340, style, canvas =>
         {
             Surface(canvas, 4, 4, 1092, 332);
-            Header(canvas, state.SessionName.Length > 0 ? state.SessionName : "SESSION",
+            Header(canvas, state.SessionName.Length > 0 ? state.SessionName : T(style, OverlayTextKey.Session),
                 Clock(state.RemainingSeconds), 1100, 1);
             var flag = FlagColor(state.FlagName, style);
             canvas.FillRound(flag, 28, 104, 210, 78, 8);
-            canvas.Text(state.FlagName, 31, Color.White, new(28, 104, 210, 78), true, StringAlignment.Center);
+            canvas.Text(OverlayText.TranslateExact(style.Language, state.FlagName), 31, Color.White, new(28, 104, 210, 78), true, StringAlignment.Center);
             canvas.FillRound(GripColor(state.TrackGripLevel), 258, 104, 270, 78, 8);
             canvas.Text($"GRIP · {state.TrackGripName}", 27, Color.White, new(258, 104, 270, 78), true, StringAlignment.Center);
             canvas.FillRound(style.Card, 548, 104, 524, 78, 8);
@@ -255,16 +255,16 @@ public static class VrWidgetTextureRenderer
     public static VrRenderedFrame RaceControl(RaceControlWidgetState state, VrRenderStyle style) =>
         Draw(900, 560, style, canvas =>
         {
-            Header(canvas, "RACE CONTROL / DAMAGE", state.RequiresAttention ? "ATTENTION" : "CLEAR", 900, 1);
+            Header(canvas, $"{T(style, OverlayTextKey.RaceControl).ToUpperInvariant()} / {T(style, OverlayTextKey.Damage).ToUpperInvariant()}", state.RequiresAttention ? T(style, OverlayTextKey.Attention) : T(style, OverlayTextKey.Clear), 900, 1);
             var items = new[]
             {
-                ("PENALTIES", state.PenaltyStatus, state.OutstandingPenalties > 0 ? style.Critical : style.Positive),
-                ("PIT", state.PitStatus, style.Information),
-                ("LAP", state.LapStatus, state.LapStatus.Contains("INVALID", StringComparison.OrdinalIgnoreCase) ? style.Critical : style.Positive),
-                ("FLAG", state.FlagStatus, FlagColor(state.FlagStatus, style)),
-                ("DAMAGE", state.DamageStatus, state.HasCriticalDamage ? style.Critical : state.RequiresAttention ? style.Attention : style.Positive),
+                (T(style, OverlayTextKey.Penalty), state.PenaltyStatus, state.OutstandingPenalties > 0 ? style.Critical : style.Positive),
+                (T(style, OverlayTextKey.Pit), state.PitStatus, style.Information),
+                (T(style, OverlayTextKey.Lap), state.LapStatus, state.LapStatus.Contains("INVALID", StringComparison.OrdinalIgnoreCase) ? style.Critical : style.Positive),
+                (T(style, OverlayTextKey.Flag), state.FlagStatus, FlagColor(state.FlagStatus, style)),
+                (T(style, OverlayTextKey.Damage), state.DamageStatus, state.HasCriticalDamage ? style.Critical : state.RequiresAttention ? style.Attention : style.Positive),
                 ("LAST IMPACT", state.ImpactStatus, style.SecondaryText),
-                ("SYSTEMS", state.SystemsStatus, style.Information),
+                (T(style, OverlayTextKey.Systems), state.SystemsStatus, style.Information),
             };
             var y = 104f;
             foreach (var item in items)
@@ -487,6 +487,8 @@ public static class VrWidgetTextureRenderer
     private static string Minutes(double seconds) => seconds > 0 && double.IsFinite(seconds)
         ? $"{Math.Ceiling(seconds / 60):0} MIN"
         : "-- MIN";
+    private static string T(VrRenderStyle style, OverlayTextKey key) =>
+        OverlayText.Get(style.Language, key);
     private static string Trim(string? value, int maximum)
     {
         value ??= string.Empty;

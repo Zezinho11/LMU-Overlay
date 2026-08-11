@@ -16,7 +16,8 @@ public sealed record NativeOverlayStyle(
     string DashboardTitle,
     double DashboardTextScale,
     double TimingTextScale,
-    double InputsTextScale)
+    double InputsTextScale,
+    string Language)
 {
     public static NativeOverlayStyle RedFox { get; } = new(
         new(10, 15, 26),
@@ -32,5 +33,6 @@ public sealed record NativeOverlayStyle(
         "REDFOX RACING",
         1,
         1,
-        1);
+        1,
+        "pt-BR");
 }

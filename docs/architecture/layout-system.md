@@ -55,6 +55,15 @@ Desktop pixel coordinates are never reused as SteamVR world-space transforms.
 This separation lets users keep independent desktop and VR profiles while the
 telemetry and widget implementations remain shared.
 
+## Mandatory presentation parity
+
+New visual, telemetry-derived, configuration and accessibility features must be
+implemented for Desktop and SteamVR in the same change. Each host publishes a
+capability manifest and `LmuOverlay.PresentationParity.Tests` fails CI if either
+host falls behind the required shared feature set. Host-specific mechanics such
+as desktop click-through or VR metric transforms may differ, but the information
+and user-facing behavior may not.
+
 ## Acceptance checks
 
 1. A widget can be placed and resized in every screen corner.

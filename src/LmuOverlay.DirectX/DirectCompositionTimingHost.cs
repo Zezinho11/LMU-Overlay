@@ -30,6 +30,7 @@ internal sealed class DirectCompositionTimingHost : IDisposable
     private readonly TimingSurface _relative;
     private long _renderedSequence = -1;
     private float _textScale = 1;
+    private string _language = OverlayText.PortugueseBrazil;
 
     public DirectCompositionTimingHost()
     {
@@ -64,6 +65,7 @@ internal sealed class DirectCompositionTimingHost : IDisposable
             (frame.Style ?? NativeOverlayStyle.RedFox).TimingTextScale,
             0.8,
             1.25);
+        _language = (frame.Style ?? NativeOverlayStyle.RedFox).Language;
 
         _standings.Render(
             frame.LiveStandingsBounds,
@@ -86,15 +88,15 @@ internal sealed class DirectCompositionTimingHost : IDisposable
     {
         var drawing = surface.Drawing;
         Fill(drawing, 0, 0, 500, 46, surface.Header);
-        DrawText(drawing, state.SessionName, 14, 4, 270, 38, 18, surface.White);
+        DrawText(drawing, OverlayText.TranslateExact(_language, state.SessionName), 14, 4, 270, 38, 18, surface.White);
         DrawText(drawing, FormatSessionClock(state.SessionRemainingSeconds), 330, 4, 154, 38, 20, surface.White, TextAlignment.Trailing);
         Fill(drawing, 0, 46, 500, 22, surface.ColumnHeader);
         DrawText(drawing, "P", 0, 47, 36, 20, 8, surface.Muted, TextAlignment.Center);
-        DrawText(drawing, "MFR", 36, 47, 50, 20, 8, surface.Muted, TextAlignment.Center);
-        DrawText(drawing, "NO.", 86, 47, 40, 20, 8, surface.Muted, TextAlignment.Center);
-        DrawText(drawing, "DRV", 126, 47, 62, 20, 8, surface.Muted, TextAlignment.Center);
-        DrawText(drawing, state.IsQualifying ? "BEST LAP" : "LAST LAP", 188, 47, 104, 20, 8, surface.Muted, TextAlignment.Center);
-        DrawText(drawing, "GAP", 292, 47, 76, 20, 8, surface.Muted, TextAlignment.Center);
+        DrawText(drawing, OverlayText.Get(_language, OverlayTextKey.Manufacturer), 36, 47, 50, 20, 8, surface.Muted, TextAlignment.Center);
+        DrawText(drawing, OverlayText.Get(_language, OverlayTextKey.Number), 86, 47, 40, 20, 8, surface.Muted, TextAlignment.Center);
+        DrawText(drawing, OverlayText.Get(_language, OverlayTextKey.Driver), 126, 47, 62, 20, 8, surface.Muted, TextAlignment.Center);
+        DrawText(drawing, OverlayText.Get(_language, state.IsQualifying ? OverlayTextKey.Best : OverlayTextKey.LastLap), 188, 47, 104, 20, 8, surface.Muted, TextAlignment.Center);
+        DrawText(drawing, OverlayText.Get(_language, OverlayTextKey.Gap), 292, 47, 76, 20, 8, surface.Muted, TextAlignment.Center);
         DrawText(drawing, "TYRE / NRG", 368, 47, 132, 20, 8, surface.Muted, TextAlignment.Center);
 
         var rowCount = state.Classes.Sum(category => category.Rows.Count);
@@ -132,7 +134,7 @@ internal sealed class DirectCompositionTimingHost : IDisposable
 
         if (rowCount == 0)
         {
-            DrawText(drawing, "WAITING FOR SESSION", 30, 190, 440, 30, 13, surface.Muted, TextAlignment.Center);
+            DrawText(drawing, OverlayText.Get(_language, OverlayTextKey.Waiting), 30, 190, 440, 30, 13, surface.Muted, TextAlignment.Center);
         }
     }
 
@@ -140,11 +142,11 @@ internal sealed class DirectCompositionTimingHost : IDisposable
     {
         var drawing = surface.Drawing;
         Fill(drawing, 0, 0, 500, 24, surface.ColumnHeader);
-        DrawText(drawing, "RELATIVE", 14, 0, 250, 24, 10, surface.Muted);
-        DrawText(drawing, "GAP", 400, 0, 84, 24, 10, surface.Muted, TextAlignment.Trailing);
+        DrawText(drawing, OverlayText.Get(_language, OverlayTextKey.Relative).ToUpperInvariant(), 14, 0, 250, 24, 10, surface.Muted);
+        DrawText(drawing, OverlayText.Get(_language, OverlayTextKey.Gap), 400, 0, 84, 24, 10, surface.Muted, TextAlignment.Trailing);
         if (state.Rows.Count == 0)
         {
-            DrawText(drawing, "WAITING FOR PLAYER", 30, 190, 440, 30, 13, surface.Muted, TextAlignment.Center);
+            DrawText(drawing, OverlayText.Get(_language, OverlayTextKey.Waiting), 30, 190, 440, 30, 13, surface.Muted, TextAlignment.Center);
             return;
         }
 
