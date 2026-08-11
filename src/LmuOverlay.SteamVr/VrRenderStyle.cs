@@ -15,7 +15,8 @@ public sealed record VrRenderStyle(
     string DashboardTitle,
     float DashboardTextScale,
     float TimingTextScale,
-    float InputsTextScale)
+    float InputsTextScale,
+    string Language)
 {
     public static VrRenderStyle From(VrDesktopSettings settings)
     {
@@ -69,7 +70,8 @@ public sealed record VrRenderStyle(
             settings.DashboardTitle,
             (float)settings.DashboardTextScale,
             (float)settings.TimingTextScale,
-            (float)settings.InputsTextScale);
+            (float)settings.InputsTextScale,
+            settings.Language);
     }
 
     public static string NormalizeHex(string? value, string fallback)

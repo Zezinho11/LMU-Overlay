@@ -24,6 +24,9 @@ multiclass timing, fuel/Virtual Energy strategy, flags, weather, penalties,
 damage, persistent personal-best laps and sectors, and LMU's official Timing
 optimal. The active desktop profile also controls theme, custom colors, title,
 text scale, timing population, strategy inputs, pedal history and update rate.
+It also uses the active desktop profile language (`pt-BR` or `en-US`), so a
+language change is applied to Desktop and SteamVR without maintaining a second
+VR-only preference.
 
 Dashboard and Inputs render at the selected 60-120 Hz rate. Timing surfaces
 render at 10 Hz and strategy/session surfaces at 5 Hz because their source data

@@ -256,7 +256,8 @@ internal sealed class DirectCompositionDashboardHost : IDisposable
             dashboard,
             frame.CapturedTimestamp,
             frame.FuelSaveFraction,
-            (frame.Style ?? NativeOverlayStyle.RedFox).DashboardTitle);
+            (frame.Style ?? NativeOverlayStyle.RedFox).DashboardTitle,
+            (frame.Style ?? NativeOverlayStyle.RedFox).Language);
 
         drawing.EndDraw().CheckError();
         _swapChain!.Present(1, PresentFlags.None).CheckError();
@@ -267,8 +268,10 @@ internal sealed class DirectCompositionDashboardHost : IDisposable
         LmuOverlay.Widgets.DashboardWidgetState dashboard,
         long timestamp,
         double fuelSaveFraction,
-        string dashboardTitle)
+        string dashboardTitle,
+        string language)
     {
+        string T(LmuOverlay.Widgets.OverlayTextKey key) => LmuOverlay.Widgets.OverlayText.Get(language, key);
         DrawText(drawing, dashboard.TrackName.ToUpperInvariant(), 42, 54, 210, 20, 11, _muted!);
         DrawText(drawing, dashboardTitle, 236, 34, 328, 36, 26, _white!, TextAlignment.Center);
         DrawText(drawing, dashboard.SessionName, 606, 54, 152, 20, 11, _muted!, TextAlignment.Trailing);
@@ -281,12 +284,12 @@ internal sealed class DirectCompositionDashboardHost : IDisposable
         DrawPanel(drawing, 276, 272, 248, 164);
         DrawPanel(drawing, 533, 272, 225, 164);
 
-        DrawText(drawing, dashboard.Available ? $"POS {dashboard.Position}" : "POS --", 56, 104, 120, 24, 17, _green!);
-        DrawText(drawing, dashboard.Available ? $"LAP {dashboard.LapNumber}" : "LAP --", 56, 130, 120, 22, 15, _white!);
-        DrawText(drawing, dashboard.Available ? $"DELTA {dashboard.DeltaBestSeconds:+0.000;-0.000;0.000}" : "DELTA --", 56, 156, 178, 22, 15, _amber!);
-        DrawText(drawing, dashboard.Available ? $"FUEL {dashboard.FuelLiters:0.0} L" : "FUEL --.- L", 56, 184, 160, 20, 13, _muted!);
-        DrawText(drawing, dashboard.Available ? $"VIRTUAL ENERGY {dashboard.VirtualEnergyFraction:P0}" : "VIRTUAL ENERGY --", 56, 207, 190, 20, 13, _cyan!);
-        DrawText(drawing, dashboard.Available ? $"BRAKE BIAS {(1 - dashboard.RearBrakeBiasFraction):P1}" : "BRAKE BIAS --", 56, 230, 180, 20, 13, _muted!);
+        DrawText(drawing, $"{T(LmuOverlay.Widgets.OverlayTextKey.Position)} {(dashboard.Available ? dashboard.Position.ToString() : "--")}", 56, 104, 120, 24, 17, _green!);
+        DrawText(drawing, $"{T(LmuOverlay.Widgets.OverlayTextKey.Lap)} {(dashboard.Available ? dashboard.LapNumber.ToString() : "--")}", 56, 130, 120, 22, 15, _white!);
+        DrawText(drawing, dashboard.Available ? $"{T(LmuOverlay.Widgets.OverlayTextKey.Delta)} {dashboard.DeltaBestSeconds:+0.000;-0.000;0.000}" : $"{T(LmuOverlay.Widgets.OverlayTextKey.Delta)} --", 56, 156, 178, 22, 15, _amber!);
+        DrawText(drawing, dashboard.Available ? $"{T(LmuOverlay.Widgets.OverlayTextKey.Fuel)} {dashboard.FuelLiters:0.0} L" : $"{T(LmuOverlay.Widgets.OverlayTextKey.Fuel)} --.- L", 56, 184, 190, 20, 13, _muted!);
+        DrawText(drawing, dashboard.Available ? $"{T(LmuOverlay.Widgets.OverlayTextKey.VirtualEnergy)} {dashboard.VirtualEnergyFraction:P0}" : $"{T(LmuOverlay.Widgets.OverlayTextKey.VirtualEnergy)} --", 56, 207, 195, 20, 12, _cyan!);
+        DrawText(drawing, dashboard.Available ? $"{T(LmuOverlay.Widgets.OverlayTextKey.BrakeBias)} {(1 - dashboard.RearBrakeBiasFraction):P1}" : $"{T(LmuOverlay.Widgets.OverlayTextKey.BrakeBias)} --", 56, 230, 195, 20, 12, _muted!);
 
         DrawText(drawing, dashboard.Available ? $"{dashboard.SpeedKilometersPerHour:0} KM/H" : "--- KM/H", 296, 98, 208, 34, 23, _muted!, TextAlignment.Center);
         DrawText(drawing, dashboard.Available ? dashboard.Gear : "N", 306, 125, 188, 96, 74, _white!, TextAlignment.Center);
@@ -297,21 +300,21 @@ internal sealed class DirectCompositionDashboardHost : IDisposable
             DrawText(drawing, "LIMIT", 448, 99, 58, 22, 12, _panel!, TextAlignment.Center);
         }
 
-        DrawText(drawing, $"CURRENT {FormatLap(dashboard.CurrentLapTimeSeconds)}", 548, 100, 190, 20, 13, _white!);
-        DrawText(drawing, $"LAST {FormatLap(dashboard.LastLapTimeSeconds)}", 548, 123, 190, 20, 13, _muted!);
-        DrawText(drawing, $"BEST {FormatLap(dashboard.BestLapTimeSeconds)}", 548, 146, 190, 20, 13, _green!);
-        DrawText(drawing, $"OPTIMAL {FormatLap(dashboard.OptimalLapTimeSeconds)}", 548, 169, 190, 20, 13, _cyan!);
+        DrawText(drawing, $"{T(LmuOverlay.Widgets.OverlayTextKey.Current)} {FormatLap(dashboard.CurrentLapTimeSeconds)}", 548, 100, 190, 20, 13, _white!);
+        DrawText(drawing, $"{T(LmuOverlay.Widgets.OverlayTextKey.Last)} {FormatLap(dashboard.LastLapTimeSeconds)}", 548, 123, 190, 20, 13, _muted!);
+        DrawText(drawing, $"{T(LmuOverlay.Widgets.OverlayTextKey.Best)} {FormatLap(dashboard.BestLapTimeSeconds)}", 548, 146, 190, 20, 13, _green!);
+        DrawText(drawing, $"{T(LmuOverlay.Widgets.OverlayTextKey.Optimal)} {FormatLap(dashboard.OptimalLapTimeSeconds)}", 548, 169, 190, 20, 13, _cyan!);
         DrawControlCards(drawing, dashboard, timestamp);
         DrawText(drawing, $"OIL {dashboard.EngineOilTemperatureCelsius:0}°  WATER {dashboard.EngineWaterTemperatureCelsius:0}°", 548, 242, 190, 16, 11, _muted!);
 
-        DrawText(drawing, "SECTORS", 42, 276, 225, 23, 13, _cyan!, TextAlignment.Center);
-        DrawText(drawing, "TYRE TEMP / WEAR", 276, 276, 248, 23, 13, _amber!, TextAlignment.Center);
-        DrawText(drawing, "PEDAL INPUTS", 533, 276, 225, 23, 13, _cyan!, TextAlignment.Center);
+        DrawText(drawing, T(LmuOverlay.Widgets.OverlayTextKey.Sectors), 42, 276, 225, 23, 13, _cyan!, TextAlignment.Center);
+        DrawText(drawing, T(LmuOverlay.Widgets.OverlayTextKey.TyreTempWear), 276, 276, 248, 23, 12, _amber!, TextAlignment.Center);
+        DrawText(drawing, T(LmuOverlay.Widgets.OverlayTextKey.Telemetry), 533, 276, 225, 23, 13, _cyan!, TextAlignment.Center);
         DrawSectors(drawing, dashboard);
         DrawTires(drawing, dashboard);
         DrawPedals(drawing, dashboard);
-        DrawText(drawing, $"THR {dashboard.Throttle:P0}", 548, 309, 90, 20, 13, _green!);
-        DrawText(drawing, $"BRK {dashboard.Brake:P0}", 648, 309, 90, 20, 13, _red!);
+        DrawText(drawing, $"{T(LmuOverlay.Widgets.OverlayTextKey.Throttle)} {dashboard.Throttle:P0}", 548, 309, 90, 20, 13, _green!);
+        DrawText(drawing, $"{T(LmuOverlay.Widgets.OverlayTextKey.Brake)} {dashboard.Brake:P0}", 648, 309, 90, 20, 13, _red!);
         DrawText(drawing, $"GX {dashboard.LateralAccelerationG:+0.0;-0.0;0.0}", 548, 406, 90, 20, 12, _muted!);
         DrawText(drawing, $"GY {dashboard.LongitudinalAccelerationG:+0.0;-0.0;0.0}", 648, 406, 90, 20, 12, _muted!);
     }

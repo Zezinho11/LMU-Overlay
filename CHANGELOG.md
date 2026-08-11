@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Added per-profile Brazilian Portuguese/English localization through one
+  shared catalog used by WPF, native Desktop renderers and SteamVR, including
+  automatic migration of existing profiles to `pt-BR`.
 - Added a mandatory Desktop/SteamVR presentation capability manifest and CI
   parity gate so future shared features cannot ship in only one host.
 - Added automatic Direct3D/DirectComposition device-loss recovery with bounded

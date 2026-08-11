@@ -268,6 +268,8 @@ internal sealed unsafe class DirectCompositionInputsHost : IDisposable
 
     private void Draw(NativeInputsFrame frame)
     {
+        var language = (frame.Style ?? NativeOverlayStyle.RedFox).Language;
+        string T(LmuOverlay.Widgets.OverlayTextKey key) => LmuOverlay.Widgets.OverlayText.Get(language, key);
         var drawing = _drawing ?? throw new InvalidOperationException("Direct2D context is unavailable.");
         var scale = Math.Min(frame.Bounds.Width / (float)DesignWidth, frame.Bounds.Height / (float)DesignHeight);
         var offsetX = (frame.Bounds.Width - DesignWidth * scale) / 2f;
@@ -277,13 +279,13 @@ internal sealed unsafe class DirectCompositionInputsHost : IDisposable
         drawing.Clear(new Color4(0, 0, 0, 0));
         FillRounded(drawing, 2, 2, 516, 216, 12, _panel!);
         DrawRounded(drawing, 2, 2, 516, 216, 12, _border!, 2);
-        DrawText(drawing, "DRIVER INPUTS", 18, 12, 220, 28, 17, _white!);
+        DrawText(drawing, T(LmuOverlay.Widgets.OverlayTextKey.DriverInputs).ToUpperInvariant(), 18, 12, 260, 28, 17, _white!);
         DrawSteering(drawing, frame.Inputs.Steering);
         DrawGraph(drawing);
-        DrawText(drawing, $"THR {frame.Inputs.Throttle:P0}", 172, 184, 82, 22, 13, _green!);
-        DrawText(drawing, $"BRK {frame.Inputs.Brake:P0}", 258, 184, 82, 22, 13,
+        DrawText(drawing, $"{T(LmuOverlay.Widgets.OverlayTextKey.Throttle)} {frame.Inputs.Throttle:P0}", 172, 184, 82, 22, 13, _green!);
+        DrawText(drawing, $"{T(LmuOverlay.Widgets.OverlayTextKey.Brake)} {frame.Inputs.Brake:P0}", 258, 184, 82, 22, 13,
             frame.Inputs.AbsActive ? _amber! : _red!);
-        DrawText(drawing, $"CLU {frame.Inputs.Clutch:P0}", 344, 184, 82, 22, 13, _cyan!);
+        DrawText(drawing, $"{T(LmuOverlay.Widgets.OverlayTextKey.Clutch)} {frame.Inputs.Clutch:P0}", 344, 184, 82, 22, 13, _cyan!);
         DrawText(drawing, $"STR {frame.Inputs.Steering:+0%;-0%;0%}", 430, 184, 72, 22, 12, _white!, TextAlignment.Trailing);
         if (frame.Inputs.AbsActive)
         {

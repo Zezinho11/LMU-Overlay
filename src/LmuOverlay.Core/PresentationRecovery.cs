@@ -19,6 +19,7 @@ public enum PresentationFeatures
     RuntimeRecovery = 1 << 12,
     RuntimeHealth = 1 << 13,
     AccessibleColorPalette = 1 << 14,
+    Localization = 1 << 15,
 }
 
 public static class PresentationFeatureSet
@@ -38,7 +39,8 @@ public static class PresentationFeatureSet
         PresentationFeatures.OfficialOptimal |
         PresentationFeatures.RuntimeRecovery |
         PresentationFeatures.RuntimeHealth |
-        PresentationFeatures.AccessibleColorPalette;
+        PresentationFeatures.AccessibleColorPalette |
+        PresentationFeatures.Localization;
 }
 
 public sealed record PresentationHostHealth(

@@ -43,7 +43,7 @@
                       VerticalContentAlignment="Center"
                       SelectionChanged="ProfileSelectionChanged"
                       ToolTip="Perfil de layout ativo" />
-            <Button Grid.Column="3"
+            <Button x:Name="SettingsButton" Grid.Column="3"
                     Content="AJUSTES"
                     Click="SettingsClicked"
                     Background="#FF202B3A"

@@ -221,7 +221,8 @@ public partial class OverlayWindow : Window
                 _profile.Settings.DashboardTitle,
                 _profile.Settings.DashboardTextScale,
                 _profile.Settings.TimingTextScale,
-                _profile.Settings.InputsTextScale);
+                _profile.Settings.InputsTextScale,
+                _profile.Settings.Language);
         }
     }
 
@@ -1027,6 +1028,7 @@ public partial class OverlayWindow : Window
         PriorityAlert.Width = Math.Min(460, Math.Max(240, LayoutWidth - 24));
         Canvas.SetLeft(PriorityAlert, Math.Max(12, (LayoutWidth - PriorityAlert.Width) / 2));
         ApplyTheme();
+        OverlayLocalization.Apply(this, _profile.Settings.Language);
     }
 
     private void ApplyPlacement(
@@ -1063,9 +1065,13 @@ public partial class OverlayWindow : Window
 
     private void UpdateStandings(LiveStandingsWidgetState standings)
     {
-        SetText(StandingsSessionText, standings.SessionName);
+        SetText(StandingsSessionText, OverlayText.TranslateExact(_profile.Settings.Language, standings.SessionName));
         SetText(StandingsClockText, FormatSessionTime(standings.SessionRemainingSeconds));
-        SetText(StandingsLapHeading, standings.IsQualifying ? "BEST LAP" : "LAST LAP");
+        SetText(
+            StandingsLapHeading,
+            OverlayText.Get(
+                _profile.Settings.Language,
+                standings.IsQualifying ? OverlayTextKey.Best : OverlayTextKey.LastLap));
         var structureKey = string.Join(
             "|",
             standings.Classes.Select(category =>
@@ -1670,18 +1676,19 @@ public partial class OverlayWindow : Window
 
     private void UpdateSessionFlags(SessionFlagsWidgetState state)
     {
+        string T(OverlayTextKey key) => OverlayText.Get(_profile.Settings.Language, key);
         if (!state.Available)
         {
-            SessionNameText.Text = "SESSION";
+            SessionNameText.Text = T(OverlayTextKey.Session);
             SessionMetaText.Text = "--:--  ·  LAP --";
             GripValueText.Text = "UNKNOWN";
             GripValueText.Foreground = System.Windows.Media.Brushes.LightGray;
             GripCard.BorderBrush = NeutralCardBrush;
             WeatherIconText.Text = "☁";
-            WeatherNameText.Text = "NO DATA";
+            WeatherNameText.Text = T(OverlayTextKey.NoData);
             WeatherDetailText.Text = "RAIN --%  ·  WET --%";
             WeatherCard.BorderBrush = NeutralCardBrush;
-            FlagCardText.Text = "NO DATA";
+            FlagCardText.Text = T(OverlayTextKey.NoData);
             FlagCard.Background = NeutralCardBrush;
             AmbientTemperatureText.Text = "--°C";
             TrackTemperatureText.Text = "--°C";
@@ -1741,7 +1748,7 @@ public partial class OverlayWindow : Window
         };
         WeatherCard.BorderBrush = WeatherIconText.Foreground;
 
-        FlagCardText.Text = state.FlagName;
+        FlagCardText.Text = OverlayText.TranslateExact(_profile.Settings.Language, state.FlagName);
         FlagCard.Background = state.FlagName switch
         {
             "GREEN" => FlagGreenBrush,
@@ -1906,25 +1913,26 @@ public partial class OverlayWindow : Window
             dashboard.TireWear.RearRightFraction,
         }.Max();
 
+        string T(OverlayTextKey key) => OverlayText.Get(_profile.Settings.Language, key);
         (OverlayAlertSeverity Severity, string Icon, string Text, string Detail)? alert =
             raceControl.HasCriticalDamage
-                ? (OverlayAlertSeverity.Critical, "!", "CRITICAL DAMAGE", raceControl.DamageStatus)
+                ? (OverlayAlertSeverity.Critical, "!", T(OverlayTextKey.CriticalDamage), raceControl.DamageStatus)
                 : raceControl.OutstandingPenalties > 0
-                    ? (OverlayAlertSeverity.Critical, "!", "PENALTY", raceControl.PenaltyStatus)
+                    ? (OverlayAlertSeverity.Critical, "!", T(OverlayTextKey.Penalty), raceControl.PenaltyStatus)
                     : session.FlagName == "RED"
-                        ? (OverlayAlertSeverity.Critical, "!", "RED FLAG", "SESSION STOPPED")
+                        ? (OverlayAlertSeverity.Critical, "!", T(OverlayTextKey.RedFlag), T(OverlayTextKey.SessionStopped))
                         : fuel.Available && !fuel.Learning && fuel.Status == "SHORT"
-                            ? (OverlayAlertSeverity.Critical, "!", "ENERGY SHORTFALL", fuel.PlanSummary)
+                            ? (OverlayAlertSeverity.Critical, "!", T(OverlayTextKey.EnergyShortfall), fuel.PlanSummary)
                             : TireTemperatureClassifier.Classify(hottestTire) == TireTemperatureBand.Critical
-                                ? (OverlayAlertSeverity.Attention, "▲", "TYRE TEMPERATURE", $"HOTTEST {hottestTire:0}°C")
+                                ? (OverlayAlertSeverity.Attention, "▲", T(OverlayTextKey.TireTemperature), $"{T(OverlayTextKey.Hottest)} {hottestTire:0}°C")
                                 : maximumWear >= _profile.Settings.TireWearLimitPercent / 100
-                                    ? (OverlayAlertSeverity.Attention, "▲", "TYRE WEAR", $"MAXIMUM {maximumWear:P0}")
+                                    ? (OverlayAlertSeverity.Attention, "▲", T(OverlayTextKey.TireWear), $"{T(OverlayTextKey.Maximum)} {maximumWear:P0}")
                                     : session.FlagName == "YELLOW"
-                                        ? (OverlayAlertSeverity.Attention, "▲", "YELLOW FLAG", "NO SAFETY-CAR ASSUMPTION")
+                                        ? (OverlayAlertSeverity.Attention, "▲", T(OverlayTextKey.YellowFlag), T(OverlayTextKey.NoSafetyCarAssumption))
                                         : session.RainIntensity >= 0.02
                                             ? (OverlayAlertSeverity.Attention, "☂", session.WeatherName, $"RAIN {session.RainIntensity:P0}")
                                             : dashboard.SpeedLimiterActive
-                                                ? (OverlayAlertSeverity.Information, "P", "PIT LIMITER", "ACTIVE")
+                                                ? (OverlayAlertSeverity.Information, "P", T(OverlayTextKey.PitLimiter), T(OverlayTextKey.Active))
                                                 : null;
 
         if (alert is null)

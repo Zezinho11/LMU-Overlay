@@ -486,6 +486,7 @@ public sealed class LayoutStore
                 : OverlayDensity.Auto.ToString();
         return settings with
         {
+            Language = LmuOverlay.Widgets.OverlayText.Normalize(settings.Language),
             Theme = theme,
             CustomAccentColor = OverlayVisualSystem.NormalizeHexColor(
                 settings.CustomAccentColor,

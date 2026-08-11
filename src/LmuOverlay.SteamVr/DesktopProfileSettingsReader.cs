@@ -5,6 +5,7 @@ namespace LmuOverlay.SteamVr;
 
 public sealed record VrDesktopSettings
 {
+    public string Language { get; init; } = OverlayText.PortugueseBrazil;
     public string Theme { get; init; } = "RedFox";
     public string CustomAccentColor { get; init; } = "#42D3A6";
     public string CustomBackgroundColor { get; init; } = "#0A0F1A";
@@ -34,6 +35,7 @@ public sealed record VrDesktopSettings
 
     public VrDesktopSettings Sanitize() => this with
     {
+        Language = OverlayText.Normalize(Language),
         Theme = Theme is "RedFox" or "Black" or "HighContrast" or "ColorVisionSafe" or "Custom"
             ? Theme
             : "RedFox",

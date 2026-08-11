@@ -66,6 +66,8 @@ revalidated after LMU, EAC, SteamVR, or overlay changes.
   manual race distance, stint limits, multi-stop and pit-loss projection.
 - Per-profile widget scale, theme, refresh rate, magnetic grid, privacy-safe
   diagnostics export, and local crash logging.
+- Shared Brazilian Portuguese/English localization stored per profile and
+  rendered consistently by Desktop, DirectComposition and SteamVR hosts.
 - Reproducible self-contained Windows x64 ZIP releases with SHA-256 checksums.
 - Separate SteamVR host using the documented OpenVR `IVROverlay` API. Dashboard,
   Inputs, Live Standings, Relative, Fuel & Virtual Energy, Session/Weather and

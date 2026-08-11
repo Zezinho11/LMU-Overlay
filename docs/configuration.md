@@ -30,6 +30,9 @@ versions so incompatible data is rejected instead of partially applied.
 - Set independent opacity from 20% to 100%.
 - Set independent scale from 0.5x to 2x.
 - Select RedFox, black, high-contrast, or a custom theme.
+- Select Brazilian Portuguese or English per profile. The same saved language
+  is used by the WPF editor/fallback, native DirectComposition surfaces,
+  toolbar and SteamVR surfaces/configuration editor.
 - Customize the dashboard team name, main accent and background colors using
   six-digit hexadecimal values such as `#42D3A6`.
 - Scale dashboard, timing-tower and inputs text independently from 0.80x to
@@ -46,6 +49,8 @@ versions so incompatible data is rejected instead of partially applied.
 Settings are written through the existing normalized layout store and remain
 available on the next launch. Hidden widgets can always be re-enabled from the
 configuration window because it is independent of the click-through overlay.
+Profiles from schema 19 or older migrate to Brazilian Portuguese; unknown
+language identifiers also fail safely to `pt-BR`.
 
 Visual settings are applied both to the editable WPF preview and to the locked
 DirectComposition renderers used during driving. Flag, warning, tire-condition
