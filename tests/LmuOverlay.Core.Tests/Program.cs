@@ -69,6 +69,20 @@ await using (var eventRuntime = new TelemetryRuntime(
         "Runtime must expose publication metrics.");
 }
 
+// Exercise the shutdown race repeatedly: cancellation commonly arrives while
+// the polling worker is sleeping between reconnect attempts. That is a normal
+// lifecycle transition and must never terminate the process.
+for (var iteration = 0; iteration < 25; iteration++)
+{
+    var shutdownRuntime = new TelemetryRuntime(
+        () => new FakeTelemetrySource(),
+        TimeSpan.FromSeconds(1),
+        TimeSpan.FromSeconds(1));
+    shutdownRuntime.Start();
+    await Task.Delay(1);
+    await shutdownRuntime.DisposeAsync();
+}
+
 Console.WriteLine("Core checks passed.");
 return 0;
 
