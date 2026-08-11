@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.5.1 - 2026-08-11
+
+- Fixed LMU's cumulative S1+S2 best-lap split being displayed and persisted
+  as an individual S2, which also produced an incorrect near-zero S3.
+- Fixed valid official personal-best laps not replacing an older saved BEST
+  after the malformed sector decomposition failed validation.
+- Matched the dashboard lap number to LMU's one-based HUD numbering.
+- Cleared `OPTIMAL` on every track or session change and quarantined stale
+  history returned by the local timing endpoint until new-session laps arrive.
+- Invalidated the affected local timing-cache schema once so corrupted sector
+  references are rebuilt exclusively from official valid laps.
+
 ## 0.5.0 - 2026-08-11
 
 - Added each car's official tire compound and telemetry Virtual Energy

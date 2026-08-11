@@ -114,13 +114,18 @@ internal sealed class PersistentSectorReferenceTracker
             return default;
         }
 
+        // LMU publishes the second best-lap split as elapsed time at the end
+        // of S2 (S1 + S2), matching the other scoring sector-2 fields.
+        // Convert both remaining sectors to individual durations before
+        // validating or persisting the official lap.
+        var sector2 = standing.BestLapSector2CumulativeSeconds -
+            standing.BestLapSector1Seconds;
         var sector3 = standing.BestLapTimeSeconds -
-            standing.BestLapSector1Seconds -
-            standing.BestLapSector2Seconds;
+            standing.BestLapSector2CumulativeSeconds;
         return new(
             standing.BestLapTimeSeconds,
             standing.BestLapSector1Seconds,
-            standing.BestLapSector2Seconds,
+            sector2,
             sector3);
     }
 }

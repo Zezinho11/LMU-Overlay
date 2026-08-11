@@ -6,9 +6,9 @@ namespace LmuOverlay.Desktop;
 
 public sealed class SectorReferenceStore
 {
-    // Version 1 could contain sectors recorded with scoring-sector ordering
-    // applied to the zero-based telemetry field. Do not reuse those records.
-    private const int SchemaVersion = 2;
+    // Versions 1-2 could contain swapped sectors or the cumulative S1+S2
+    // scoring split stored as an individual S2. Rebuild from official timing.
+    private const int SchemaVersion = 3;
     private static readonly JsonSerializerOptions Options = new()
     {
         PropertyNameCaseInsensitive = true,

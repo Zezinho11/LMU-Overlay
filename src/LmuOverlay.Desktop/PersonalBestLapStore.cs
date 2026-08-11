@@ -6,9 +6,9 @@ namespace LmuOverlay.Desktop;
 
 public sealed class PersonalBestLapStore
 {
-    // Version 1 could contain telemetry-reconstructed laps that were never
-    // confirmed as valid by LMU scoring. Start a clean official-only catalog.
-    private const int SchemaVersion = 2;
+    // Versions 1-2 could contain reconstructed laps or a cumulative S1+S2
+    // split persisted as S2. Start a clean official-only individual-split catalog.
+    private const int SchemaVersion = 3;
     private static readonly JsonSerializerOptions Options = new()
     {
         PropertyNameCaseInsensitive = true,

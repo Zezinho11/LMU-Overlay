@@ -65,6 +65,8 @@ var snapshot = new LmuTelemetrySnapshot(
 var dashboard = EssentialWidgetStateFactory.CreateDashboard(snapshot);
 var inputs = EssentialWidgetStateFactory.CreateInputs(snapshot);
 
+Assert(dashboard.LapNumber == 5,
+    "Dashboard lap must convert telemetry's zero-based lap to LMU HUD numbering.");
 Assert(dashboard.Gear == "R", "Reverse gear must be renderer-independent.");
 Assert(dashboard.EngineRpmFraction == 1, "RPM fraction must be clamped.");
 Assert(dashboard.EngineWaterTemperatureCelsius == 78, "Water temperature must reach the dashboard.");
