@@ -65,7 +65,8 @@ await using (var eventRuntime = new TelemetryRuntime(
         TimeSpan.FromSeconds(1));
     eventSource.Signal();
     await WaitUntilAsync(
-        () => eventRuntime.Health.EventWakeups >= 1,
+        () => eventRuntime.Health.EventWakeups >= 1 &&
+              eventRuntime.Health.SuccessfulReads >= 2,
         TimeSpan.FromSeconds(1));
     Require(eventRuntime.Health.SuccessfulReads >= 2,
         "Named event wake must trigger an immediate telemetry read.");
