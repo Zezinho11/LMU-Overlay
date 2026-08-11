@@ -36,18 +36,18 @@ var slowBudget = RuntimePerformanceBudget.Evaluate(
     300L * 1024 * 1024);
 Require(!slowBudget.WithinBudget, "Slow and oversized runtime must fail budgets.");
 
-var pacedSource = new SlowHealthyTelemetrySource(TimeSpan.FromMilliseconds(8));
-await using (var pacedRuntime = new TelemetryRuntime(
-    () => pacedSource,
-    TimeSpan.FromMilliseconds(20),
-    TimeSpan.FromMilliseconds(100)))
-{
-    pacedRuntime.Start();
-    await Task.Delay(600);
-    Require(
-        pacedRuntime.Health.SuccessfulReads >= 24,
-        "Read time must not be added to every polling interval.");
-}
+Require(
+    TelemetryRuntime.AdvanceDeadline(
+        previousDeadline: 100,
+        attemptCompleted: 108,
+        waitTicks: 20) == 120,
+    "Read time must not be added to every polling interval.");
+Require(
+    TelemetryRuntime.AdvanceDeadline(
+        previousDeadline: 100,
+        attemptCompleted: 125,
+        waitTicks: 20) == 145,
+    "A missed polling deadline must resume without building a backlog.");
 
 var eventSource = new WaitableHealthyTelemetrySource();
 await using (var eventRuntime = new TelemetryRuntime(
@@ -107,35 +107,6 @@ internal sealed class FakeTelemetrySource : ILmuTelemetrySource
         return LmuTelemetrySnapshot.Unavailable(
             LmuConnectionState.Disconnected,
             "fixture");
-    }
-
-    public void Dispose()
-    {
-    }
-}
-
-internal sealed class SlowHealthyTelemetrySource(TimeSpan readDuration) : ILmuTelemetrySource
-{
-    private static readonly LmuTelemetrySnapshot Snapshot = new(
-        LmuConnectionState.Connected,
-        1,
-        1,
-        1,
-        0,
-        0,
-        null,
-        null,
-        Array.Empty<LmuVehicleStanding>(),
-        DateTimeOffset.UtcNow,
-        string.Empty);
-
-    public LmuProbeSnapshot ReadProbeSnapshot() =>
-        LmuProbeSnapshot.Disconnected("cadence fixture");
-
-    public LmuTelemetrySnapshot ReadTelemetrySnapshot()
-    {
-        Thread.Sleep(readDuration);
-        return Snapshot with { CapturedAt = DateTimeOffset.UtcNow };
     }
 
     public void Dispose()
