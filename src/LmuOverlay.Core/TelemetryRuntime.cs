@@ -196,13 +196,10 @@ public sealed class TelemetryRuntime : IAsyncDisposable
                 else
                 {
                     var waitTicks = ToStopwatchTicks(wait);
-                    nextAttempt += waitTicks;
-                    if (nextAttempt <= afterAttempt)
-                    {
-                        // Never build a backlog. The dashboard consumes only the
-                        // freshest sample and resumes from the current clock.
-                        nextAttempt = afterAttempt + waitTicks;
-                    }
+                    nextAttempt = AdvanceDeadline(
+                        nextAttempt,
+                        afterAttempt,
+                        waitTicks);
                 }
             }
         }
@@ -271,6 +268,19 @@ public sealed class TelemetryRuntime : IAsyncDisposable
 
     private static long ToStopwatchTicks(TimeSpan interval) =>
         Math.Max(1, (long)Math.Round(interval.TotalSeconds * Stopwatch.Frequency));
+
+    internal static long AdvanceDeadline(
+        long previousDeadline,
+        long attemptCompleted,
+        long waitTicks)
+    {
+        var scheduledDeadline = previousDeadline + waitTicks;
+        // Never build a backlog. The dashboard consumes only the freshest
+        // sample and resumes from the current clock after a missed deadline.
+        return scheduledDeadline <= attemptCompleted
+            ? attemptCompleted + waitTicks
+            : scheduledDeadline;
+    }
 
     private bool WaitUntil(
         long targetTimestamp,
