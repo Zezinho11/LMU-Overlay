@@ -123,6 +123,7 @@ internal sealed unsafe class DirectCompositionInputsHost : IDisposable
             _visible = true;
         }
         EnsureSwapChain(frame.Bounds.Width, frame.Bounds.Height);
+        ApplyStyle(frame.Style ?? NativeOverlayStyle.RedFox);
         if (!string.Equals(_sessionKey, frame.SessionKey, StringComparison.Ordinal))
         {
             _sessionKey = frame.SessionKey;
@@ -197,6 +198,19 @@ internal sealed unsafe class DirectCompositionInputsHost : IDisposable
         _panel = drawing.CreateSolidColorBrush(Color(5, 8, 10, 238));
         _border = drawing.CreateSolidColorBrush(Color(66, 211, 166));
         _steeringWheel = LoadSteeringWheel(drawing);
+    }
+
+    private void ApplyStyle(NativeOverlayStyle style)
+    {
+        _white!.Color = Color(style.PrimaryText);
+        _muted!.Color = Color(style.SecondaryText);
+        _green!.Color = Color(style.Positive);
+        _red!.Color = Color(style.Critical);
+        _amber!.Color = Color(style.Attention);
+        _cyan!.Color = Color(style.Information);
+        _panel!.Color = Color(style.Background);
+        _panel.Opacity = (float)Math.Clamp(style.BackgroundOpacity, 0.2, 1);
+        _border!.Color = Color(style.Accent);
     }
 
     private static ID2D1Bitmap1? LoadSteeringWheel(ID2D1DeviceContext drawing)
@@ -380,6 +394,9 @@ internal sealed unsafe class DirectCompositionInputsHost : IDisposable
 
     private static Color4 Color(byte red, byte green, byte blue, byte alpha = 255) =>
         new(red / 255f, green / 255f, blue / 255f, alpha / 255f);
+
+    private static Color4 Color(NativeOverlayColor color) =>
+        Color(color.Red, color.Green, color.Blue);
 
     private readonly record struct InputSample(
         long Timestamp,

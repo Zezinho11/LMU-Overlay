@@ -195,10 +195,37 @@ public partial class OverlayWindow : Window
         _profile.LiveStandings.Visible && !IsEditMode;
     public bool NativeRelativeShouldBeVisible =>
         _profile.Relative.Visible && !IsEditMode;
-    public double NativeLiveStandingsOpacity =>
-        _profile.LiveStandings.Opacity * _profile.Settings.BackgroundOpacity;
-    public double NativeRelativeOpacity =>
-        _profile.Relative.Opacity * _profile.Settings.BackgroundOpacity;
+    public double NativeLiveStandingsOpacity => NativeOpacity(_profile.LiveStandings);
+    public double NativeRelativeOpacity => NativeOpacity(_profile.Relative);
+    public double NativeDashboardOpacity => NativeOpacity(_profile.Diagnostic);
+    public double NativeInputsOpacity => NativeOpacity(_profile.Inputs);
+    public LmuOverlay.DirectX.NativeOverlayStyle NativeStyle
+    {
+        get
+        {
+            var palette = OverlayVisualSystem.Resolve(_profile.Settings);
+            return new(
+                NativeColor(palette.Background),
+                NativeColor(palette.Card),
+                NativeColor(palette.Accent),
+                NativeColor(palette.PrimaryText),
+                NativeColor(palette.SecondaryText),
+                NativeColor(palette.Information),
+                NativeColor(palette.Attention),
+                NativeColor(palette.Critical),
+                NativeColor(palette.Positive),
+                _profile.Settings.Theme == "HighContrast" ? 1 : _profile.Settings.BackgroundOpacity,
+                _profile.Settings.DashboardTitle);
+        }
+    }
+
+    private double NativeOpacity(WidgetPlacement placement) =>
+        _profile.Settings.Theme == "HighContrast"
+            ? 1
+            : placement.Opacity * _profile.Settings.BackgroundOpacity;
+
+    private static LmuOverlay.DirectX.NativeOverlayColor NativeColor(
+        System.Windows.Media.Color color) => new(color.R, color.G, color.B);
 
     public void SetNativeDashboardActive(bool active)
     {
@@ -1883,7 +1910,7 @@ public partial class OverlayWindow : Window
             return;
         }
 
-        var palette = OverlayVisualSystem.Resolve(_profile.Settings.Theme);
+        var palette = OverlayVisualSystem.Resolve(_profile.Settings);
         var color = alert.Value.Severity switch
         {
             OverlayAlertSeverity.Critical => palette.Critical,
@@ -1962,9 +1989,11 @@ public partial class OverlayWindow : Window
 
     private void ApplyTheme()
     {
-        var palette = OverlayVisualSystem.Resolve(_profile.Settings.Theme);
+        var palette = OverlayVisualSystem.Resolve(_profile.Settings);
         var accent = new System.Windows.Media.SolidColorBrush(palette.Accent);
         var background = new System.Windows.Media.SolidColorBrush(palette.Background);
+        DashboardBrandText.Text = _profile.Settings.DashboardTitle;
+        DashboardRoot.Background = background;
 
         foreach (var widget in AllWidgets())
         {

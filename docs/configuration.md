@@ -29,7 +29,9 @@ versions so incompatible data is rejected instead of partially applied.
 - Enable or disable Race Control / Damage.
 - Set independent opacity from 20% to 100%.
 - Set independent scale from 0.5x to 2x.
-- Select RedFox, black, or high-contrast themes.
+- Select RedFox, black, high-contrast, or a custom theme.
+- Customize the dashboard team name, main accent and background colors using
+  six-digit hexadecimal values such as `#42D3A6`.
 - Select a 10-60 Hz UI refresh rate and a 0-50 px magnetic grid.
 - Configure reserves, manual remaining laps, maximum stint, pit loss, available
   tire sets, tire-wear limit and estimated tire-change time.
@@ -40,6 +42,11 @@ versions so incompatible data is rejected instead of partially applied.
 Settings are written through the existing normalized layout store and remain
 available on the next launch. Hidden widgets can always be re-enabled from the
 configuration window because it is independent of the click-through overlay.
+
+Visual settings are applied both to the editable WPF preview and to the locked
+DirectComposition renderers used during driving. Flag, warning, tire-condition
+and manufacturer colors remain standardized so customization cannot hide
+critical race information.
 
 Normalized placement adapts to resolution and monitor size. Future increments
 may add per-display automatic profile selection and snapping to nearby widgets.

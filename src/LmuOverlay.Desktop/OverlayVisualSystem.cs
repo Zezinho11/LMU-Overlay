@@ -31,6 +31,40 @@ public sealed record OverlayThemePalette(
 
 public static class OverlayVisualSystem
 {
+    public static OverlayThemePalette Resolve(OverlayProfileSettings settings)
+    {
+        if (!string.Equals(settings.Theme, "Custom", StringComparison.Ordinal))
+        {
+            return Resolve(settings.Theme);
+        }
+
+        var background = ParseColor(settings.CustomBackgroundColor, Color.FromRgb(10, 15, 26));
+        var primaryText = ContrastRatio(Colors.White, background) >= 4.5
+            ? Colors.White
+            : Colors.Black;
+        var secondaryText = primaryText == Colors.White
+            ? Color.FromRgb(202, 211, 220)
+            : Color.FromRgb(45, 53, 61);
+        var accent = ParseColor(settings.CustomAccentColor, Color.FromRgb(66, 211, 166));
+        if (ContrastRatio(accent, background) < 2.5)
+        {
+            accent = primaryText == Colors.White
+                ? Color.FromRgb(66, 211, 166)
+                : Color.FromRgb(0, 92, 70);
+        }
+
+        return new(
+            background,
+            Blend(background, primaryText, 0.07),
+            accent,
+            primaryText,
+            secondaryText,
+            Color.FromRgb(18, 217, 229),
+            Color.FromRgb(255, 190, 64),
+            Color.FromRgb(255, 70, 75),
+            Color.FromRgb(66, 211, 166));
+    }
+
     public static OverlayThemePalette Resolve(string theme) => theme switch
     {
         "HighContrast" => new(
@@ -97,6 +131,51 @@ public static class OverlayVisualSystem
         color.R,
         color.G,
         color.B);
+
+    public static string NormalizeHexColor(string? value, string fallback)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return fallback;
+        }
+
+        var candidate = value.Trim();
+        if (!candidate.StartsWith('#'))
+        {
+            candidate = $"#{candidate}";
+        }
+
+        try
+        {
+            _ = (Color)System.Windows.Media.ColorConverter.ConvertFromString(candidate)!;
+            return candidate.Length == 7 ? candidate.ToUpperInvariant() : fallback;
+        }
+        catch (FormatException)
+        {
+            return fallback;
+        }
+    }
+
+    private static Color ParseColor(string value, Color fallback)
+    {
+        try
+        {
+            return (Color)System.Windows.Media.ColorConverter.ConvertFromString(value)!;
+        }
+        catch (FormatException)
+        {
+            return fallback;
+        }
+    }
+
+    private static Color Blend(Color first, Color second, double amount)
+    {
+        amount = Math.Clamp(amount, 0, 1);
+        return Color.FromRgb(
+            (byte)Math.Round(first.R + ((second.R - first.R) * amount)),
+            (byte)Math.Round(first.G + ((second.G - first.G) * amount)),
+            (byte)Math.Round(first.B + ((second.B - first.B) * amount)));
+    }
 
     private static double Luminance(Color color) =>
         0.2126 * Linear(color.R) + 0.7152 * Linear(color.G) + 0.0722 * Linear(color.B);

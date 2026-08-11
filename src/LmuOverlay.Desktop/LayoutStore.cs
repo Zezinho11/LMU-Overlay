@@ -183,7 +183,7 @@ public sealed class LayoutStore
         }
 
         if (export.FormatVersion != 1 ||
-            export.Profile.SchemaVersion != LayoutProfile.CurrentSchemaVersion)
+            export.Profile.SchemaVersion is < 1 or > LayoutProfile.CurrentSchemaVersion)
         {
             throw new InvalidDataException("Versão de perfil incompatível.");
         }
@@ -236,7 +236,7 @@ public sealed class LayoutStore
             }
 
             var legacy = JsonSerializer.Deserialize<LayoutProfile>(json, JsonOptions);
-            if (legacy is { SchemaVersion: LayoutProfile.CurrentSchemaVersion })
+            if (legacy is { SchemaVersion: >= 1 and <= LayoutProfile.CurrentSchemaVersion })
             {
                 return new LayoutCatalog(
                     CatalogSchemaVersion,
@@ -475,7 +475,7 @@ public sealed class LayoutStore
         OverlayProfileSettings? settings)
     {
         settings ??= new();
-        var theme = settings.Theme is "RedFox" or "HighContrast" or "Black"
+        var theme = settings.Theme is "RedFox" or "HighContrast" or "Black" or "Custom"
             ? settings.Theme
             : "RedFox";
         var density = Enum.TryParse<OverlayDensity>(
@@ -487,6 +487,13 @@ public sealed class LayoutStore
         return settings with
         {
             Theme = theme,
+            CustomAccentColor = OverlayVisualSystem.NormalizeHexColor(
+                settings.CustomAccentColor,
+                "#42D3A6"),
+            CustomBackgroundColor = OverlayVisualSystem.NormalizeHexColor(
+                settings.CustomBackgroundColor,
+                "#0A0F1A"),
+            DashboardTitle = SanitizeDashboardTitle(settings.DashboardTitle),
             VisualDensity = density,
             RefreshRateHz = Math.Clamp(settings.RefreshRateHz < 30 ? 120 : settings.RefreshRateHz, 30, 144),
             GridSnapPixels = Math.Clamp(settings.GridSnapPixels, 0, 50),
@@ -517,6 +524,13 @@ public sealed class LayoutStore
                 3,
                 10),
         };
+    }
+
+    private static string SanitizeDashboardTitle(string? value)
+    {
+        var title = string.IsNullOrWhiteSpace(value) ? "REDFOX RACING" : value.Trim();
+        var printable = new string(title.Where(character => !char.IsControl(character)).ToArray());
+        return printable.Length > 24 ? printable[..24] : printable;
     }
 
     private static WidgetPlacement SanitizePlacement(WidgetPlacement item) => item with

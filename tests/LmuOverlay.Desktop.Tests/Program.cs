@@ -148,6 +148,38 @@ try
     Assert(loaded.Settings.GridSnapPixels == 50, "Grid snapping must be clamped.");
     Assert(loaded.Settings.FuelReserveLaps == 5, "Fuel reserve must be clamped.");
 
+    var customPath = Path.Combine(root, "custom-layout.json");
+    var customStore = new LayoutStore(customPath);
+    customStore.Save(LayoutProfile.Default with
+    {
+        Settings = LayoutProfile.Default.Settings with
+        {
+            Theme = "Custom",
+            CustomAccentColor = "e04b73",
+            CustomBackgroundColor = "invalid",
+            DashboardTitle = "  BLUE FOX RACING  ",
+        },
+    });
+    var custom = customStore.Load();
+    Assert(custom.Settings.Theme == "Custom", "The custom theme must be persisted.");
+    Assert(custom.Settings.CustomAccentColor == "#E04B73",
+        "Custom colors must be normalized to six-digit uppercase hex.");
+    Assert(custom.Settings.CustomBackgroundColor == "#0A0F1A",
+        "Invalid custom colors must safely fall back to the RedFox background.");
+    Assert(custom.Settings.DashboardTitle == "BLUE FOX RACING",
+        "Dashboard titles must be trimmed before persistence.");
+    var customPalette = OverlayVisualSystem.Resolve(custom.Settings);
+    Assert(customPalette.Accent.R == 224 && customPalette.Accent.G == 75 && customPalette.Accent.B == 115,
+        "The custom palette must use the persisted accent color.");
+    Assert(OverlayVisualSystem.ContrastRatio(customPalette.PrimaryText, customPalette.Background) >= 4.5,
+        "Custom themes must preserve readable primary text contrast.");
+    var lightPalette = OverlayVisualSystem.Resolve(custom.Settings with
+    {
+        CustomBackgroundColor = "#F5F5F5",
+    });
+    Assert(OverlayVisualSystem.ContrastRatio(lightPalette.PrimaryText, lightPalette.Background) >= 4.5,
+        "Light custom backgrounds must automatically use dark readable text.");
+
     store.Create("Endurance", loaded);
     Assert(store.ActiveProfileName == "Endurance", "New profiles must become active.");
     Assert(store.ProfileNames.Count == 2, "Created profiles must be listed.");

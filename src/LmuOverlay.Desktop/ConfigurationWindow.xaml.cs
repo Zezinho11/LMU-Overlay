@@ -58,6 +58,9 @@ public partial class ConfigurationWindow : Window
         RefreshRate.Value = profile.Settings.RefreshRateHz;
         GridSnap.Value = profile.Settings.GridSnapPixels;
         BackgroundOpacity.Value = profile.Settings.BackgroundOpacity;
+        DashboardTitle.Text = profile.Settings.DashboardTitle;
+        CustomAccentColor.Text = profile.Settings.CustomAccentColor;
+        CustomBackgroundColor.Text = profile.Settings.CustomBackgroundColor;
         PedalHistory.Value = profile.Settings.PedalHistorySeconds;
         PriorityAlerts.IsChecked = profile.Settings.ShowPriorityAlerts;
         ReduceMotion.IsChecked = profile.Settings.ReduceMotion;
@@ -424,6 +427,9 @@ public partial class ConfigurationWindow : Window
         return current with
         {
             Theme = theme,
+            DashboardTitle = DashboardTitle.Text,
+            CustomAccentColor = CustomAccentColor.Text,
+            CustomBackgroundColor = CustomBackgroundColor.Text,
             VisualDensity = density,
             RefreshRateHz = (int)Math.Round(RefreshRate.Value),
             GridSnapPixels = (int)Math.Round(GridSnap.Value),

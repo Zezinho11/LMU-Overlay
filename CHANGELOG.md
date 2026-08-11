@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Added per-profile visual customization for the dashboard title, accent color
+  and background color, with validated portable settings and a custom theme.
+- Applied themes plus global and per-widget opacity consistently to the locked
+  DirectComposition dashboard, inputs, Live Standings and Relative surfaces.
 - Added a bounded asynchronous recorder for normalized telemetry snapshots.
   Driver/player identities, live vehicle IDs and runtime details are removed or
   remapped before disk I/O, and saturation drops test frames instead of ever

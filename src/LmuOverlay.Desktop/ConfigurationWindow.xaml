@@ -208,6 +208,7 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
                 <TextBlock Grid.ColumnSpan="4" Text="PERFIL, ESTRATÉGIA E DESEMPENHO"
                            Foreground="#FF788795" FontWeight="Bold" FontSize="10"
@@ -218,6 +219,7 @@
                         <ComboBoxItem Content="RedFox" Tag="RedFox" />
                         <ComboBoxItem Content="Preto" Tag="Black" />
                         <ComboBoxItem Content="Alto contraste" Tag="HighContrast" />
+                        <ComboBoxItem Content="Personalizado" Tag="Custom" />
                     </ComboBox>
                 </StackPanel>
                 <StackPanel Grid.Row="1" Grid.Column="1" Margin="0,0,12,0">
@@ -239,59 +241,74 @@
                     <TextBlock Text="{Binding ElementName=FuelReserve, Path=Value, StringFormat={}{0:0.00}}" />
                 </StackPanel>
                 <StackPanel Grid.Row="2" Grid.Column="0" Margin="0,10,12,0">
+                    <TextBlock Text="Nome na dashboard" Foreground="#FF9BA8B5" FontSize="10" />
+                    <TextBox x:Name="DashboardTitle" Height="27" MaxLength="24" />
+                </StackPanel>
+                <StackPanel Grid.Row="2" Grid.Column="1" Margin="0,10,12,0">
+                    <TextBlock Text="Cor principal personalizada" Foreground="#FF9BA8B5" FontSize="10" />
+                    <TextBox x:Name="CustomAccentColor" Height="27" ToolTip="Formato hexadecimal, por exemplo #42D3A6" />
+                </StackPanel>
+                <StackPanel Grid.Row="2" Grid.Column="2" Margin="0,10,12,0">
+                    <TextBlock Text="Cor de fundo personalizada" Foreground="#FF9BA8B5" FontSize="10" />
+                    <TextBox x:Name="CustomBackgroundColor" Height="27" ToolTip="Formato hexadecimal, por exemplo #0A0F1A" />
+                </StackPanel>
+                <TextBlock Grid.Row="2" Grid.Column="3" Margin="0,10,0,0"
+                           Text="As cores personalizadas entram em uso ao selecionar o tema Personalizado."
+                           Foreground="#FF718096" FontSize="9" TextWrapping="Wrap" />
+                <StackPanel Grid.Row="3" Grid.Column="0" Margin="0,10,12,0">
                     <TextBlock Text="Reserva VE (%)" Foreground="#FF9BA8B5" FontSize="10" />
                     <TextBox x:Name="EnergyReserve" Height="27" />
                 </StackPanel>
-                <StackPanel Grid.Row="2" Grid.Column="1" Margin="0,10,12,0">
+                <StackPanel Grid.Row="3" Grid.Column="1" Margin="0,10,12,0">
                     <TextBlock Text="Voltas restantes (0 = auto)" Foreground="#FF9BA8B5" FontSize="10" />
                     <TextBox x:Name="ManualRemainingLaps" Height="27" />
                 </StackPanel>
-                <StackPanel Grid.Row="2" Grid.Column="2" Margin="0,10,12,0">
+                <StackPanel Grid.Row="3" Grid.Column="2" Margin="0,10,12,0">
                     <TextBlock Text="Máx. stint (0 = auto)" Foreground="#FF9BA8B5" FontSize="10" />
                     <TextBox x:Name="MaximumStintLaps" Height="27" />
                 </StackPanel>
-                <StackPanel Grid.Row="2" Grid.Column="3" Margin="0,10,0,0">
+                <StackPanel Grid.Row="3" Grid.Column="3" Margin="0,10,0,0">
                     <TextBlock Text="Perda por pit (s)" Foreground="#FF9BA8B5" FontSize="10" />
                     <TextBox x:Name="PitLossSeconds" Height="27" />
                 </StackPanel>
-                <StackPanel Grid.Row="3" Grid.Column="0" Margin="0,10,12,0">
+                <StackPanel Grid.Row="4" Grid.Column="0" Margin="0,10,12,0">
                     <TextBlock Text="Jogos de pneus (0 = livre)" Foreground="#FF9BA8B5" FontSize="10" />
                     <TextBox x:Name="AvailableTireSets" Height="27" />
                 </StackPanel>
-                <StackPanel Grid.Row="3" Grid.Column="1" Margin="0,10,12,0">
+                <StackPanel Grid.Row="4" Grid.Column="1" Margin="0,10,12,0">
                     <TextBlock Text="Limite de desgaste (%)" Foreground="#FF9BA8B5" FontSize="10" />
                     <TextBox x:Name="TireWearLimit" Height="27" />
                 </StackPanel>
-                <StackPanel Grid.Row="3" Grid.Column="2" Margin="0,10,12,0">
+                <StackPanel Grid.Row="4" Grid.Column="2" Margin="0,10,12,0">
                     <TextBlock Text="Troca de pneus (s)" Foreground="#FF9BA8B5" FontSize="10" />
                     <TextBox x:Name="TireChangeSeconds" Height="27" />
                 </StackPanel>
-                <StackPanel Grid.Row="3" Grid.Column="3" Margin="0,10,0,0">
+                <StackPanel Grid.Row="4" Grid.Column="3" Margin="0,10,0,0">
                     <TextBlock Text="Dura&#231;&#227;o restante manual (min)" Foreground="#FF9BA8B5" FontSize="10" />
                     <TextBox x:Name="ManualRemainingMinutes" Height="27" />
                 </StackPanel>
-                <StackPanel Grid.Row="4" Grid.Column="0" Margin="0,10,12,0">
+                <StackPanel Grid.Row="5" Grid.Column="0" Margin="0,10,12,0">
                     <TextBlock Text="Volta manual (s)" Foreground="#FF9BA8B5" FontSize="10" />
                     <TextBox x:Name="ManualLapTimeSeconds" Height="27" />
                 </StackPanel>
-                <StackPanel Grid.Row="4" Grid.Column="1" Margin="0,10,12,0">
+                <StackPanel Grid.Row="5" Grid.Column="1" Margin="0,10,12,0">
                     <TextBlock Text="Consumo manual (L/volta)" Foreground="#FF9BA8B5" FontSize="10" />
                     <TextBox x:Name="ManualFuelPerLapLiters" Height="27" />
                 </StackPanel>
-                <StackPanel Grid.Row="4" Grid.Column="2" Margin="0,10,12,0">
+                <StackPanel Grid.Row="5" Grid.Column="2" Margin="0,10,12,0">
                     <TextBlock Text="Tanque manual (L)" Foreground="#FF9BA8B5" FontSize="10" />
                     <TextBox x:Name="ManualFuelCapacityLiters" Height="27" />
                 </StackPanel>
-                <TextBlock Grid.Row="4" Grid.Column="3" Margin="0,10,0,0"
+                <TextBlock Grid.Row="5" Grid.Column="3" Margin="0,10,0,0"
                            Text="Valores 0 mant&#233;m o c&#225;lculo autom&#225;tico. Voltas manuais t&#234;m prioridade sobre a dura&#231;&#227;o."
                            Foreground="#FF718096" FontSize="9" TextWrapping="Wrap" />
-                <StackPanel Grid.Row="5" Grid.Column="0" Margin="0,10,12,0">
+                <StackPanel Grid.Row="6" Grid.Column="0" Margin="0,10,12,0">
                     <TextBlock Text="Opacidade global do fundo" Foreground="#FF9BA8B5" FontSize="10" />
                     <Slider x:Name="BackgroundOpacity" Minimum="0.35" Maximum="1"
                             TickFrequency="0.05" IsSnapToTickEnabled="True" />
                     <TextBlock Text="{Binding ElementName=BackgroundOpacity, Path=Value, StringFormat={}{0:P0}}" />
                 </StackPanel>
-                <StackPanel Grid.Row="5" Grid.Column="1" Margin="0,10,12,0">
+                <StackPanel Grid.Row="6" Grid.Column="1" Margin="0,10,12,0">
                     <TextBlock Text="Densidade visual" Foreground="#FF9BA8B5" FontSize="10" />
                     <ComboBox x:Name="DensitySelector" Height="27">
                         <ComboBoxItem Content="Automática" Tag="Auto" />
@@ -300,13 +317,13 @@
                         <ComboBoxItem Content="Expandida" Tag="Expanded" />
                     </ComboBox>
                 </StackPanel>
-                <StackPanel Grid.Row="5" Grid.Column="2" Margin="0,10,12,0">
+                <StackPanel Grid.Row="6" Grid.Column="2" Margin="0,10,12,0">
                     <TextBlock Text="Histórico dos pedais (s)" Foreground="#FF9BA8B5" FontSize="10" />
                     <Slider x:Name="PedalHistory" Minimum="3" Maximum="10"
                             TickFrequency="1" IsSnapToTickEnabled="True" />
                     <TextBlock Text="{Binding ElementName=PedalHistory, Path=Value, StringFormat={}{0:0} s}" />
                 </StackPanel>
-                <StackPanel Grid.Row="5" Grid.Column="3" Margin="0,10,0,0">
+                <StackPanel Grid.Row="6" Grid.Column="3" Margin="0,10,0,0">
                     <CheckBox x:Name="PriorityAlerts" Content="Alertas prioritários" Margin="0,2" />
                     <CheckBox x:Name="ReduceMotion" Content="Reduzir movimento" Margin="0,5,0,0" />
                 </StackPanel>
