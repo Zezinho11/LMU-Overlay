@@ -240,12 +240,20 @@ public partial class App
             ref _nativeDashboardConfiguration,
             new NativeDashboardConfiguration(
                 _overlay.GetNativeDashboardBounds(gameBounds.Value),
-                _overlay.NativeDashboardShouldBeVisible));
+                _overlay.NativeDashboardShouldBeVisible,
+                _overlay.NativeStyle with
+                {
+                    BackgroundOpacity = _overlay.NativeDashboardOpacity,
+                }));
         Volatile.Write(
             ref _nativeInputsConfiguration,
             new NativeInputsConfiguration(
                 _overlay.GetNativeInputsBounds(gameBounds.Value),
-                _overlay.NativeInputsShouldBeVisible));
+                _overlay.NativeInputsShouldBeVisible,
+                _overlay.NativeStyle with
+                {
+                    BackgroundOpacity = _overlay.NativeInputsOpacity,
+                }));
         PublishNativeTiming(snapshot, gameBounds.Value);
         _toolbar?.UpdateForGame(gameBounds.Value);
         var sinceRender = Stopwatch.GetTimestamp() - _lastRenderedAt;
@@ -416,7 +424,8 @@ public partial class App
                 Interlocked.Increment(ref _nativeDashboardSequence),
                 capturedTimestamp,
                 fuelSaveFraction,
-                sessionKey));
+                sessionKey,
+                dashboardConfiguration.Style));
         }
 
         var inputsRenderer = _nativeInputs;
@@ -429,7 +438,8 @@ public partial class App
                 inputsConfiguration.Visible && inputsRenderer.IsAvailable,
                 Interlocked.Increment(ref _nativeInputsSequence),
                 capturedTimestamp,
-                sessionKey));
+                sessionKey,
+                inputsConfiguration.Style));
         }
     }
 
@@ -472,7 +482,10 @@ public partial class App
             overlay.NativeLiveStandingsOpacity,
             overlay.GetNativeRelativeBounds(gameBounds),
             overlay.NativeRelativeShouldBeVisible && renderer.IsAvailable,
-            overlay.NativeRelativeOpacity);
+            overlay.NativeRelativeOpacity,
+            overlay.NativeStyle,
+            overlay.LiveStandingsMaximumRows,
+            overlay.RelativeCarsEachSide);
         var standingsChanged = !ReferenceEquals(
             _nativeTimingStandingsSource,
             snapshot.Standings);
@@ -481,15 +494,22 @@ public partial class App
             return;
         }
 
-        if (standingsChanged ||
+        var preferencesChanged = _lastNativeTimingConfiguration is null ||
+            configuration.LiveStandingsMaximumRows != _lastNativeTimingConfiguration.LiveStandingsMaximumRows ||
+            configuration.RelativeCarsEachSide != _lastNativeTimingConfiguration.RelativeCarsEachSide;
+        if (standingsChanged || preferencesChanged ||
             _nativeLiveStandingsState is null ||
             _nativeRelativeState is null)
         {
             _nativeTimingStandingsSource = snapshot.Standings;
             _nativeLiveStandingsState =
-                EssentialWidgetStateFactory.CreateLiveStandings(snapshot);
+                EssentialWidgetStateFactory.CreateLiveStandings(
+                    snapshot,
+                    configuration.LiveStandingsMaximumRows);
             _nativeRelativeState =
-                EssentialWidgetStateFactory.CreateRelative(snapshot);
+                EssentialWidgetStateFactory.CreateRelative(
+                    snapshot,
+                    configuration.RelativeCarsEachSide);
         }
 
         _lastNativeTimingConfiguration = configuration;
@@ -502,16 +522,19 @@ public partial class App
             configuration.RelativeBounds,
             configuration.RelativeVisible,
             configuration.RelativeOpacity,
-            Interlocked.Increment(ref _nativeTimingSequence)));
+            Interlocked.Increment(ref _nativeTimingSequence),
+            configuration.Style));
     }
 
     private sealed record NativeDashboardConfiguration(
         NativeDashboardBounds Bounds,
-        bool Visible);
+        bool Visible,
+        NativeOverlayStyle Style);
 
     private sealed record NativeInputsConfiguration(
         NativeDashboardBounds Bounds,
-        bool Visible);
+        bool Visible,
+        NativeOverlayStyle Style);
 
     private sealed record NativeTimingConfiguration(
         NativeDashboardBounds LiveStandingsBounds,
@@ -519,7 +542,10 @@ public partial class App
         double LiveStandingsOpacity,
         NativeDashboardBounds RelativeBounds,
         bool RelativeVisible,
-        double RelativeOpacity);
+        double RelativeOpacity,
+        NativeOverlayStyle Style,
+        int LiveStandingsMaximumRows,
+        int RelativeCarsEachSide);
 
     protected override void OnExit(System.Windows.ExitEventArgs e)
     {

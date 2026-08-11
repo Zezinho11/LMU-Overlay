@@ -9,7 +9,7 @@ public sealed record LayoutProfile(
     WidgetPlacement SessionFlags,
     WidgetPlacement FuelStrategy)
 {
-    public const int CurrentSchemaVersion = 17;
+    public const int CurrentSchemaVersion = 19;
 
     public WidgetPlacement RaceControl { get; init; } =
         new(0.35, 0.25, 0.26, 0.18, 1, 0.96, true);
@@ -39,6 +39,14 @@ public sealed record OverlayProfileSettings
 {
     public bool Locked { get; init; } = true;
     public string Theme { get; init; } = "RedFox";
+    public string CustomAccentColor { get; init; } = "#42D3A6";
+    public string CustomBackgroundColor { get; init; } = "#0A0F1A";
+    public string DashboardTitle { get; init; } = "REDFOX RACING";
+    public double DashboardTextScale { get; init; } = 1;
+    public double TimingTextScale { get; init; } = 1;
+    public double InputsTextScale { get; init; } = 1;
+    public int LiveStandingsMaximumRows { get; init; } = 12;
+    public int RelativeCarsEachSide { get; init; } = 4;
     public int RefreshRateHz { get; init; } = 120;
     public int GridSnapPixels { get; init; } = 10;
     public double FuelReserveLaps { get; init; } = 1;

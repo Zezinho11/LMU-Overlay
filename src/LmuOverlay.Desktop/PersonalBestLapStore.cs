@@ -2,7 +2,7 @@ using System.IO;
 using System.Text.Json;
 using LmuOverlay.Widgets;
 
-namespace LmuOverlay.Desktop;
+namespace LmuOverlay.Widgets;
 
 public sealed class PersonalBestLapStore
 {

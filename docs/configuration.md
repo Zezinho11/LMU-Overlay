@@ -29,8 +29,14 @@ versions so incompatible data is rejected instead of partially applied.
 - Enable or disable Race Control / Damage.
 - Set independent opacity from 20% to 100%.
 - Set independent scale from 0.5x to 2x.
-- Select RedFox, black, or high-contrast themes.
-- Select a 10-60 Hz UI refresh rate and a 0-50 px magnetic grid.
+- Select RedFox, black, high-contrast, or a custom theme.
+- Customize the dashboard team name, main accent and background colors using
+  six-digit hexadecimal values such as `#42D3A6`.
+- Scale dashboard, timing-tower and inputs text independently from 0.80x to
+  1.25x without moving or resizing the overlay surface.
+- Choose 6-12 visible Live Standings cars and 2-5 track-relative cars on each
+  side of the player.
+- Select a 30-144 Hz UI refresh rate and a 0-50 px magnetic grid.
 - Configure reserves, manual remaining laps, maximum stint, pit loss, available
   tire sets, tire-wear limit and estimated tire-change time.
 - Export a privacy-safe JSON diagnostic report.
@@ -40,6 +46,15 @@ versions so incompatible data is rejected instead of partially applied.
 Settings are written through the existing normalized layout store and remain
 available on the next launch. Hidden widgets can always be re-enabled from the
 configuration window because it is independent of the click-through overlay.
+
+Visual settings are applied both to the editable WPF preview and to the locked
+DirectComposition renderers used during driving. Flag, warning, tire-condition
+and manufacturer colors remain standardized so customization cannot hide
+critical race information.
+
+The built-in visual presets include Minimal, Broadcast and Endurance Pro in
+addition to the race-mode layout presets. Applying a preset changes the active
+profile only; it can then be refined and exported normally.
 
 Normalized placement adapts to resolution and monitor size. Future increments
 may add per-display automatic profile selection and snapping to nearby widgets.

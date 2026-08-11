@@ -11,4 +11,5 @@ public sealed record NativeTimingFrame(
     NativeDashboardBounds RelativeBounds,
     bool RelativeVisible,
     double RelativeOpacity,
-    long Sequence);
+    long Sequence,
+    NativeOverlayStyle? Style = null);

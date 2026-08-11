@@ -1,9 +1,9 @@
 using LmuOverlay.Domain;
 using LmuOverlay.Widgets;
 
-namespace LmuOverlay.Desktop;
+namespace LmuOverlay.Widgets;
 
-internal sealed class PersistentSectorReferenceTracker
+public sealed class PersistentSectorReferenceTracker
 {
     private SectorReferenceTracker _tracker = new();
     private readonly SectorReferenceStore _sectorStore;
@@ -106,7 +106,7 @@ internal sealed class PersistentSectorReferenceTracker
         _ => 0,
     };
 
-    internal static PersonalBestLap OfficialPersonalBest(
+    public static PersonalBestLap OfficialPersonalBest(
         LmuVehicleStanding? standing)
     {
         if (standing is null)

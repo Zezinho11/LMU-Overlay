@@ -70,6 +70,7 @@ internal sealed class DirectCompositionDashboardHost : IDisposable
     private int _pedalHead;
     private int _pedalCount;
     private string _sessionKey = string.Empty;
+    private float _textScale = 1;
 
     public DirectCompositionDashboardHost()
     {
@@ -125,6 +126,7 @@ internal sealed class DirectCompositionDashboardHost : IDisposable
             _visible = true;
         }
         EnsureSwapChain(frame.Bounds.Width, frame.Bounds.Height);
+        ApplyStyle(frame.Style ?? NativeOverlayStyle.RedFox);
         if (!string.Equals(_sessionKey, frame.SessionKey, StringComparison.Ordinal))
         {
             _sessionKey = frame.SessionKey;
@@ -218,6 +220,21 @@ internal sealed class DirectCompositionDashboardHost : IDisposable
         _border = drawing.CreateSolidColorBrush(Color(66, 211, 166));
     }
 
+    private void ApplyStyle(NativeOverlayStyle style)
+    {
+        _white!.Color = Color(style.PrimaryText);
+        _muted!.Color = Color(style.SecondaryText);
+        _green!.Color = Color(style.Positive);
+        _cyan!.Color = Color(style.Information);
+        _amber!.Color = Color(style.Attention);
+        _red!.Color = Color(style.Critical);
+        _blue!.Color = Color(style.Information);
+        _panel!.Color = Color(style.Background);
+        _panel.Opacity = (float)Math.Clamp(style.BackgroundOpacity, 0.2, 1);
+        _border!.Color = Color(style.Accent);
+        _textScale = (float)Math.Clamp(style.DashboardTextScale, 0.8, 1.25);
+    }
+
     private void Draw(NativeDashboardFrame frame)
     {
         var drawing = _drawing ?? throw new InvalidOperationException("Direct2D context is unavailable.");
@@ -234,7 +251,12 @@ internal sealed class DirectCompositionDashboardHost : IDisposable
 
         FillRounded(drawing, 3, 3, 794, 474, 18, _panel!);
         DrawRounded(drawing, 3, 3, 794, 474, 18, _border!, 3);
-        DrawDashboard(drawing, dashboard, frame.CapturedTimestamp, frame.FuelSaveFraction);
+        DrawDashboard(
+            drawing,
+            dashboard,
+            frame.CapturedTimestamp,
+            frame.FuelSaveFraction,
+            (frame.Style ?? NativeOverlayStyle.RedFox).DashboardTitle);
 
         drawing.EndDraw().CheckError();
         _swapChain!.Present(1, PresentFlags.None).CheckError();
@@ -244,10 +266,11 @@ internal sealed class DirectCompositionDashboardHost : IDisposable
         ID2D1DeviceContext drawing,
         LmuOverlay.Widgets.DashboardWidgetState dashboard,
         long timestamp,
-        double fuelSaveFraction)
+        double fuelSaveFraction,
+        string dashboardTitle)
     {
         DrawText(drawing, dashboard.TrackName.ToUpperInvariant(), 42, 54, 210, 20, 11, _muted!);
-        DrawText(drawing, "REDFOX RACING", 236, 34, 328, 36, 26, _white!, TextAlignment.Center);
+        DrawText(drawing, dashboardTitle, 236, 34, 328, 36, 26, _white!, TextAlignment.Center);
         DrawText(drawing, dashboard.SessionName, 606, 54, 152, 20, 11, _muted!, TextAlignment.Trailing);
         DrawShiftLights(drawing, dashboard.EngineRpmFraction);
         DrawSideLights(drawing, dashboard, timestamp, fuelSaveFraction);
@@ -489,7 +512,7 @@ internal sealed class DirectCompositionDashboardHost : IDisposable
 
     private void DrawText(ID2D1DeviceContext drawing, string value, float x, float y, float width, float height, float size, ID2D1Brush brush, TextAlignment alignment = TextAlignment.Leading)
     {
-        var format = GetTextFormat(size);
+        var format = GetTextFormat(size * _textScale);
         format.TextAlignment = alignment;
         drawing.DrawText(value, format, new Rect(x, y, width, height), brush);
     }
@@ -521,6 +544,9 @@ internal sealed class DirectCompositionDashboardHost : IDisposable
 
     private static Color4 Color(byte red, byte green, byte blue, byte alpha = 255) =>
         new(red / 255f, green / 255f, blue / 255f, alpha / 255f);
+
+    private static Color4 Color(NativeOverlayColor color) =>
+        Color(color.Red, color.Green, color.Blue);
 
     private readonly record struct PedalSample(
         long Timestamp,

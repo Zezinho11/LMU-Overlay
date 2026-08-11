@@ -200,6 +200,12 @@ Assert(compactRows.Single(row => row.IsPlayer).DriverAbbreviation == "COS",
     "Driver abbreviation must use the final name component.");
 Assert(compactRows.Single(row => row.IsPlayer).CarNumber == "6",
     "Explicit race numbers must be extracted from the official vehicle name.");
+var sixRowStandings = EssentialWidgetStateFactory.CreateLiveStandings(
+    raceSnapshot with { Standings = deepField },
+    6);
+Assert(sixRowStandings.Classes.Sum(group => group.Rows.Count) == 6 &&
+       sixRowStandings.Classes[0].Rows.Any(row => row.IsPlayer),
+    "The configurable standings limit must reduce the tower without hiding the player.");
 
 var multiclassField = deepField
     .Select(row => row with { VehicleClass = "GT3" })

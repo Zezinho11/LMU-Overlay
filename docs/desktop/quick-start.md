@@ -66,4 +66,6 @@ is clamped to keep the widget visible.
 - background polling and automatic reconnect when LMU shared memory becomes
   available.
 
-Extended live-race scenario validation and SteamVR remain future work.
+Extended live-race scenario validation remains ongoing. SteamVR now ships as a
+separate executable with desktop-feature parity; see
+[`docs/steamvr/quick-start.md`](../steamvr/quick-start.md).

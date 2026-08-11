@@ -24,6 +24,8 @@ The prioritized hardening work and its research basis are recorded in the
   bests per track and vehicle model for first-flying-lap deltas.
 - [x] Persist complete personal-best laps per track, driver and vehicle model,
   keeping all displayed PB sectors tied to the same record lap.
+- [x] Add a bounded, versioned and privacy-safe normalized telemetry recorder,
+  deterministic replay source and sequential regression fixtures.
 
 ## Phase 2 — desktop vertical slice
 
@@ -87,12 +89,17 @@ The prioritized hardening work and its research basis are recorded in the
 
 - [x] Implement a separate SteamVR `IVROverlay` host with runtime discovery,
   clean lifecycle, a head-relative transform and raw texture submission.
-- [ ] Reuse every widget/layout surface through submitted textures. The initial
-  multi-widget preview now reuses the shared dashboard, standings, relative,
-  fuel-strategy and session/weather states with independent persistent VR
-  placement; smaller widget parity remains.
-- Add world/dashboard transforms, opacity/scale controls, interaction, and VR
-  performance tests.
+- [x] Reuse every desktop widget surface through submitted textures: Dashboard,
+  Inputs, Live Standings, Relative, Fuel/Virtual Energy, Session/Weather and
+  Race Control plus transient Priority Alerts, including persistent timing
+  references and official optimal.
+- [x] Add per-panel visibility, metric width, distance, horizontal/vertical
+  offsets and opacity, persistent presets, graphical configuration, live reload
+  and automatic SteamVR reconnect.
+- [x] Add deterministic texture/profile/settings parity tests without requiring
+  a connected headset.
+- [ ] Complete release qualification on physical 90/120 Hz headsets and add
+  optional controller-driven in-headset placement.
 
 ## Phase 5 — hardening and growth
 

@@ -29,6 +29,7 @@ internal sealed class DirectCompositionTimingHost : IDisposable
     private readonly TimingSurface _standings;
     private readonly TimingSurface _relative;
     private long _renderedSequence = -1;
+    private float _textScale = 1;
 
     public DirectCompositionTimingHost()
     {
@@ -59,15 +60,22 @@ internal sealed class DirectCompositionTimingHost : IDisposable
             return;
         }
 
+        _textScale = (float)Math.Clamp(
+            (frame.Style ?? NativeOverlayStyle.RedFox).TimingTextScale,
+            0.8,
+            1.25);
+
         _standings.Render(
             frame.LiveStandingsBounds,
             frame.LiveStandingsVisible,
             frame.LiveStandingsOpacity,
+            frame.Style ?? NativeOverlayStyle.RedFox,
             drawing => DrawStandings(drawing, frame.LiveStandings));
         _relative.Render(
             frame.RelativeBounds,
             frame.RelativeVisible,
             frame.RelativeOpacity,
+            frame.Style ?? NativeOverlayStyle.RedFox,
             drawing => DrawRelative(drawing, frame.Relative));
         _renderedSequence = frame.Sequence;
     }
@@ -140,7 +148,7 @@ internal sealed class DirectCompositionTimingHost : IDisposable
             return;
         }
 
-        const float rowHeight = 37f;
+        var rowHeight = Math.Min(37f, 386f / Math.Max(1, state.Rows.Count));
         var y = 24f;
         for (var index = 0; index < state.Rows.Count; index++)
         {
@@ -162,6 +170,7 @@ internal sealed class DirectCompositionTimingHost : IDisposable
 
     private IDWriteTextFormat GetTextFormat(float size, TextAlignment alignment)
     {
+        size *= _textScale;
         if (!_formats.TryGetValue(size, out var format))
         {
             format = _writeFactory.CreateTextFormat(
@@ -373,7 +382,12 @@ internal sealed class DirectCompositionTimingHost : IDisposable
         public ID2D1SolidColorBrush BrandYellow { get; private set; } = null!;
         public ID2D1SolidColorBrush BrandOrange { get; private set; } = null!;
 
-        public void Render(NativeDashboardBounds bounds, bool visible, double opacity, Action<TimingSurface> draw)
+        public void Render(
+            NativeDashboardBounds bounds,
+            bool visible,
+            double opacity,
+            NativeOverlayStyle style,
+            Action<TimingSurface> draw)
         {
             if (!visible || bounds.Width < 64 || bounds.Height < 96)
             {
@@ -393,6 +407,7 @@ internal sealed class DirectCompositionTimingHost : IDisposable
             _drawing.BeginDraw();
             _drawing.Clear(new Color4(0, 0, 0, 0));
             var alpha = (float)Math.Clamp(opacity, 0.15, 1);
+            ApplyStyle(style);
             SetBackgroundOpacity(alpha);
             draw(this);
             _drawing.EndDraw().CheckError();
@@ -446,6 +461,38 @@ internal sealed class DirectCompositionTimingHost : IDisposable
             BrandBlue = Brush(42, 115, 205); BrandRed = Brush(238, 31, 52); BrandGray = Brush(105, 119, 133);
             BrandGreen = Brush(20, 130, 92); BrandYellow = Brush(205, 163, 20); BrandOrange = Brush(224, 104, 24);
         }
+
+        private void ApplyStyle(NativeOverlayStyle style)
+        {
+            White.Color = Color(style.PrimaryText);
+            Muted.Color = Color(style.SecondaryText);
+            Header.Color = Color(style.Background);
+            ColumnHeader.Color = Color(style.Card);
+            RowOne.Color = Color(style.Background);
+            RowTwo.Color = Color(Blend(style.Background, style.Card, 0.55));
+            RelativeOne.Color = Color(style.Background);
+            RelativeTwo.Color = Color(Blend(style.Background, style.Card, 0.7));
+            Player.Color = Color(Blend(style.Background, style.Accent, 0.55));
+            PlayerLight.Color = Color(style.PrimaryText);
+        }
+
+        private static NativeOverlayColor Blend(
+            NativeOverlayColor first,
+            NativeOverlayColor second,
+            double amount)
+        {
+            amount = Math.Clamp(amount, 0, 1);
+            return new(
+                (byte)Math.Round(first.Red + ((second.Red - first.Red) * amount)),
+                (byte)Math.Round(first.Green + ((second.Green - first.Green) * amount)),
+                (byte)Math.Round(first.Blue + ((second.Blue - first.Blue) * amount)));
+        }
+
+        private static Color4 Color(NativeOverlayColor color) => new(
+            color.Red / 255f,
+            color.Green / 255f,
+            color.Blue / 255f,
+            1);
 
         private void SetBackgroundOpacity(float opacity)
         {

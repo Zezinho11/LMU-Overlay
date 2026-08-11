@@ -15,4 +15,5 @@ public readonly record struct NativeDashboardFrame(
     long Sequence,
     long CapturedTimestamp,
     double FuelSaveFraction = 0,
-    string SessionKey = "");
+    string SessionKey = "",
+    NativeOverlayStyle? Style = null);

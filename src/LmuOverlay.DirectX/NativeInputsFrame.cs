@@ -8,4 +8,5 @@ public readonly record struct NativeInputsFrame(
     bool Visible,
     long Sequence,
     long CapturedTimestamp,
-    string SessionKey = "");
+    string SessionKey = "",
+    NativeOverlayStyle? Style = null);

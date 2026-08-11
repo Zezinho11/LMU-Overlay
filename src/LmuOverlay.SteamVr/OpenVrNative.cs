@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using System.Text.Json;
 using Microsoft.Win32;
 
 namespace LmuOverlay.SteamVr;
@@ -144,6 +145,14 @@ public sealed class OpenVrNative : IDisposable
         }
     }
 
+    public void Hide(string key)
+    {
+        if (_handles.TryGetValue(key, out var handle))
+        {
+            _ = _hideOverlay(handle);
+        }
+    }
+
     private void Check(int error, string operation)
     {
         if (error == 0)
@@ -187,6 +196,7 @@ public sealed class OpenVrNative : IDisposable
 
     private static string? FindOpenVrLibrary()
     {
+        var architecture = Environment.Is64BitProcess ? "win64" : "win32";
         var candidates = new List<string>
         {
             Path.Combine(AppContext.BaseDirectory, "openvr_api.dll"),
@@ -203,9 +213,47 @@ public sealed class OpenVrNative : IDisposable
         if (steamKey?.GetValue("SteamPath") is string steamPath)
         {
             candidates.Insert(0, Path.Combine(steamPath, "openvr_api.dll"));
+            candidates.Insert(0, Path.Combine(
+                steamPath,
+                "steamapps",
+                "common",
+                "SteamVR",
+                "bin",
+                architecture,
+                "openvr_api.dll"));
         }
 
+        AddRuntimeCandidates(candidates, architecture);
+
         return candidates.FirstOrDefault(File.Exists);
+    }
+
+    private static void AddRuntimeCandidates(List<string> candidates, string architecture)
+    {
+        try
+        {
+            var pathsFile = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "openvr",
+                "openvrpaths.vrpath");
+            if (!File.Exists(pathsFile)) return;
+            using var document = JsonDocument.Parse(File.ReadAllText(pathsFile));
+            if (!document.RootElement.TryGetProperty("runtime", out var runtimes) ||
+                runtimes.ValueKind != JsonValueKind.Array)
+            {
+                return;
+            }
+            foreach (var runtime in runtimes.EnumerateArray())
+            {
+                if (runtime.ValueKind != JsonValueKind.String) continue;
+                var root = runtime.GetString();
+                if (string.IsNullOrWhiteSpace(root)) continue;
+                candidates.Insert(0, Path.Combine(root, "bin", architecture, "openvr_api.dll"));
+            }
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or JsonException)
+        {
+        }
     }
 
     private static T Export<T>(nint module, string name) where T : Delegate =>

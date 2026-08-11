@@ -7,6 +7,12 @@
     <ProjectReference Include="..\LmuOverlay.Widgets\LmuOverlay.Widgets.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Remove="OfficialTimingOptimalProvider.cs" />
+    <Compile Remove="PersistentSectorReferenceTracker.cs" />
+    <Compile Remove="SectorReferenceStore.cs" />
+    <Compile Remove="PersonalBestLapStore.cs" />
+  </ItemGroup>
+  <ItemGroup>
     <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
       <_Parameter1>LmuOverlay.Desktop.Tests</_Parameter1>
     </AssemblyAttribute>

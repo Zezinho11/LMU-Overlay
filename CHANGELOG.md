@@ -1,5 +1,36 @@
 # Changelog
 
+## Unreleased
+
+## 0.6.0 - 2026-08-11
+
+- Completed SteamVR parity for Dashboard, Inputs, Live Standings, Relative,
+  Fuel & Virtual Energy, Session/Weather and Race Control through independent
+  `IVROverlay` surfaces without game injection or renderer hooks. The desktop
+  Priority Alert rules also render as a separate transient VR surface.
+- Reused desktop personal-best lap/sector persistence, official Timing optimal,
+  fuel strategy settings, themes, custom colors, typography and row-density
+  rules in the VR host.
+- Added 60-120 Hz Dashboard/Input rendering, source-appropriate timing and
+  strategy rates, pedal history, live profile reload and automatic SteamVR
+  reconnect after runtime startup or restart.
+- Added persistent placements for Inputs and Race Control plus a graphical VR
+  editor for visibility, size, distance, offsets and opacity.
+- Added per-profile visual customization for the dashboard title, accent color
+  and background color, with validated portable settings and a custom theme.
+- Applied themes plus global and per-widget opacity consistently to the locked
+  DirectComposition dashboard, inputs, Live Standings and Relative surfaces.
+- Added independent dashboard, timing and inputs typography scaling, selectable
+  Live Standings/Relative population limits, and Minimal, Broadcast and
+  Endurance Pro visual presets.
+- Added a bounded asynchronous recorder for normalized telemetry snapshots.
+  Driver/player identities, live vehicle IDs and runtime details are removed or
+  remapped before disk I/O, and saturation drops test frames instead of ever
+  delaying the live capture thread.
+- Added the versioned `.lmu-replay` NDJSON format, a fail-closed reader,
+  deterministic timing-aware replay source, recorder/inspect/play CLI and a
+  committed sequential regression fixture.
+
 ## 0.5.1 - 2026-08-11
 
 - Fixed LMU's cumulative S1+S2 best-lap split being displayed and persisted

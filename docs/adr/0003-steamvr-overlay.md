@@ -1,6 +1,6 @@
 # ADR 0003: SteamVR overlay host
 
-- Status: accepted; foundation implemented
+- Status: accepted; desktop parity implemented
 - Date: 2026-07-28
 
 ## Decision
@@ -17,7 +17,10 @@ telemetry or widgets.
 
 ## Consequences
 
-The first host implements the separate OpenVR lifecycle, `IVROverlay_028`, raw
-RGBA texture submission, a head-relative transform, clean teardown and a small
-telemetry preview. Full widget texture composition, profile controls,
-interaction and headset performance validation remain incremental milestones.
+The host implements the separate OpenVR lifecycle, `IVROverlay_028`, raw RGBA
+texture submission, head-relative transforms, clean teardown and reconnect.
+All desktop widget states have VR compositions, including high-frequency Inputs
+and Dashboard, persistent timing references and the full strategy model. Metric
+placement is stored independently from desktop pixels and can be edited through
+a Windows configuration surface while the host is running. Controller-driven
+placement and physical-headset release qualification remain later milestones.

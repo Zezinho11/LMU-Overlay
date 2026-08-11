@@ -10,6 +10,9 @@ public static class LayoutPresets
         "Multiclass",
         "VR Compact",
         "High Contrast",
+        "Minimal",
+        "Broadcast",
+        "Endurance Pro",
     ];
 
     public static LayoutProfile Create(string name)
@@ -60,6 +63,52 @@ public static class LayoutPresets
                     Theme = "HighContrast",
                     BackgroundOpacity = 1,
                     VisualDensity = "Normal",
+                },
+            },
+            "Minimal" => profile with
+            {
+                FuelStrategy = profile.FuelStrategy with { Visible = false },
+                SessionFlags = profile.SessionFlags with { Visible = false },
+                RaceControl = profile.RaceControl with { Visible = false },
+                Settings = profile.Settings with
+                {
+                    Theme = "Black",
+                    BackgroundOpacity = 0.84,
+                    VisualDensity = "Compact",
+                    DashboardTextScale = 0.9,
+                    TimingTextScale = 0.9,
+                    InputsTextScale = 0.9,
+                    LiveStandingsMaximumRows = 8,
+                    RelativeCarsEachSide = 3,
+                },
+            },
+            "Broadcast" => profile with
+            {
+                LiveStandings = profile.LiveStandings with { X = 0.69, Width = 0.30, Height = 0.48 },
+                Relative = profile.Relative with { X = 0.38, Width = 0.30, Height = 0.48 },
+                Settings = profile.Settings with
+                {
+                    VisualDensity = "Expanded",
+                    DashboardTextScale = 1.05,
+                    TimingTextScale = 1.1,
+                    LiveStandingsMaximumRows = 12,
+                    RelativeCarsEachSide = 4,
+                },
+            },
+            "Endurance Pro" => profile with
+            {
+                FuelStrategy = profile.FuelStrategy with { Visible = true },
+                SessionFlags = profile.SessionFlags with { Visible = true },
+                RaceControl = profile.RaceControl with { Visible = true },
+                Settings = profile.Settings with
+                {
+                    BackgroundOpacity = 0.98,
+                    VisualDensity = "Normal",
+                    DashboardTextScale = 1.05,
+                    TimingTextScale = 1,
+                    InputsTextScale = 1,
+                    LiveStandingsMaximumRows = 12,
+                    RelativeCarsEachSide = 5,
                 },
             },
             _ => throw new ArgumentOutOfRangeException(nameof(name), name, "Unknown layout preset."),

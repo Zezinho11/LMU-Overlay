@@ -1,4 +1,5 @@
 using LmuOverlay.Desktop;
+using LmuOverlay.Widgets;
 using System.Text.Json;
 
 var root = Path.Combine(Path.GetTempPath(), "lmu-overlay-tests", Guid.NewGuid().ToString("N"));
@@ -147,6 +148,50 @@ try
     Assert(loaded.Settings.RefreshRateHz == 100, "Valid high refresh rate must be preserved.");
     Assert(loaded.Settings.GridSnapPixels == 50, "Grid snapping must be clamped.");
     Assert(loaded.Settings.FuelReserveLaps == 5, "Fuel reserve must be clamped.");
+
+    var customPath = Path.Combine(root, "custom-layout.json");
+    var customStore = new LayoutStore(customPath);
+    customStore.Save(LayoutProfile.Default with
+    {
+        Settings = LayoutProfile.Default.Settings with
+        {
+            Theme = "Custom",
+            CustomAccentColor = "e04b73",
+            CustomBackgroundColor = "invalid",
+            DashboardTitle = "  BLUE FOX RACING  ",
+            DashboardTextScale = 2,
+            TimingTextScale = 0.1,
+            InputsTextScale = 1.15,
+            LiveStandingsMaximumRows = 50,
+            RelativeCarsEachSide = 1,
+        },
+    });
+    var custom = customStore.Load();
+    Assert(custom.Settings.Theme == "Custom", "The custom theme must be persisted.");
+    Assert(custom.Settings.CustomAccentColor == "#E04B73",
+        "Custom colors must be normalized to six-digit uppercase hex.");
+    Assert(custom.Settings.CustomBackgroundColor == "#0A0F1A",
+        "Invalid custom colors must safely fall back to the RedFox background.");
+    Assert(custom.Settings.DashboardTitle == "BLUE FOX RACING",
+        "Dashboard titles must be trimmed before persistence.");
+    Assert(custom.Settings.DashboardTextScale == 1.25 &&
+           custom.Settings.TimingTextScale == 0.8 &&
+           custom.Settings.InputsTextScale == 1.15,
+        "Independent text scales must be sanitized and persisted.");
+    Assert(custom.Settings.LiveStandingsMaximumRows == 12 &&
+           custom.Settings.RelativeCarsEachSide == 2,
+        "Timing tower row preferences must remain inside safe visual limits.");
+    var customPalette = OverlayVisualSystem.Resolve(custom.Settings);
+    Assert(customPalette.Accent.R == 224 && customPalette.Accent.G == 75 && customPalette.Accent.B == 115,
+        "The custom palette must use the persisted accent color.");
+    Assert(OverlayVisualSystem.ContrastRatio(customPalette.PrimaryText, customPalette.Background) >= 4.5,
+        "Custom themes must preserve readable primary text contrast.");
+    var lightPalette = OverlayVisualSystem.Resolve(custom.Settings with
+    {
+        CustomBackgroundColor = "#F5F5F5",
+    });
+    Assert(OverlayVisualSystem.ContrastRatio(lightPalette.PrimaryText, lightPalette.Background) >= 4.5,
+        "Light custom backgrounds must automatically use dark readable text.");
 
     store.Create("Endurance", loaded);
     Assert(store.ActiveProfileName == "Endurance", "New profiles must become active.");
@@ -372,6 +417,15 @@ try
         Assert(preset.SchemaVersion == LayoutProfile.CurrentSchemaVersion,
             $"{presetName} must use the current profile schema.");
     }
+    var broadcastPreset = LayoutPresets.Create("Broadcast");
+    Assert(
+        broadcastPreset.Relative.X + broadcastPreset.Relative.Width <=
+        broadcastPreset.LiveStandings.X,
+        "The Broadcast timing towers must not overlap.");
+    Assert(
+        LayoutPresets.Create("Minimal").Settings.LiveStandingsMaximumRows == 8 &&
+        LayoutPresets.Create("Endurance Pro").Settings.RelativeCarsEachSide == 5,
+        "Visual presets must carry their intended timing population settings.");
 
     File.WriteAllText(path, "{broken");
     var corruptStore = new LayoutStore(path);

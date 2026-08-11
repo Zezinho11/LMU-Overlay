@@ -3,7 +3,7 @@ using System.Net.Http;
 using System.Text.Json;
 using LmuOverlay.Domain;
 
-namespace LmuOverlay.Desktop;
+namespace LmuOverlay.Widgets;
 
 /// <summary>
 /// Reads the same read-only standings history endpoint used by LMU's own
@@ -11,7 +11,7 @@ namespace LmuOverlay.Desktop;
 /// for a true theoretical optimal; shared memory exposes only two best-sector
 /// accumulators and cannot reconstruct an earlier best sector three.
 /// </summary>
-internal sealed class OfficialTimingOptimalProvider : IDisposable
+public sealed class OfficialTimingOptimalProvider : IDisposable
 {
     private readonly HttpClient _client = new()
     {
@@ -150,10 +150,10 @@ internal sealed class OfficialTimingOptimalProvider : IDisposable
         }
     }
 
-    internal static double ParseOptimal(JsonElement history, int vehicleId)
+    public static double ParseOptimal(JsonElement history, int vehicleId)
         => ParseOptimal(history, vehicleId, excludedLapSignatures: null);
 
-    internal static bool IsNewSession(
+    public static bool IsNewSession(
         bool hasPreviousSession,
         string previousTrackName,
         int previousSessionCode,
@@ -175,7 +175,7 @@ internal sealed class OfficialTimingOptimalProvider : IDisposable
         return !sameIdentity || elapsedTime + 1 < previousElapsedTime;
     }
 
-    internal static double ParseOptimal(
+    public static double ParseOptimal(
         JsonElement history,
         int vehicleId,
         IReadOnlySet<string>? excludedLapSignatures)

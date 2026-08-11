@@ -29,7 +29,7 @@
                 MouseLeftButtonUp="WidgetMouseLeftButtonUp">
             <Grid>
                 <Viewbox Stretch="Uniform" StretchDirection="Both">
-                    <Grid Width="800" Height="480" TextElement.FontFamily="Bahnschrift"
+                    <Grid x:Name="DashboardRoot" Width="800" Height="480" TextElement.FontFamily="Bahnschrift"
                           TextElement.FontSize="12"
                           Background="#FF030506">
                 <Grid.RowDefinitions>
@@ -79,7 +79,7 @@
                         <TextBlock x:Name="EnvironmentText" Text="TRACK --  AIR --  RAIN --%"
                                     Foreground="#FF97A4B2" FontSize="10" />
                     </StackPanel>
-                    <TextBlock Text="REDFOX RACING" Foreground="White"
+                    <TextBlock x:Name="DashboardBrandText" Text="REDFOX RACING" Foreground="White"
                                FontWeight="Bold" FontSize="28"
                                HorizontalAlignment="Center" />
                     <Border HorizontalAlignment="Right" VerticalAlignment="Center"
