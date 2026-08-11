@@ -158,6 +158,11 @@ try
             CustomAccentColor = "e04b73",
             CustomBackgroundColor = "invalid",
             DashboardTitle = "  BLUE FOX RACING  ",
+            DashboardTextScale = 2,
+            TimingTextScale = 0.1,
+            InputsTextScale = 1.15,
+            LiveStandingsMaximumRows = 50,
+            RelativeCarsEachSide = 1,
         },
     });
     var custom = customStore.Load();
@@ -168,6 +173,13 @@ try
         "Invalid custom colors must safely fall back to the RedFox background.");
     Assert(custom.Settings.DashboardTitle == "BLUE FOX RACING",
         "Dashboard titles must be trimmed before persistence.");
+    Assert(custom.Settings.DashboardTextScale == 1.25 &&
+           custom.Settings.TimingTextScale == 0.8 &&
+           custom.Settings.InputsTextScale == 1.15,
+        "Independent text scales must be sanitized and persisted.");
+    Assert(custom.Settings.LiveStandingsMaximumRows == 12 &&
+           custom.Settings.RelativeCarsEachSide == 2,
+        "Timing tower row preferences must remain inside safe visual limits.");
     var customPalette = OverlayVisualSystem.Resolve(custom.Settings);
     Assert(customPalette.Accent.R == 224 && customPalette.Accent.G == 75 && customPalette.Accent.B == 115,
         "The custom palette must use the persisted accent color.");
@@ -404,6 +416,15 @@ try
         Assert(preset.SchemaVersion == LayoutProfile.CurrentSchemaVersion,
             $"{presetName} must use the current profile schema.");
     }
+    var broadcastPreset = LayoutPresets.Create("Broadcast");
+    Assert(
+        broadcastPreset.Relative.X + broadcastPreset.Relative.Width <=
+        broadcastPreset.LiveStandings.X,
+        "The Broadcast timing towers must not overlap.");
+    Assert(
+        LayoutPresets.Create("Minimal").Settings.LiveStandingsMaximumRows == 8 &&
+        LayoutPresets.Create("Endurance Pro").Settings.RelativeCarsEachSide == 5,
+        "Visual presets must carry their intended timing population settings.");
 
     File.WriteAllText(path, "{broken");
     var corruptStore = new LayoutStore(path);

@@ -29,6 +29,7 @@ internal sealed class DirectCompositionTimingHost : IDisposable
     private readonly TimingSurface _standings;
     private readonly TimingSurface _relative;
     private long _renderedSequence = -1;
+    private float _textScale = 1;
 
     public DirectCompositionTimingHost()
     {
@@ -58,6 +59,11 @@ internal sealed class DirectCompositionTimingHost : IDisposable
         {
             return;
         }
+
+        _textScale = (float)Math.Clamp(
+            (frame.Style ?? NativeOverlayStyle.RedFox).TimingTextScale,
+            0.8,
+            1.25);
 
         _standings.Render(
             frame.LiveStandingsBounds,
@@ -142,7 +148,7 @@ internal sealed class DirectCompositionTimingHost : IDisposable
             return;
         }
 
-        const float rowHeight = 37f;
+        var rowHeight = Math.Min(37f, 386f / Math.Max(1, state.Rows.Count));
         var y = 24f;
         for (var index = 0; index < state.Rows.Count; index++)
         {
@@ -164,6 +170,7 @@ internal sealed class DirectCompositionTimingHost : IDisposable
 
     private IDWriteTextFormat GetTextFormat(float size, TextAlignment alignment)
     {
+        size *= _textScale;
         if (!_formats.TryGetValue(size, out var format))
         {
             format = _writeFactory.CreateTextFormat(

@@ -13,7 +13,10 @@ public sealed record NativeOverlayStyle(
     NativeOverlayColor Critical,
     NativeOverlayColor Positive,
     double BackgroundOpacity,
-    string DashboardTitle)
+    string DashboardTitle,
+    double DashboardTextScale,
+    double TimingTextScale,
+    double InputsTextScale)
 {
     public static NativeOverlayStyle RedFox { get; } = new(
         new(10, 15, 26),
@@ -26,5 +29,8 @@ public sealed record NativeOverlayStyle(
         new(255, 70, 75),
         new(66, 211, 166),
         0.94,
-        "REDFOX RACING");
+        "REDFOX RACING",
+        1,
+        1,
+        1);
 }

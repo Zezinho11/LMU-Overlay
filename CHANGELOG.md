@@ -6,6 +6,9 @@
   and background color, with validated portable settings and a custom theme.
 - Applied themes plus global and per-widget opacity consistently to the locked
   DirectComposition dashboard, inputs, Live Standings and Relative surfaces.
+- Added independent dashboard, timing and inputs typography scaling, selectable
+  Live Standings/Relative population limits, and Minimal, Broadcast and
+  Endurance Pro visual presets.
 - Added a bounded asynchronous recorder for normalized telemetry snapshots.
   Driver/player identities, live vehicle IDs and runtime details are removed or
   remapped before disk I/O, and saturation drops test frames instead of ever

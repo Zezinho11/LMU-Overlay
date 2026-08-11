@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Runtime.CompilerServices;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
@@ -21,6 +22,7 @@ public partial class OverlayWindow : Window
     private const int PedalGraphWidth = 230;
     private const int PedalGraphHeight = 102;
     private static readonly Dictionary<int, System.Windows.Media.Brush> BrushCache = [];
+    private static readonly ConditionalWeakTable<TextBlock, TextScaleBaseline> TextScaleBaselines = new();
     private static readonly System.Windows.Media.Brush ShiftOffBrush =
         Brush(38, 49, 59);
     private static readonly System.Windows.Media.Brush ShiftGreenBrush =
@@ -215,7 +217,10 @@ public partial class OverlayWindow : Window
                 NativeColor(palette.Critical),
                 NativeColor(palette.Positive),
                 _profile.Settings.Theme == "HighContrast" ? 1 : _profile.Settings.BackgroundOpacity,
-                _profile.Settings.DashboardTitle);
+                _profile.Settings.DashboardTitle,
+                _profile.Settings.DashboardTextScale,
+                _profile.Settings.TimingTextScale,
+                _profile.Settings.InputsTextScale);
         }
     }
 
@@ -226,6 +231,9 @@ public partial class OverlayWindow : Window
 
     private static LmuOverlay.DirectX.NativeOverlayColor NativeColor(
         System.Windows.Media.Color color) => new(color.R, color.G, color.B);
+
+    public int LiveStandingsMaximumRows => _profile.Settings.LiveStandingsMaximumRows;
+    public int RelativeCarsEachSide => _profile.Settings.RelativeCarsEachSide;
 
     public void SetNativeDashboardActive(bool active)
     {
@@ -520,8 +528,12 @@ public partial class OverlayWindow : Window
             var sessionState = EssentialWidgetStateFactory.CreateSessionFlags(snapshot);
             if (!_nativeTimingActive || IsEditMode)
             {
-                UpdateStandings(EssentialWidgetStateFactory.CreateLiveStandings(snapshot));
-                UpdateRelative(EssentialWidgetStateFactory.CreateRelative(snapshot));
+                UpdateStandings(EssentialWidgetStateFactory.CreateLiveStandings(
+                    snapshot,
+                    _profile.Settings.LiveStandingsMaximumRows));
+                UpdateRelative(EssentialWidgetStateFactory.CreateRelative(
+                    snapshot,
+                    _profile.Settings.RelativeCarsEachSide));
             }
             UpdateSessionFlags(sessionState);
 
@@ -1112,6 +1124,7 @@ public partial class OverlayWindow : Window
             }
         }
 
+        ApplyTextScale(LiveStandingsWidget, _profile.Settings.TimingTextScale);
         ApplySurfaceOpacity(
             LiveStandingsWidget,
             _profile.LiveStandings.Opacity * _profile.Settings.BackgroundOpacity);
@@ -1451,14 +1464,19 @@ public partial class OverlayWindow : Window
                 Margin = new Thickness(10, 0, 0, 0),
                 VerticalAlignment = VerticalAlignment.Center,
             });
+            ApplyTextScale(RelativeWidget, _profile.Settings.TimingTextScale);
             return;
         }
 
+        var rowHeight = Math.Min(37, 386d / relative.Rows.Count);
         for (var index = 0; index < relative.Rows.Count; index++)
         {
-            RelativeRows.Children.Add(CreateRelativeRow(relative.Rows[index], index));
+            var row = CreateRelativeRow(relative.Rows[index], index);
+            row.Height = rowHeight;
+            RelativeRows.Children.Add(row);
         }
 
+        ApplyTextScale(RelativeWidget, _profile.Settings.TimingTextScale);
         ApplySurfaceOpacity(
             RelativeWidget,
             _profile.Relative.Opacity * _profile.Settings.BackgroundOpacity);
@@ -1994,6 +2012,10 @@ public partial class OverlayWindow : Window
         var background = new System.Windows.Media.SolidColorBrush(palette.Background);
         DashboardBrandText.Text = _profile.Settings.DashboardTitle;
         DashboardRoot.Background = background;
+        ApplyTextScale(DiagnosticWidget, _profile.Settings.DashboardTextScale);
+        ApplyTextScale(InputsWidget, _profile.Settings.InputsTextScale);
+        ApplyTextScale(LiveStandingsWidget, _profile.Settings.TimingTextScale);
+        ApplyTextScale(RelativeWidget, _profile.Settings.TimingTextScale);
 
         foreach (var widget in AllWidgets())
         {
@@ -2016,6 +2038,27 @@ public partial class OverlayWindow : Window
                     : PlacementFor(widget).Opacity * _profile.Settings.BackgroundOpacity);
         }
     }
+
+    private static void ApplyTextScale(DependencyObject root, double scale)
+    {
+        if (root is TextBlock text)
+        {
+            var baseline = TextScaleBaselines.GetValue(
+                text,
+                item => new TextScaleBaseline(item.FontSize));
+            text.FontSize = baseline.FontSize * Math.Clamp(scale, 0.8, 1.25);
+        }
+
+        var childCount = System.Windows.Media.VisualTreeHelper.GetChildrenCount(root);
+        for (var index = 0; index < childCount; index++)
+        {
+            ApplyTextScale(
+                System.Windows.Media.VisualTreeHelper.GetChild(root, index),
+                scale);
+        }
+    }
+
+    private sealed record TextScaleBaseline(double FontSize);
 
     private WidgetPlacement PlacementFor(FrameworkElement widget) => widget.Name switch
     {

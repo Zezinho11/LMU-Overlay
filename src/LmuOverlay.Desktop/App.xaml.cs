@@ -483,7 +483,9 @@ public partial class App
             overlay.GetNativeRelativeBounds(gameBounds),
             overlay.NativeRelativeShouldBeVisible && renderer.IsAvailable,
             overlay.NativeRelativeOpacity,
-            overlay.NativeStyle);
+            overlay.NativeStyle,
+            overlay.LiveStandingsMaximumRows,
+            overlay.RelativeCarsEachSide);
         var standingsChanged = !ReferenceEquals(
             _nativeTimingStandingsSource,
             snapshot.Standings);
@@ -492,15 +494,22 @@ public partial class App
             return;
         }
 
-        if (standingsChanged ||
+        var preferencesChanged = _lastNativeTimingConfiguration is null ||
+            configuration.LiveStandingsMaximumRows != _lastNativeTimingConfiguration.LiveStandingsMaximumRows ||
+            configuration.RelativeCarsEachSide != _lastNativeTimingConfiguration.RelativeCarsEachSide;
+        if (standingsChanged || preferencesChanged ||
             _nativeLiveStandingsState is null ||
             _nativeRelativeState is null)
         {
             _nativeTimingStandingsSource = snapshot.Standings;
             _nativeLiveStandingsState =
-                EssentialWidgetStateFactory.CreateLiveStandings(snapshot);
+                EssentialWidgetStateFactory.CreateLiveStandings(
+                    snapshot,
+                    configuration.LiveStandingsMaximumRows);
             _nativeRelativeState =
-                EssentialWidgetStateFactory.CreateRelative(snapshot);
+                EssentialWidgetStateFactory.CreateRelative(
+                    snapshot,
+                    configuration.RelativeCarsEachSide);
         }
 
         _lastNativeTimingConfiguration = configuration;
@@ -534,7 +543,9 @@ public partial class App
         NativeDashboardBounds RelativeBounds,
         bool RelativeVisible,
         double RelativeOpacity,
-        NativeOverlayStyle Style);
+        NativeOverlayStyle Style,
+        int LiveStandingsMaximumRows,
+        int RelativeCarsEachSide);
 
     protected override void OnExit(System.Windows.ExitEventArgs e)
     {

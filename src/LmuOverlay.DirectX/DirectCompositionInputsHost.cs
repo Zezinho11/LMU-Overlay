@@ -72,6 +72,7 @@ internal sealed unsafe class DirectCompositionInputsHost : IDisposable
     private long _renderedSequence = -1;
     private bool _visible;
     private string _sessionKey = string.Empty;
+    private float _textScale = 1;
 
     public DirectCompositionInputsHost()
     {
@@ -211,6 +212,7 @@ internal sealed unsafe class DirectCompositionInputsHost : IDisposable
         _panel!.Color = Color(style.Background);
         _panel.Opacity = (float)Math.Clamp(style.BackgroundOpacity, 0.2, 1);
         _border!.Color = Color(style.Accent);
+        _textScale = (float)Math.Clamp(style.InputsTextScale, 0.8, 1.25);
     }
 
     private static ID2D1Bitmap1? LoadSteeringWheel(ID2D1DeviceContext drawing)
@@ -377,7 +379,7 @@ internal sealed unsafe class DirectCompositionInputsHost : IDisposable
     private void DrawText(ID2D1DeviceContext drawing, string value, float x, float y, float width, float height,
         float size, ID2D1Brush brush, TextAlignment alignment = TextAlignment.Leading)
     {
-        var format = GetTextFormat(size);
+        var format = GetTextFormat(size * _textScale);
         format.TextAlignment = alignment;
         drawing.DrawText(value, format, new Rect(x, y, width, height), brush);
     }

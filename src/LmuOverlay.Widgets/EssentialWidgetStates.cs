@@ -394,7 +394,8 @@ public static class EssentialWidgetStateFactory
     }
 
     public static LiveStandingsWidgetState CreateLiveStandings(
-        LmuTelemetrySnapshot snapshot)
+        LmuTelemetrySnapshot snapshot,
+        int maximumRows = 12)
     {
         var isQualifying = snapshot.Session?.Kind == LmuSessionKind.Qualifying;
         var ordered = snapshot.Standings
@@ -424,11 +425,13 @@ public static class EssentialWidgetStateFactory
             group.Key,
             playerClass,
             StringComparison.OrdinalIgnoreCase));
-        var visibleCarCapacity = Math.Max(
-            2,
-            (LiveStandingsContentHeight -
-             (selectedGroups.Length * LiveStandingsClassHeaderHeight)) /
-            LiveStandingsRowHeight);
+        var visibleCarCapacity = Math.Min(
+            Math.Clamp(maximumRows, 6, 12),
+            Math.Max(
+                2,
+                (LiveStandingsContentHeight -
+                 (selectedGroups.Length * LiveStandingsClassHeaderHeight)) /
+                LiveStandingsRowHeight));
         var playerClassLimit = Math.Max(2, visibleCarCapacity - otherClassCount);
 
         var classes = selectedGroups

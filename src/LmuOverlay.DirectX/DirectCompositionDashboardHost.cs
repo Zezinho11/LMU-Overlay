@@ -70,6 +70,7 @@ internal sealed class DirectCompositionDashboardHost : IDisposable
     private int _pedalHead;
     private int _pedalCount;
     private string _sessionKey = string.Empty;
+    private float _textScale = 1;
 
     public DirectCompositionDashboardHost()
     {
@@ -231,6 +232,7 @@ internal sealed class DirectCompositionDashboardHost : IDisposable
         _panel!.Color = Color(style.Background);
         _panel.Opacity = (float)Math.Clamp(style.BackgroundOpacity, 0.2, 1);
         _border!.Color = Color(style.Accent);
+        _textScale = (float)Math.Clamp(style.DashboardTextScale, 0.8, 1.25);
     }
 
     private void Draw(NativeDashboardFrame frame)
@@ -510,7 +512,7 @@ internal sealed class DirectCompositionDashboardHost : IDisposable
 
     private void DrawText(ID2D1DeviceContext drawing, string value, float x, float y, float width, float height, float size, ID2D1Brush brush, TextAlignment alignment = TextAlignment.Leading)
     {
-        var format = GetTextFormat(size);
+        var format = GetTextFormat(size * _textScale);
         format.TextAlignment = alignment;
         drawing.DrawText(value, format, new Rect(x, y, width, height), brush);
     }

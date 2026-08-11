@@ -494,6 +494,26 @@ public sealed class LayoutStore
                 settings.CustomBackgroundColor,
                 "#0A0F1A"),
             DashboardTitle = SanitizeDashboardTitle(settings.DashboardTitle),
+            DashboardTextScale = Math.Clamp(
+                settings.DashboardTextScale <= 0 ? 1 : settings.DashboardTextScale,
+                0.8,
+                1.25),
+            TimingTextScale = Math.Clamp(
+                settings.TimingTextScale <= 0 ? 1 : settings.TimingTextScale,
+                0.8,
+                1.25),
+            InputsTextScale = Math.Clamp(
+                settings.InputsTextScale <= 0 ? 1 : settings.InputsTextScale,
+                0.8,
+                1.25),
+            LiveStandingsMaximumRows = Math.Clamp(
+                settings.LiveStandingsMaximumRows <= 0 ? 12 : settings.LiveStandingsMaximumRows,
+                6,
+                12),
+            RelativeCarsEachSide = Math.Clamp(
+                settings.RelativeCarsEachSide <= 0 ? 4 : settings.RelativeCarsEachSide,
+                2,
+                5),
             VisualDensity = density,
             RefreshRateHz = Math.Clamp(settings.RefreshRateHz < 30 ? 120 : settings.RefreshRateHz, 30, 144),
             GridSnapPixels = Math.Clamp(settings.GridSnapPixels, 0, 50),

@@ -61,6 +61,11 @@ public partial class ConfigurationWindow : Window
         DashboardTitle.Text = profile.Settings.DashboardTitle;
         CustomAccentColor.Text = profile.Settings.CustomAccentColor;
         CustomBackgroundColor.Text = profile.Settings.CustomBackgroundColor;
+        DashboardTextScale.Value = profile.Settings.DashboardTextScale;
+        TimingTextScale.Value = profile.Settings.TimingTextScale;
+        InputsTextScale.Value = profile.Settings.InputsTextScale;
+        LiveStandingsMaximumRows.Value = profile.Settings.LiveStandingsMaximumRows;
+        RelativeCarsEachSide.Value = profile.Settings.RelativeCarsEachSide;
         PedalHistory.Value = profile.Settings.PedalHistorySeconds;
         PriorityAlerts.IsChecked = profile.Settings.ShowPriorityAlerts;
         ReduceMotion.IsChecked = profile.Settings.ReduceMotion;
@@ -430,6 +435,11 @@ public partial class ConfigurationWindow : Window
             DashboardTitle = DashboardTitle.Text,
             CustomAccentColor = CustomAccentColor.Text,
             CustomBackgroundColor = CustomBackgroundColor.Text,
+            DashboardTextScale = DashboardTextScale.Value,
+            TimingTextScale = TimingTextScale.Value,
+            InputsTextScale = InputsTextScale.Value,
+            LiveStandingsMaximumRows = (int)Math.Round(LiveStandingsMaximumRows.Value),
+            RelativeCarsEachSide = (int)Math.Round(RelativeCarsEachSide.Value),
             VisualDensity = density,
             RefreshRateHz = (int)Math.Round(RefreshRate.Value),
             GridSnapPixels = (int)Math.Round(GridSnap.Value),
