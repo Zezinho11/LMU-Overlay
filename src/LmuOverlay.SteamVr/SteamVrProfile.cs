@@ -39,7 +39,16 @@ public sealed record SteamVrProfile(
     SteamVrWidgetPlacement FuelStrategy,
     SteamVrWidgetPlacement SessionFlags)
 {
-    public const int CurrentSchemaVersion = 1;
+    public const int CurrentSchemaVersion = 3;
+
+    public SteamVrWidgetPlacement Inputs { get; init; } =
+        new(true, 0.62f, 1.55f, -0.62f, 0, 0.96f);
+
+    public SteamVrWidgetPlacement RaceControl { get; init; } =
+        new(true, 0.56f, 1.6f, -0.55f, -0.72f, 0.94f);
+
+    public SteamVrWidgetPlacement PriorityAlert { get; init; } =
+        new(true, 0.72f, 1.3f, 0.72f, 0, 1f);
 
     public static SteamVrProfile Default => new(
         CurrentSchemaVersion,
@@ -47,7 +56,12 @@ public sealed record SteamVrProfile(
         new(true, 0.48f, 1.55f, 0.02f, -0.72f, 0.94f),
         new(true, 0.48f, 1.55f, 0.02f, 0.72f, 0.94f),
         new(true, 0.56f, 1.6f, -0.55f, 0.72f, 0.94f),
-        new(true, 0.78f, 1.6f, 0.48f, 0, 0.92f));
+        new(true, 0.78f, 1.6f, 0.48f, 0, 0.92f))
+    {
+        Inputs = new(true, 0.62f, 1.55f, -0.62f, 0, 0.96f),
+        RaceControl = new(true, 0.56f, 1.6f, -0.55f, -0.72f, 0.94f),
+        PriorityAlert = new(true, 0.72f, 1.3f, 0.72f, 0, 1f),
+    };
 
     public static SteamVrProfile Compact => new(
         CurrentSchemaVersion,
@@ -55,7 +69,12 @@ public sealed record SteamVrProfile(
         new(false, 0.42f, 1.55f, 0, -0.65f, 0.95f),
         new(true, 0.40f, 1.5f, 0.02f, 0.60f, 0.96f),
         new(false, 0.50f, 1.6f, -0.5f, 0.65f, 0.94f),
-        new(false, 0.65f, 1.6f, 0.44f, 0, 0.94f));
+        new(false, 0.65f, 1.6f, 0.44f, 0, 0.94f))
+    {
+        Inputs = new(false, 0.55f, 1.5f, -0.56f, 0, 0.96f),
+        RaceControl = new(false, 0.50f, 1.6f, -0.5f, -0.65f, 0.94f),
+        PriorityAlert = new(true, 0.64f, 1.3f, 0.62f, 0, 1f),
+    };
 
     public static SteamVrProfile Endurance => Default;
 
@@ -76,6 +95,9 @@ public sealed record SteamVrProfile(
             Relative = Update(Relative),
             FuelStrategy = Update(FuelStrategy),
             SessionFlags = Update(SessionFlags),
+            Inputs = Update(Inputs),
+            RaceControl = Update(RaceControl),
+            PriorityAlert = Update(PriorityAlert),
         };
     }
 
@@ -85,7 +107,12 @@ public sealed record SteamVrProfile(
         (LiveStandings ?? Default.LiveStandings).Sanitize(),
         (Relative ?? Default.Relative).Sanitize(),
         (FuelStrategy ?? Default.FuelStrategy).Sanitize(),
-        (SessionFlags ?? Default.SessionFlags).Sanitize());
+        (SessionFlags ?? Default.SessionFlags).Sanitize())
+    {
+        Inputs = (Inputs ?? Default.Inputs).Sanitize(),
+        RaceControl = (RaceControl ?? Default.RaceControl).Sanitize(),
+        PriorityAlert = (PriorityAlert ?? Default.PriorityAlert).Sanitize(),
+    };
 }
 
 public sealed class SteamVrProfileStore(string? path = null)

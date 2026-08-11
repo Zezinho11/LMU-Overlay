@@ -56,4 +56,4 @@ graphics hooks, or access LMU process memory.
 - Manual race-lap override for timed sessions.
 - Multi-stop optimization, energy allocation, and driver-time projections.
 - Caution-lap consumption profiles.
-- Reuse by the future SteamVR renderer.
+- Reused by the SteamVR renderer with the same strategy options and state.

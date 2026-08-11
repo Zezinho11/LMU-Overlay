@@ -3,9 +3,10 @@
 Extensible telemetry overlay for **Le Mans Ultimate**, designed around the game's
 official shared-memory interface and a strict anti-cheat-safe boundary.
 
-> Project status: `0.5.1` functional desktop hotfix release with public
-> Windows packaging.
-> Extended live-race validation and complete SteamVR widget parity remain planned.
+> Project status: `0.6.0` desktop customization and SteamVR implementation
+> release with public Windows packaging.
+> SteamVR desktop-feature parity is implemented; extended live validation on
+> multiple headsets remains part of release qualification.
 
 ## Safety boundary
 
@@ -66,9 +67,15 @@ revalidated after LMU, EAC, SteamVR, or overlay changes.
 - Per-profile widget scale, theme, refresh rate, magnetic grid, privacy-safe
   diagnostics export, and local crash logging.
 - Reproducible self-contained Windows x64 ZIP releases with SHA-256 checksums.
-- Separate SteamVR preview host using the documented OpenVR `IVROverlay` API,
-  five independent head-relative surfaces, live shared widget states and a
-  persistent per-widget VR layout profile.
+- Separate SteamVR host using the documented OpenVR `IVROverlay` API. Dashboard,
+  Inputs, Live Standings, Relative, Fuel & Virtual Energy, Session/Weather and
+  Race Control and the transient Priority Alert run as independent head-relative
+  surfaces with the same live states, PB sectors, official optimal and strategy
+  rules as desktop.
+- SteamVR automatically reconnects after the runtime restarts, follows the
+  active desktop visual/strategy profile, applies VR layout changes live and
+  provides a graphical editor for each panel's visibility, metric size,
+  distance, horizontal/vertical offset and opacity.
 - Resolution-independent desktop layouts with fixed widget proportions,
   adaptive readability limits and Windows per-monitor DPI support from 720p
   through ultrawide and 4K. SteamVR keeps texture-native proportions and metric
@@ -126,9 +133,8 @@ Desktop host   SteamVR IVROverlay host
 ```
 
 Desktop and VR are separate presentation hosts over the same normalized
-telemetry runtime. The initial SteamVR host uses the documented overlay API;
-full widget parity is being added incrementally, while OpenXR remains an
-optional future adapter. See the project master plan alongside this repository.
+telemetry runtime and widget rules. SteamVR uses the documented overlay API;
+OpenXR remains an optional future adapter.
 
 ## Desktop application
 
@@ -147,7 +153,13 @@ SteamVR calibration can be run before the host starts:
 LmuOverlay.SteamVr.exe --vr-preset compact --calibrate
 ```
 
-Use `--vr-preset endurance` to restore the five-panel endurance arrangement.
+Open the graphical SteamVR layout editor with:
+
+```powershell
+LmuOverlay.SteamVr.exe --configure-vr
+```
+
+Use `--vr-preset endurance` to restore the complete endurance arrangement.
 
 Generate reproducible desktop screenshots for visual review with:
 

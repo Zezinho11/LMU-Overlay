@@ -1,4 +1,5 @@
 using LmuOverlay.Desktop;
+using LmuOverlay.Widgets;
 using System.Text.Json;
 
 var root = Path.Combine(Path.GetTempPath(), "lmu-overlay-tests", Guid.NewGuid().ToString("N"));

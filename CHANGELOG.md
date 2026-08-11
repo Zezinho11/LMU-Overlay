@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+## 0.6.0 - 2026-08-11
+
+- Completed SteamVR parity for Dashboard, Inputs, Live Standings, Relative,
+  Fuel & Virtual Energy, Session/Weather and Race Control through independent
+  `IVROverlay` surfaces without game injection or renderer hooks. The desktop
+  Priority Alert rules also render as a separate transient VR surface.
+- Reused desktop personal-best lap/sector persistence, official Timing optimal,
+  fuel strategy settings, themes, custom colors, typography and row-density
+  rules in the VR host.
+- Added 60-120 Hz Dashboard/Input rendering, source-appropriate timing and
+  strategy rates, pedal history, live profile reload and automatic SteamVR
+  reconnect after runtime startup or restart.
+- Added persistent placements for Inputs and Race Control plus a graphical VR
+  editor for visibility, size, distance, offsets and opacity.
 - Added per-profile visual customization for the dashboard title, accent color
   and background color, with validated portable settings and a custom theme.
 - Applied themes plus global and per-widget opacity consistently to the locked

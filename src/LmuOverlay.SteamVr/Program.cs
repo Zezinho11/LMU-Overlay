@@ -1,13 +1,18 @@
+using System.Diagnostics;
 using LmuOverlay.Core;
+using LmuOverlay.Domain;
 using LmuOverlay.LmuSharedMemory;
 using LmuOverlay.SteamVr;
 using LmuOverlay.Widgets;
 
 const string dashboardKey = "com.redfoxracing.lmuoverlay.dashboard";
+const string inputsKey = "com.redfoxracing.lmuoverlay.inputs";
 const string standingsKey = "com.redfoxracing.lmuoverlay.standings";
 const string relativeKey = "com.redfoxracing.lmuoverlay.relative";
 const string fuelKey = "com.redfoxracing.lmuoverlay.fuel";
 const string sessionKey = "com.redfoxracing.lmuoverlay.session";
+const string raceControlKey = "com.redfoxracing.lmuoverlay.racecontrol";
+const string priorityAlertKey = "com.redfoxracing.lmuoverlay.priorityalert";
 
 if (!OperatingSystem.IsWindows())
 {
@@ -16,21 +21,192 @@ if (!OperatingSystem.IsWindows())
 }
 
 var profileStore = new SteamVrProfileStore();
-var profile = profileStore.Load();
-var presetIndex = Array.FindIndex(args, value =>
-    string.Equals(value, "--vr-preset", StringComparison.OrdinalIgnoreCase));
-if (presetIndex >= 0 && presetIndex + 1 < args.Length)
+var desktopSettingsReader = new DesktopProfileSettingsReader();
+if (args.Contains("--configure", StringComparer.OrdinalIgnoreCase) ||
+    args.Contains("--configure-vr", StringComparer.OrdinalIgnoreCase))
 {
-    profile = args[presetIndex + 1].ToLowerInvariant() switch
-    {
-        "compact" => SteamVrProfile.Compact,
-        "endurance" => SteamVrProfile.Endurance,
-        _ => profile,
-    };
+    ApplicationConfiguration.Initialize();
+    Application.Run(new SteamVrConfigurationForm(profileStore));
+    return 0;
+}
+var profile = ApplyPreset(profileStore.Load(), args);
+profileStore.Save(profile);
+if (args.Contains("--calibrate", StringComparer.OrdinalIgnoreCase))
+{
+    profile = Calibrate(profile).Sanitize();
     profileStore.Save(profile);
+    Console.WriteLine("SteamVR calibration saved.");
 }
 
-if (args.Contains("--calibrate", StringComparer.OrdinalIgnoreCase))
+await using var telemetry = new TelemetryRuntime(
+    () => new LmuSharedMemoryReader(),
+    TimeSpan.FromMilliseconds(8),
+    TimeSpan.FromSeconds(1));
+telemetry.Start();
+using var officialOptimal = new OfficialTimingOptimalProvider();
+var sectors = new PersistentSectorReferenceTracker(
+    new SectorReferenceStore(),
+    new PersonalBestLapStore());
+var fuelTracker = new FuelStrategyTracker();
+var pedalHistory = new Queue<VrPedalSample>();
+var pedalSession = string.Empty;
+
+using var shutdown = new CancellationTokenSource();
+Console.CancelKeyPress += (_, eventArgs) =>
+{
+    eventArgs.Cancel = true;
+    shutdown.Cancel();
+};
+
+Console.WriteLine("SteamVR overlay host started. Press Ctrl+C to close it.");
+while (!shutdown.IsCancellationRequested)
+{
+    if (!OpenVrNative.TryConnect(out var openVr, out var detail) || openVr is null)
+    {
+        Console.Error.WriteLine($"{detail} Retrying in 2 seconds...");
+        try { await Task.Delay(2_000, shutdown.Token); }
+        catch (OperationCanceledException) { }
+        continue;
+    }
+
+    Console.WriteLine(detail);
+    using (openVr)
+    {
+        try
+        {
+            profile = profileStore.Load();
+            var settings = desktopSettingsReader.Load();
+            ConfigureAll(openVr, profile);
+            var lastConfigurationRead = Stopwatch.GetTimestamp();
+            var lastTimingUpdate = 0L;
+            var lastStrategyUpdate = 0L;
+            var sessionFlags = EssentialWidgetStateFactory.CreateSessionFlags(
+                LmuTelemetrySnapshot.Unavailable(LmuConnectionState.Disconnected, "Waiting."));
+            var fuelStrategy = fuelTracker.Update(
+                LmuTelemetrySnapshot.Unavailable(LmuConnectionState.Disconnected, "Waiting."),
+                settings.FuelOptions());
+            var raceControl = EssentialWidgetStateFactory.CreateRaceControl(
+                LmuTelemetrySnapshot.Unavailable(LmuConnectionState.Disconnected, "Waiting."));
+
+            while (!shutdown.IsCancellationRequested)
+            {
+                var now = Stopwatch.GetTimestamp();
+                if (now - lastConfigurationRead >= Stopwatch.Frequency)
+                {
+                    var nextProfile = profileStore.Load();
+                    var nextSettings = desktopSettingsReader.Load();
+                    if (nextProfile != profile)
+                    {
+                        profile = nextProfile;
+                        ConfigureAll(openVr, profile);
+                    }
+                    settings = nextSettings;
+                    lastConfigurationRead = now;
+                }
+
+                var snapshot = telemetry.Latest;
+                officialOptimal.Update(snapshot);
+                var ended = snapshot.Session?.GamePhase == LmuGamePhase.SessionOver;
+                var live = ended
+                    ? LmuTelemetrySnapshot.Unavailable(
+                        LmuConnectionState.Disconnected,
+                        "Session ended.")
+                    : snapshot;
+                var dashboard = EssentialWidgetStateFactory.CreateDashboard(live);
+                var trackedSectors = sectors.Update(live, dashboard.SectorTimes);
+                dashboard = dashboard with
+                {
+                    SectorTimes = trackedSectors,
+                    BestLapTimeSeconds = sectors.PersonalBestLapTimeSeconds > 0
+                        ? sectors.PersonalBestLapTimeSeconds
+                        : dashboard.BestLapTimeSeconds,
+                    OptimalLapTimeSeconds = officialOptimal.GetOptimal(snapshot),
+                };
+                var inputs = EssentialWidgetStateFactory.CreateInputs(live);
+                UpdatePedalHistory(
+                    pedalHistory,
+                    ref pedalSession,
+                    SessionIdentity(snapshot),
+                    inputs,
+                    settings);
+                var samples = pedalHistory.ToArray();
+                var style = VrRenderStyle.From(settings);
+                Submit(openVr, dashboardKey, profile.Dashboard,
+                    VrWidgetTextureRenderer.Dashboard(dashboard, style, samples));
+                Submit(openVr, inputsKey, profile.Inputs,
+                    VrWidgetTextureRenderer.Inputs(inputs, style, samples));
+                Submit(openVr, priorityAlertKey, profile.PriorityAlert,
+                    VrWidgetTextureRenderer.PriorityAlert(
+                        dashboard,
+                        sessionFlags,
+                        fuelStrategy,
+                        raceControl,
+                        style,
+                        settings));
+
+                if (lastTimingUpdate == 0 || now - lastTimingUpdate >= Stopwatch.Frequency / 10)
+                {
+                    Submit(openVr, standingsKey, profile.LiveStandings,
+                        VrWidgetTextureRenderer.LiveStandings(
+                            EssentialWidgetStateFactory.CreateLiveStandings(
+                                live,
+                                settings.LiveStandingsMaximumRows),
+                            style));
+                    Submit(openVr, relativeKey, profile.Relative,
+                        VrWidgetTextureRenderer.Relative(
+                            EssentialWidgetStateFactory.CreateRelative(
+                                live,
+                                settings.RelativeCarsEachSide),
+                            style));
+                    raceControl = EssentialWidgetStateFactory.CreateRaceControl(live);
+                    Submit(openVr, raceControlKey, profile.RaceControl,
+                        VrWidgetTextureRenderer.RaceControl(raceControl, style));
+                    lastTimingUpdate = now;
+                }
+
+                if (lastStrategyUpdate == 0 || now - lastStrategyUpdate >= Stopwatch.Frequency / 5)
+                {
+                    fuelStrategy = fuelTracker.Update(live, settings.FuelOptions());
+                    Submit(openVr, fuelKey, profile.FuelStrategy,
+                        VrWidgetTextureRenderer.Fuel(fuelStrategy, style));
+                    sessionFlags = EssentialWidgetStateFactory.CreateSessionFlags(live);
+                    Submit(openVr, sessionKey, profile.SessionFlags,
+                        VrWidgetTextureRenderer.Session(sessionFlags, style));
+                    lastStrategyUpdate = now;
+                }
+
+                var frameDelay = TimeSpan.FromSeconds(1d / settings.RefreshRateHz);
+                await Task.Delay(frameDelay, shutdown.Token);
+            }
+        }
+        catch (OperationCanceledException) when (shutdown.IsCancellationRequested)
+        {
+        }
+        catch (InvalidOperationException exception)
+        {
+            Console.Error.WriteLine($"SteamVR connection lost: {exception.Message}");
+            Console.Error.WriteLine("The host will reconnect automatically.");
+        }
+    }
+}
+
+return 0;
+
+static SteamVrProfile ApplyPreset(SteamVrProfile current, string[] arguments)
+{
+    var index = Array.FindIndex(arguments, value =>
+        string.Equals(value, "--vr-preset", StringComparison.OrdinalIgnoreCase));
+    if (index < 0 || index + 1 >= arguments.Length) return current;
+    return arguments[index + 1].ToLowerInvariant() switch
+    {
+        "default" => SteamVrProfile.Default,
+        "compact" => SteamVrProfile.Compact,
+        "endurance" => SteamVrProfile.Endurance,
+        _ => current,
+    };
+}
+
+static SteamVrProfile Calibrate(SteamVrProfile current)
 {
     Console.Write("VR panel scale (0.6 - 1.8, default 1.0): ");
     var scale = float.TryParse(
@@ -44,100 +220,66 @@ if (args.Contains("--calibrate", StringComparer.OrdinalIgnoreCase))
         System.Globalization.NumberStyles.Float,
         System.Globalization.CultureInfo.InvariantCulture,
         out var parsedDistance) ? parsedDistance : 1.5f;
-    profile = profile.Calibrate(scale, distance).Sanitize();
-    profileStore.Save(profile);
-    Console.WriteLine("SteamVR calibration saved.");
+    return current.Calibrate(scale, distance);
 }
 
-if (!OpenVrNative.TryConnect(out var openVr, out var detail) || openVr is null)
+static void ConfigureAll(OpenVrNative openVr, SteamVrProfile profile)
 {
-    Console.Error.WriteLine(detail);
-    Console.Error.WriteLine("Start SteamVR and run LmuOverlay.SteamVr.exe again.");
-    return 1;
+    Configure(openVr, dashboardKey, "RedFox Dashboard", profile.Dashboard);
+    Configure(openVr, inputsKey, "RedFox Driver Inputs", profile.Inputs);
+    Configure(openVr, standingsKey, "RedFox Live Standings", profile.LiveStandings);
+    Configure(openVr, relativeKey, "RedFox Relative", profile.Relative);
+    Configure(openVr, fuelKey, "RedFox Fuel Strategy", profile.FuelStrategy);
+    Configure(openVr, sessionKey, "RedFox Session", profile.SessionFlags);
+    Configure(openVr, raceControlKey, "RedFox Race Control", profile.RaceControl);
+    Configure(openVr, priorityAlertKey, "RedFox Priority Alert", profile.PriorityAlert);
 }
 
-Console.WriteLine(detail);
-using (openVr)
+static void Configure(
+    OpenVrNative openVr,
+    string key,
+    string name,
+    SteamVrWidgetPlacement placement)
 {
-    Configure(dashboardKey, "RedFox Dashboard", profile.Dashboard);
-    Configure(standingsKey, "RedFox Live Standings", profile.LiveStandings);
-    Configure(relativeKey, "RedFox Relative", profile.Relative);
-    Configure(fuelKey, "RedFox Fuel Strategy", profile.FuelStrategy);
-    Configure(sessionKey, "RedFox Session", profile.SessionFlags);
-
-    await using var telemetry = new TelemetryRuntime(
-        () => new LmuSharedMemoryReader(),
-        TimeSpan.FromMilliseconds(8),
-        TimeSpan.FromSeconds(1));
-    telemetry.Start();
-    var fuelTracker = new FuelStrategyTracker();
-
-    using var shutdown = new CancellationTokenSource();
-    Console.CancelKeyPress += (_, eventArgs) =>
-    {
-        eventArgs.Cancel = true;
-        shutdown.Cancel();
-    };
-
-    Console.WriteLine("SteamVR overlay is active. Press Ctrl+C to close it.");
-    try
-    {
-        var frameNumber = 0;
-        while (!shutdown.IsCancellationRequested)
-        {
-            var snapshot = telemetry.Latest;
-            Submit(
-                dashboardKey,
-                profile.Dashboard,
-                VrWidgetTextureRenderer.Dashboard(
-                    EssentialWidgetStateFactory.CreateDashboard(snapshot)));
-
-            if (frameNumber % 30 == 0)
-            {
-                Submit(
-                    standingsKey,
-                    profile.LiveStandings,
-                    VrWidgetTextureRenderer.LiveStandings(
-                        EssentialWidgetStateFactory.CreateLiveStandings(snapshot)));
-                Submit(
-                    relativeKey,
-                    profile.Relative,
-                    VrWidgetTextureRenderer.Relative(
-                        EssentialWidgetStateFactory.CreateRelative(snapshot)));
-                Submit(
-                    fuelKey,
-                    profile.FuelStrategy,
-                    VrWidgetTextureRenderer.Fuel(fuelTracker.Update(snapshot)));
-                Submit(
-                    sessionKey,
-                    profile.SessionFlags,
-                    VrWidgetTextureRenderer.Session(
-                        EssentialWidgetStateFactory.CreateSessionFlags(snapshot)));
-            }
-
-            frameNumber++;
-            await Task.Delay(16, shutdown.Token);
-        }
-    }
-    catch (OperationCanceledException) when (shutdown.IsCancellationRequested)
-    {
-    }
-
-    void Configure(string key, string name, SteamVrWidgetPlacement placement)
-    {
-        if (placement.Visible)
-        {
-            openVr.CreateOrReplaceOverlay(key, name, placement.ToSettings());
-        }
-    }
-
-    void Submit(string key, SteamVrWidgetPlacement placement, VrRenderedFrame frame)
-    {
-        if (placement.Visible)
-        {
-            openVr.SubmitRgba(key, frame.Pixels, frame.Width, frame.Height);
-        }
-    }
+    if (placement.Visible)
+        openVr.CreateOrReplaceOverlay(key, name, placement.ToSettings());
+    else
+        openVr.Hide(key);
 }
 
-return 0;
+static void Submit(
+    OpenVrNative openVr,
+    string key,
+    SteamVrWidgetPlacement placement,
+    VrRenderedFrame frame)
+{
+    if (placement.Visible)
+        openVr.SubmitRgba(key, frame.Pixels, frame.Width, frame.Height);
+}
+
+static void UpdatePedalHistory(
+    Queue<VrPedalSample> history,
+    ref string currentSession,
+    string session,
+    InputsWidgetState inputs,
+    VrDesktopSettings settings)
+{
+    if (!string.Equals(currentSession, session, StringComparison.Ordinal))
+    {
+        currentSession = session;
+        history.Clear();
+    }
+    if (!inputs.Available)
+    {
+        history.Clear();
+        return;
+    }
+    history.Enqueue(new((float)inputs.Throttle, (float)inputs.Brake));
+    var capacity = Math.Clamp(settings.RefreshRateHz * settings.PedalHistorySeconds, 180, 1_200);
+    while (history.Count > capacity) history.Dequeue();
+}
+
+static string SessionIdentity(LmuTelemetrySnapshot snapshot) =>
+    snapshot.Session is { } session && snapshot.Player is { } player
+        ? $"{session.TrackName}\u001f{session.SessionCode}\u001f{player.VehicleId}"
+        : string.Empty;

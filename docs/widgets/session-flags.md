@@ -48,4 +48,4 @@ commands to LMU.
   official source exposes enough context.
 - Safety-car and race-control messages.
 - Session-specific visibility rules and alert sounds.
-- Renderer reuse in the future SteamVR host.
+- Renderer reuse in the SteamVR host.
