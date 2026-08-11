@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- Added a bounded asynchronous recorder for normalized telemetry snapshots.
+  Driver/player identities, live vehicle IDs and runtime details are removed or
+  remapped before disk I/O, and saturation drops test frames instead of ever
+  delaying the live capture thread.
+- Added the versioned `.lmu-replay` NDJSON format, a fail-closed reader,
+  deterministic timing-aware replay source, recorder/inspect/play CLI and a
+  committed sequential regression fixture.
+
 ## 0.5.1 - 2026-08-11
 
 - Fixed LMU's cumulative S1+S2 best-lap split being displayed and persisted

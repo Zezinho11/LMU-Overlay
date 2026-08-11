@@ -97,6 +97,10 @@ The probe prints the complete normalized snapshot plus derived metrics and retur
 - `1`: LMU unavailable, access denied, incompatible, or unstable snapshot;
 - `2`: unsupported operating system.
 
+For repeatable regression diagnosis without keeping the game open, the
+development toolchain also includes a bounded, privacy-safe telemetry recorder
+and deterministic player. See the [telemetry replay guide](docs/telemetry-replay.md).
+
 ## Build and test
 
 ```powershell
