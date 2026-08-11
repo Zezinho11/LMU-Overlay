@@ -36,19 +36,22 @@ var cpuPercent = (process.TotalProcessorTime - cpuBefore).TotalMilliseconds /
     started.Elapsed.TotalMilliseconds /
     Math.Max(1, Environment.ProcessorCount) * 100;
 var workingSetGrowth = Math.Max(0, process.WorkingSet64 - workingSetBefore);
+var workingSetGrowthOk = workingSetGrowth <= options.MaximumWorkingSetGrowthBytes;
 var cadenceOk = actualRate >= options.PollRateHz * 0.8 &&
     actualRate <= options.PollRateHz * 1.15;
 var allocationOk = allocatedPerRead <= options.MaximumAllocatedBytesPerRead;
 var cpuOk = cpuPercent <= options.MaximumCpuPercent;
 var readBudget = RuntimePerformanceBudget.Evaluate(health, process.WorkingSet64);
-var passed = cadenceOk && allocationOk && cpuOk && readBudget.WithinBudget;
+var passed = cadenceOk && allocationOk && cpuOk && workingSetGrowthOk && readBudget.WithinBudget;
 
 Console.WriteLine($"Duration: {started.Elapsed.TotalSeconds:0.0}s");
 Console.WriteLine($"Reads: {health.SuccessfulReads} ({actualRate:0.0} Hz / {options.PollRateHz} Hz target)");
 Console.WriteLine($"Read latency: avg {health.AverageReadMilliseconds:0.000} ms, max {health.MaximumReadMilliseconds:0.000} ms");
+Console.WriteLine($"Read p99: {health.P99ReadMilliseconds:0.000} ms; stale age: {health.StaleAgeMilliseconds:0} ms");
 Console.WriteLine($"Allocation: {allocatedPerRead:0} bytes/read");
 Console.WriteLine($"CPU: {cpuPercent:0.00}%");
 Console.WriteLine($"Working-set growth: {workingSetGrowth / 1024d / 1024d:0.0} MB");
+Console.WriteLine($"Working-set growth budget: {options.MaximumWorkingSetGrowthBytes / 1024d / 1024d:0.0} MB ({(workingSetGrowthOk ? "PASS" : "FAIL")})");
 Console.WriteLine(passed ? "SOAK PASS" : "SOAK FAIL");
 
 return passed ? 0 : 1;
@@ -57,7 +60,8 @@ internal sealed record SoakOptions(
     TimeSpan Duration,
     int PollRateHz,
     double MaximumAllocatedBytesPerRead,
-    double MaximumCpuPercent)
+    double MaximumCpuPercent,
+    long MaximumWorkingSetGrowthBytes)
 {
     public static SoakOptions Parse(string[] arguments)
     {
@@ -70,7 +74,18 @@ internal sealed record SoakOptions(
             256,
             1048576);
         var cpu = ReadDouble(arguments, "--max-cpu-percent", 15, 0.1, 100);
-        return new(TimeSpan.FromSeconds(durationSeconds), pollRate, allocation, cpu);
+        var growthMegabytes = ReadDouble(
+            arguments,
+            "--max-working-set-growth-mb",
+            64,
+            1,
+            1024);
+        return new(
+            TimeSpan.FromSeconds(durationSeconds),
+            pollRate,
+            allocation,
+            cpu,
+            (long)Math.Round(growthMegabytes * 1024 * 1024));
     }
 
     private static int ReadInt(

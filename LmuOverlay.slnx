@@ -14,6 +14,7 @@
     <Project Path="tests/LmuOverlay.Desktop.Tests/LmuOverlay.Desktop.Tests.csproj" />
     <Project Path="tests/LmuOverlay.Domain.Tests/LmuOverlay.Domain.Tests.csproj" />
     <Project Path="tests/LmuOverlay.LmuSharedMemory.Tests/LmuOverlay.LmuSharedMemory.Tests.csproj" />
+    <Project Path="tests/LmuOverlay.PresentationParity.Tests/LmuOverlay.PresentationParity.Tests.csproj" />
     <Project Path="tests/LmuOverlay.SteamVr.Tests/LmuOverlay.SteamVr.Tests.csproj" />
     <Project Path="tests/LmuOverlay.Widgets.Tests/LmuOverlay.Widgets.Tests.csproj" />
   </Folder>

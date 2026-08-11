@@ -205,6 +205,10 @@ public partial class App
         {
             _overlay.UpdateRuntimeHealth(_telemetryRuntime.Health);
         }
+        _overlay.UpdatePresentationHealth(new DesktopPresentationHealth(
+            _nativeDashboard?.Health ?? new(false, 0, null, string.Empty),
+            _nativeInputs?.Health ?? new(false, 0, null, string.Empty),
+            _nativeTiming?.Health ?? new(false, 0, null, string.Empty)));
         var gameBounds = LmuWindowTracker.TryGetClientBounds();
         if (gameBounds is null && snapshot.State == LmuConnectionState.Connected)
         {

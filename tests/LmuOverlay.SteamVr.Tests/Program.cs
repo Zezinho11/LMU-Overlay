@@ -136,10 +136,46 @@ try
         "SteamVR follows the active desktop visual profile.");
     Require(settings.RefreshRateHz == 120 && settings.RelativeCarsEachSide == 5,
         "SteamVR follows desktop update and timing-density settings.");
+    var accessibleSettings = settings with { Theme = "ColorVisionSafe" };
+    var accessibleStyle = VrRenderStyle.From(accessibleSettings);
+    Require(accessibleStyle.Information != accessibleStyle.Attention &&
+            accessibleStyle.Attention != accessibleStyle.Critical &&
+            accessibleStyle.Critical != accessibleStyle.Positive,
+        "SteamVR uses the same distinct color-vision-safe semantic palette.");
 }
 finally
 {
     if (File.Exists(desktopProfilePath)) File.Delete(desktopProfilePath);
+}
+
+var diagnosticsPath = System.IO.Path.Combine(
+    System.IO.Path.GetTempPath(),
+    $"lmu-overlay-vr-diagnostics-{Guid.NewGuid():N}.json");
+try
+{
+    var diagnosticHealth = new LmuOverlay.Core.TelemetryRuntimeHealth(
+        100, 1, 2, 0.2, 0.3, 1.2, DateTimeOffset.UtcNow, string.Empty)
+    {
+        P99ReadMilliseconds = 0.9,
+        StaleAgeMilliseconds = 8,
+    };
+    Require(SteamVrDiagnosticsWriter.TryWrite(
+            diagnosticsPath,
+            diagnosticHealth,
+            new(true, 3, DateTimeOffset.UtcNow, string.Empty),
+            SteamVrProfile.Default),
+        "SteamVR must export privacy-safe runtime diagnostics.");
+    var diagnostics = File.ReadAllText(diagnosticsPath);
+    Require(diagnostics.Contains("P99ReadMilliseconds", StringComparison.Ordinal) &&
+            diagnostics.Contains("RecoveryAttempts", StringComparison.Ordinal),
+        "SteamVR diagnostics must include latency and compositor recovery health.");
+    Require(!diagnostics.Contains("Spa", StringComparison.OrdinalIgnoreCase) &&
+            !diagnostics.Contains("Circuit", StringComparison.OrdinalIgnoreCase),
+        "SteamVR diagnostics must omit track and driver identities.");
+}
+finally
+{
+    if (File.Exists(diagnosticsPath)) File.Delete(diagnosticsPath);
 }
 
 Console.WriteLine("SteamVR foundation checks passed.");

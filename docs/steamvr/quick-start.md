@@ -33,3 +33,13 @@ the host waits and reconnects automatically.
 The host locates `openvr_api.dll` beside the executable or in the user's Steam
 installation or the runtime paths registered in `openvrpaths.vrpath`. SteamVR
 may be started before or after the overlay host.
+
+For the same privacy-safe health export available on desktop, start the VR host
+with an explicit destination:
+
+```powershell
+LmuOverlay.SteamVr.exe --diagnostics .\steamvr-diagnostics.json
+```
+
+The file updates every ten seconds and includes p99 read latency, stale-frame
+age and compositor recovery attempts without driver, track or telemetry values.

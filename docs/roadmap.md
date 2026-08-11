@@ -103,8 +103,14 @@ The prioritized hardening work and its research basis are recorded in the
 
 ## Phase 5 — hardening and growth
 
-- Expand compatibility testing, telemetry recordings, accessibility, release
-  signing, security review, and EAC/LMU regression checks.
+- [x] Enforce Desktop/SteamVR feature parity through host manifests and CI.
+- [x] Add bounded automatic presentation recovery, p99/stale diagnostics and a
+  scheduled long soak/leak gate.
+- [x] Add a shared color-vision-safe palette and accessible preset.
+- [x] Add combined-package SPDX SBOM and signed GitHub provenance/SBOM
+  attestations.
+- Expand compatibility recordings, localization, security review, signing and
+  EAC/LMU regression checks.
 - Evaluate an OpenXR adapter without coupling it to the core.
 
 ## Definition of done for every phase

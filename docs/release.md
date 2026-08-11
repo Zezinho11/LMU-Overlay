@@ -24,9 +24,12 @@ policy, and EAC safety model. Build outputs under `artifacts/` are ignored by Gi
 ## Publish on GitHub
 
 Push a semantic version tag such as `v0.1.0`. The Release workflow builds and
-runs every test suite, creates the portable package and checksum, then attaches
-both files to a GitHub Release. A manually dispatched workflow builds an artifact
-without publishing a release.
+runs every test suite plus the Desktop/SteamVR parity gate, creates the portable
+package and checksum, generates an SPDX JSON SBOM for the combined Desktop + VR
+package, and signs provenance and SBOM attestations through GitHub's Sigstore
+service. The ZIP, checksum, SBOM and update manifest are attached to the release.
+A manually dispatched workflow builds and attests an artifact without publishing
+a release.
 
 Unsigned releases remain explicit. Maintainers with a protected signing
 identity can use `scripts/sign-release.ps1` before packaging. The manifest
@@ -41,3 +44,13 @@ After downloading both files, users can verify the archive:
 ```
 
 The value must match the hexadecimal value in the `.sha256` file.
+
+The origin and workflow identity of a downloaded package can also be checked
+with GitHub CLI:
+
+```powershell
+gh attestation verify .\LMU-Overlay-0.1.0-win-x64.zip --repo Zezinho11/LMU-Overlay
+```
+
+The release's `.spdx.json` file lists the dependencies included in both the
+desktop and SteamVR executables.

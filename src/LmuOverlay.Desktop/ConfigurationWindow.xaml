@@ -221,6 +221,7 @@
                         <ComboBoxItem Content="RedFox" Tag="RedFox" />
                         <ComboBoxItem Content="Preto" Tag="Black" />
                         <ComboBoxItem Content="Alto contraste" Tag="HighContrast" />
+                        <ComboBoxItem Content="Visão de cores segura" Tag="ColorVisionSafe" />
                         <ComboBoxItem Content="Personalizado" Tag="Custom" />
                     </ComboBox>
                 </StackPanel>

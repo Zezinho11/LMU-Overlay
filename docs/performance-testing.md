@@ -25,8 +25,11 @@ dotnet run --configuration Release --project tools/LmuOverlay.SoakTest -- --dura
 ```
 
 The gate checks effective capture cadence, average and maximum read time,
-process-wide allocations per read, CPU use and working set. Runtime diagnostics
-also report event wakeups, timeouts, duplicate snapshots and published frames.
-CI and release jobs
-run a short five-second version; the longer run remains part of manual release
-validation on representative Windows hardware.
+process-wide allocations per read, CPU use, absolute working set and working-set
+growth. Runtime diagnostics in both Desktop and SteamVR also report p99 read
+latency, stale-frame age, event wakeups, timeouts, duplicate snapshots,
+published frames and presentation recovery attempts.
+
+CI and release jobs run a short five-second version. A scheduled Windows job
+runs the one-hour gate nightly with a 64 MB growth ceiling, while manual runs on
+representative hardware remain part of release qualification.

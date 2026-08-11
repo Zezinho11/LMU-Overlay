@@ -13,6 +13,10 @@ on:
 
 permissions:
   contents: write
+  actions: read
+  id-token: write
+  attestations: write
+  artifact-metadata: write
 
 jobs:
   build-test-package:
@@ -41,17 +45,38 @@ jobs:
       - run: dotnet run --no-build --configuration Release --project tests/LmuOverlay.LmuSharedMemory.Tests
       - run: dotnet run --no-build --configuration Release --project tests/LmuOverlay.Widgets.Tests
       - run: dotnet run --no-build --configuration Release --project tests/LmuOverlay.SteamVr.Tests
+      - run: dotnet run --no-build --configuration Release --project tests/LmuOverlay.PresentationParity.Tests
       - name: Short telemetry soak gate
         run: dotnet run --no-build --configuration Release --project tools/LmuOverlay.SoakTest -- --duration-seconds 5
       - name: Package portable Windows release
         shell: pwsh
         run: ./scripts/package-release.ps1 -Version "${{ steps.version.outputs.value }}"
+      - name: Generate package SBOM
+        uses: anchore/sbom-action@v0.24.0
+        with:
+          path: artifacts/LMU-Overlay-${{ steps.version.outputs.value }}-win-x64
+          format: spdx-json
+          output-file: artifacts/LMU-Overlay-${{ steps.version.outputs.value }}-win-x64.spdx.json
+          artifact-name: LMU-Overlay-${{ steps.version.outputs.value }}-SBOM.spdx.json
+          dependency-snapshot: true
+          upload-artifact: false
+          upload-release-assets: false
+      - name: Attest package provenance
+        uses: actions/attest@v4.2.2
+        with:
+          subject-path: artifacts/LMU-Overlay-${{ steps.version.outputs.value }}-win-x64.zip
+      - name: Attest package SBOM
+        uses: actions/attest@v4.2.2
+        with:
+          subject-path: artifacts/LMU-Overlay-${{ steps.version.outputs.value }}-win-x64.zip
+          sbom-path: artifacts/LMU-Overlay-${{ steps.version.outputs.value }}-win-x64.spdx.json
       - uses: actions/upload-artifact@v4
         with:
           name: LMU-Overlay-${{ steps.version.outputs.value }}-win-x64
           path: |
             artifacts/*.zip
             artifacts/*.sha256
+            artifacts/*.spdx.json
             artifacts/latest.json
       - name: Publish GitHub release
         if: github.event_name == 'push'
@@ -62,4 +87,5 @@ jobs:
           files: |
             artifacts/*.zip
             artifacts/*.sha256
+            artifacts/*.spdx.json
             artifacts/latest.json

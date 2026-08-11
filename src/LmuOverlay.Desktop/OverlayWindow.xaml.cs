@@ -95,6 +95,7 @@ public partial class OverlayWindow : Window
         "No telemetry captured yet.");
     private TelemetryRuntimeHealth _runtimeHealth =
         new(0, 0, 0, 0, 0, 0, null, string.Empty);
+    private DesktopPresentationHealth _presentationHealth = DesktopPresentationHealth.Empty;
     private double _lastPedalSampleTimeSeconds = double.NaN;
     private OverlayDensity _dashboardDensity = OverlayDensity.Normal;
     private string _standingsStructureKey = string.Empty;
@@ -271,11 +272,15 @@ public partial class OverlayWindow : Window
     public void UpdateRuntimeHealth(TelemetryRuntimeHealth health) =>
         _runtimeHealth = health;
 
+    public void UpdatePresentationHealth(DesktopPresentationHealth health) =>
+        _presentationHealth = health;
+
     public void ExportDiagnostics(string destinationPath) =>
         DiagnosticsReportWriter.Write(
             destinationPath,
             _lastSnapshot,
             _runtimeHealth,
+            _presentationHealth,
             _profile,
             ActiveProfileName);
 
