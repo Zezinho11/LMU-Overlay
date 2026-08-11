@@ -3,7 +3,8 @@
 Extensible telemetry overlay for **Le Mans Ultimate**, designed around the game's
 official shared-memory interface and a strict anti-cheat-safe boundary.
 
-> Project status: `0.6.0` desktop customization and SteamVR implementation
+> Project status: `0.6.5` desktop customization, SteamVR parity, localization
+> and runtime hardening
 > release with public Windows packaging.
 > SteamVR desktop-feature parity is implemented; extended live validation on
 > multiple headsets remains part of release qualification.

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.6.5 - 2026-08-11
+
 - Added per-profile Brazilian Portuguese/English localization through one
   shared catalog used by WPF, native Desktop renderers and SteamVR, including
   automatic migration of existing profiles to `pt-BR`.
