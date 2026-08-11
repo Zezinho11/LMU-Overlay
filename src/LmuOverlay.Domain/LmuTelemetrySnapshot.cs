@@ -183,7 +183,7 @@ public sealed record LmuVehicleStanding(
     int RearTireCompoundIndex = 0,
     double VirtualEnergyFraction = -1,
     double BestLapSector1Seconds = 0,
-    double BestLapSector2Seconds = 0);
+    double BestLapSector2CumulativeSeconds = 0);
 
 public readonly record struct LmuVector3(double X, double Y, double Z)
 {

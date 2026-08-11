@@ -301,7 +301,11 @@ public sealed class TelemetryRuntime : IAsyncDisposable
                 var waitMilliseconds = Math.Max(
                     1,
                     (int)Math.Floor(remainingMilliseconds - 0.5));
-                if (_shutdownSignal.Wait(waitMilliseconds, cancellationToken))
+                // DisposeAsync cancels the token and sets this signal. Waiting
+                // only on the signal keeps shutdown interruptible without
+                // letting the expected cancellation escape the worker thread
+                // as an unhandled OperationCanceledException.
+                if (_shutdownSignal.Wait(waitMilliseconds))
                 {
                     return false;
                 }

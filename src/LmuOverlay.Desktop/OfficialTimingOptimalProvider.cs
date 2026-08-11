@@ -22,6 +22,12 @@ internal sealed class OfficialTimingOptimalProvider : IDisposable
     private readonly Task _worker;
     private TimingTarget? _target;
     private TimingValue? _value;
+    private bool _hasSessionIdentity;
+    private string _lastTrackName = string.Empty;
+    private int _lastSessionCode;
+    private int _lastVehicleId;
+    private double _lastSessionElapsedTime;
+    private long _sessionGeneration;
 
     public OfficialTimingOptimalProvider() => _worker = Task.Run(PollAsync);
 
@@ -36,24 +42,43 @@ internal sealed class OfficialTimingOptimalProvider : IDisposable
             return;
         }
 
+        var isNewSession = IsNewSession(
+            _hasSessionIdentity,
+            _lastTrackName,
+            _lastSessionCode,
+            _lastVehicleId,
+            _lastSessionElapsedTime,
+            session.TrackName,
+            session.SessionCode,
+            player.VehicleId,
+            session.CurrentElapsedTime);
+        if (isNewSession)
+        {
+            _sessionGeneration++;
+        }
+
+        _hasSessionIdentity = true;
+        _lastTrackName = session.TrackName;
+        _lastSessionCode = session.SessionCode;
+        _lastVehicleId = player.VehicleId;
+        _lastSessionElapsedTime = session.CurrentElapsedTime;
+
         var previous = Volatile.Read(ref _target);
-        if (previous is not null &&
-            previous.VehicleId == player.VehicleId &&
-            previous.SessionCode == session.SessionCode &&
-            string.Equals(previous.TrackName, session.TrackName, StringComparison.Ordinal))
+        var sessionKey =
+            $"{session.TrackName}\u001f{session.SessionCode}\u001f" +
+            $"{player.VehicleId}\u001f{_sessionGeneration}";
+        if (previous?.SessionKey == sessionKey)
         {
             return;
         }
 
         var target = new TimingTarget(
-            $"{session.TrackName}\u001f{session.SessionCode}\u001f{player.VehicleId}",
+            sessionKey,
             session.TrackName,
             session.SessionCode,
-            player.VehicleId);
-        if (previous?.SessionKey != target.SessionKey)
-        {
-            Volatile.Write(ref _value, null);
-        }
+            player.VehicleId,
+            discardExistingHistory: isNewSession);
+        Volatile.Write(ref _value, null);
         Volatile.Write(ref _target, target);
     }
 
@@ -95,7 +120,19 @@ internal sealed class OfficialTimingOptimalProvider : IDisposable
                     using var document = await JsonDocument.ParseAsync(
                         stream,
                         cancellationToken: _cancellation.Token).ConfigureAwait(false);
-                    var optimal = ParseOptimal(document.RootElement, target.VehicleId);
+                    if (target.DiscardExistingHistory &&
+                        target.ExcludedLapSignatures is null)
+                    {
+                        target.ExcludedLapSignatures = CaptureLapSignatures(
+                            document.RootElement,
+                            target.VehicleId);
+                        continue;
+                    }
+
+                    var optimal = ParseOptimal(
+                        document.RootElement,
+                        target.VehicleId,
+                        target.ExcludedLapSignatures);
                     if (optimal > 0 && Volatile.Read(ref _target)?.SessionKey == target.SessionKey)
                     {
                         Volatile.Write(ref _value, new TimingValue(target.SessionKey, optimal));
@@ -114,6 +151,34 @@ internal sealed class OfficialTimingOptimalProvider : IDisposable
     }
 
     internal static double ParseOptimal(JsonElement history, int vehicleId)
+        => ParseOptimal(history, vehicleId, excludedLapSignatures: null);
+
+    internal static bool IsNewSession(
+        bool hasPreviousSession,
+        string previousTrackName,
+        int previousSessionCode,
+        int previousVehicleId,
+        double previousElapsedTime,
+        string trackName,
+        int sessionCode,
+        int vehicleId,
+        double elapsedTime)
+    {
+        if (!hasPreviousSession)
+        {
+            return false;
+        }
+
+        var sameIdentity = previousSessionCode == sessionCode &&
+            previousVehicleId == vehicleId &&
+            string.Equals(previousTrackName, trackName, StringComparison.Ordinal);
+        return !sameIdentity || elapsedTime + 1 < previousElapsedTime;
+    }
+
+    internal static double ParseOptimal(
+        JsonElement history,
+        int vehicleId,
+        IReadOnlySet<string>? excludedLapSignatures)
     {
         if (history.ValueKind != JsonValueKind.Object ||
             !TryGetVehicleHistory(history, vehicleId, out var laps) ||
@@ -127,6 +192,10 @@ internal sealed class OfficialTimingOptimalProvider : IDisposable
         var best3 = double.PositiveInfinity;
         foreach (var lap in laps.EnumerateArray())
         {
+            if (excludedLapSignatures?.Contains(lap.GetRawText()) == true)
+            {
+                continue;
+            }
             if (IsExplicitlyInvalid(lap))
             {
                 continue;
@@ -150,6 +219,22 @@ internal sealed class OfficialTimingOptimalProvider : IDisposable
         return double.IsFinite(best1) && double.IsFinite(best2) && double.IsFinite(best3)
             ? best1 + best2 + best3
             : 0;
+    }
+
+    private static HashSet<string> CaptureLapSignatures(
+        JsonElement history,
+        int vehicleId)
+    {
+        if (history.ValueKind != JsonValueKind.Object ||
+            !TryGetVehicleHistory(history, vehicleId, out var laps) ||
+            laps.ValueKind != JsonValueKind.Array)
+        {
+            return [];
+        }
+
+        return laps.EnumerateArray()
+            .Select(lap => lap.GetRawText())
+            .ToHashSet(StringComparer.Ordinal);
     }
 
     private static bool IsExplicitlyInvalid(JsonElement lap)
@@ -217,10 +302,28 @@ internal sealed class OfficialTimingOptimalProvider : IDisposable
         _client.Dispose();
     }
 
-    private sealed record TimingTarget(
-        string SessionKey,
-        string TrackName,
-        int SessionCode,
-        int VehicleId);
+    private sealed class TimingTarget
+    {
+        public TimingTarget(
+            string sessionKey,
+            string trackName,
+            int sessionCode,
+            int vehicleId,
+            bool discardExistingHistory)
+        {
+            SessionKey = sessionKey;
+            TrackName = trackName;
+            SessionCode = sessionCode;
+            VehicleId = vehicleId;
+            DiscardExistingHistory = discardExistingHistory;
+        }
+
+        public string SessionKey { get; }
+        public string TrackName { get; }
+        public int SessionCode { get; }
+        public int VehicleId { get; }
+        public bool DiscardExistingHistory { get; }
+        public HashSet<string>? ExcludedLapSignatures { get; set; }
+    }
     private sealed record TimingValue(string SessionKey, double OptimalLapSeconds);
 }

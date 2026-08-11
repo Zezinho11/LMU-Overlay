@@ -265,7 +265,9 @@ public static class EssentialWidgetStateFactory
                 : 0,
             player.FuelLiters,
             player.Position,
-            player.LapNumber,
+            // TelemInfoV01.mLapNumber is zero-based while LMU's HUD displays
+            // the current lap as a one-based number.
+            Math.Max(0, player.LapNumber + 1),
             session?.TrackName ?? string.Empty,
             player.DeltaBestSeconds,
             currentElapsedTime >= player.LapStartElapsedTime

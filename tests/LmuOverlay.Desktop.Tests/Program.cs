@@ -16,6 +16,30 @@ try
             "Optimal must use the same per-sector history calculation as LMU Timing.");
     }
 
+    Assert(OfficialTimingOptimalProvider.IsNewSession(
+            true, "Monza", 1, 42, 600, "Laguna Seca", 1, 42, 5),
+        "Changing track must start a new optimal-timing generation even when session code and vehicle id are reused.");
+    Assert(OfficialTimingOptimalProvider.IsNewSession(
+            true, "Monza", 1, 42, 600, "Monza", 1, 42, 2),
+        "Restarting the same session type on the same track must clear the previous optimal.");
+    Assert(!OfficialTimingOptimalProvider.IsNewSession(
+            true, "Monza", 1, 42, 600, "Monza", 1, 42, 601),
+        "Normal elapsed-time progression must preserve the current session optimal.");
+    using (var crossTrackHistory = JsonDocument.Parse(
+        """{"42":[{"sectorTime1":36.827,"sectorTime2":75.012,"lapTime":112.721,"valid":true},{"sectorTime1":24.2,"sectorTime2":51.5,"lapTime":83.8,"valid":true}]}"""))
+    {
+        var laps = crossTrackHistory.RootElement.GetProperty("42");
+        var monzaHistory = new HashSet<string>(StringComparer.Ordinal)
+        {
+            laps[0].GetRawText(),
+        };
+        Assert(Math.Abs(OfficialTimingOptimalProvider.ParseOptimal(
+                crossTrackHistory.RootElement,
+                42,
+                monzaHistory) - 83.8) < 0.0001,
+            "A new track optimal must exclude every lap quarantined from the previous track.");
+    }
+
     var path = Path.Combine(root, "layout.json");
     var store = new LayoutStore(path);
     Assert(store.Load() == LayoutProfile.Default, "Missing profile must load defaults.");
@@ -64,13 +88,27 @@ try
         118, 119, 0, 0, 0, 0, 0, 0, true, false,
         LmuOverlay.Domain.LmuPitState.None, 0, false, false, 0.5, false,
         BestLapSector1Seconds: 29,
-        BestLapSector2Seconds: 39);
+        BestLapSector2CumulativeSeconds: 68);
     Assert(PersistentSectorReferenceTracker.OfficialPersonalBest(officialStanding) ==
            new LmuOverlay.Widgets.PersonalBestLap(118, 29, 39, 50),
         "Only LMU's official best lap and its own sectors may form a saved PB.");
     Assert(!PersistentSectorReferenceTracker.OfficialPersonalBest(
-            officialStanding with { BestLapSector2Seconds = 0 }).IsValid,
+            officialStanding with { BestLapSector2CumulativeSeconds = 0 }).IsValid,
         "Incomplete official best-lap sectors must never be persisted.");
+    var lmuHudBest = officialStanding with
+    {
+        BestLapTimeSeconds = 112.721,
+        BestLapSector1Seconds = 36.827,
+        BestLapSector2CumulativeSeconds = 75.012,
+    };
+    var decomposedHudBest =
+        PersistentSectorReferenceTracker.OfficialPersonalBest(lmuHudBest);
+    Assert(decomposedHudBest.IsValid &&
+           Math.Abs(decomposedHudBest.LapTimeSeconds - 112.721) < 0.0001 &&
+           Math.Abs(decomposedHudBest.Sector1Seconds - 36.827) < 0.0001 &&
+           Math.Abs(decomposedHudBest.Sector2Seconds - 38.185) < 0.0001 &&
+           Math.Abs(decomposedHudBest.Sector3Seconds - 37.709) < 0.0001,
+        "LMU's cumulative S1+S2 split must be decomposed into individual S2 and S3 times.");
 
     var requested = new LayoutProfile(
         LayoutProfile.CurrentSchemaVersion,
