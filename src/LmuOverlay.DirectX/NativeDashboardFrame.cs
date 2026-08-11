@@ -8,9 +8,11 @@ public readonly record struct NativeDashboardBounds(
     int Width,
     int Height);
 
-public sealed record NativeDashboardFrame(
+public readonly record struct NativeDashboardFrame(
     DashboardWidgetState Dashboard,
     NativeDashboardBounds Bounds,
     bool Visible,
     long Sequence,
-    long CapturedTimestamp);
+    long CapturedTimestamp,
+    double FuelSaveFraction = 0,
+    string SessionKey = "");

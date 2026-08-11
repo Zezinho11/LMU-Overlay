@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.5.0 - 2026-08-11
 
 - Added each car's official tire compound and telemetry Virtual Energy
   percentage to Live Standings, with a compact compound badge, energy-condition

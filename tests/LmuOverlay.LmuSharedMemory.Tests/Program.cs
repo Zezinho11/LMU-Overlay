@@ -39,6 +39,8 @@ WriteInt16(data, scoring + LmuApiLayoutV1.ScoringCompletedLapsOffset, 12);
 data[scoring + LmuApiLayoutV1.ScoringSectorOffset] = 2;
 WriteDouble(data, scoring + LmuApiLayoutV1.ScoringLapDistanceOffset, 3_502);
 WriteDouble(data, scoring + LmuApiLayoutV1.ScoringBestLapTimeOffset, 122.5);
+WriteSingle(data, scoring + LmuApiLayoutV1.ScoringBestLapSector1Offset, 30.25f);
+WriteSingle(data, scoring + LmuApiLayoutV1.ScoringBestLapSector2Offset, 40.5f);
 WriteDouble(data, scoring + LmuApiLayoutV1.ScoringLastLapTimeOffset, 123.1);
 WriteInt16(data, scoring + LmuApiLayoutV1.ScoringPitStopsOffset, 1);
 data[scoring + LmuApiLayoutV1.VehicleScoringIsPlayerOffset] = 1;
@@ -211,6 +213,10 @@ Require(snapshot.Standings[0].FrontTireCompoundIndex == 2,
     "Standing tire compound index must be joined from vehicle telemetry by id");
 Require(Math.Abs(snapshot.Standings[0].VirtualEnergyFraction - 0.78) < 0.0001,
     "Standing virtual energy must be joined from vehicle telemetry by id");
+Require(Math.Abs(snapshot.Standings[0].BestLapSector1Seconds - 30.25) < 0.0001,
+    "Best-lap sector 1 must come from official scoring");
+Require(Math.Abs(snapshot.Standings[0].BestLapSector2Seconds - 40.5) < 0.0001,
+    "Best-lap sector 2 must come from official scoring");
 
 WriteUInt32(data, LmuApiLayoutV1.EventOffset(LmuApiLayoutV1.TelemetryUpdateEventIndex), 10);
 WriteDouble(data, telemetry + LmuApiLayoutV1.TelemetryElapsedTimeOffset, 1_000.02);

@@ -265,9 +265,9 @@
                                 <TextBlock x:Name="Sector1Text" Grid.Row="0" Grid.Column="1" Text="--.---" Foreground="White" FontSize="11" VerticalAlignment="Center" />
                                 <TextBlock x:Name="Sector2Text" Grid.Row="1" Grid.Column="1" Text="--.---" Foreground="White" FontSize="11" VerticalAlignment="Center" />
                                 <TextBlock x:Name="Sector3Text" Grid.Row="2" Grid.Column="1" Text="--.---" Foreground="White" FontSize="11" VerticalAlignment="Center" />
-                                <TextBlock x:Name="Sector1DeltaText" Grid.Row="0" Grid.Column="2" Text="--.---" Foreground="#FF42D3A6" FontSize="10" FontWeight="Bold" HorizontalAlignment="Right" VerticalAlignment="Center" />
-                                <TextBlock x:Name="Sector2DeltaText" Grid.Row="1" Grid.Column="2" Text="--.---" Foreground="#FF42D3A6" FontSize="10" FontWeight="Bold" HorizontalAlignment="Right" VerticalAlignment="Center" />
-                                <TextBlock x:Name="Sector3DeltaText" Grid.Row="2" Grid.Column="2" Text="--.---" Foreground="#FF42D3A6" FontSize="10" FontWeight="Bold" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                <TextBlock x:Name="Sector1DeltaText" Grid.Row="0" Grid.Column="2" Text="--.---" Foreground="#FFC14CFF" FontSize="10" FontWeight="Bold" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                <TextBlock x:Name="Sector2DeltaText" Grid.Row="1" Grid.Column="2" Text="--.---" Foreground="#FFC14CFF" FontSize="10" FontWeight="Bold" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                <TextBlock x:Name="Sector3DeltaText" Grid.Row="2" Grid.Column="2" Text="--.---" Foreground="#FFC14CFF" FontSize="10" FontWeight="Bold" HorizontalAlignment="Right" VerticalAlignment="Center" />
                             </Grid>
                         </Grid>
                     </Border>
@@ -863,14 +863,14 @@
                                            FontSize="13" FontWeight="Bold" />
                             </StackPanel>
                             <StackPanel Grid.Column="1">
-                                <TextBlock Text="FUEL NEED / MARGIN" Foreground="#FF91A0B7"
+                                <TextBlock Text="TOTAL NEED / STINT MARGIN" Foreground="#FF91A0B7"
                                            FontFamily="Bahnschrift" FontSize="9" />
                                 <TextBlock x:Name="FuelFinishText" Text="--.- L / --.- L"
                                            Foreground="White" FontFamily="Bahnschrift"
                                            FontSize="13" FontWeight="Bold" />
                             </StackPanel>
                             <StackPanel Grid.Column="2">
-                                <TextBlock Text="VE NEED / MARGIN" Foreground="#FF91A0B7"
+                                <TextBlock Text="STINT VE NEED / MARGIN" Foreground="#FF91A0B7"
                                            FontFamily="Bahnschrift" FontSize="9" />
                                 <TextBlock x:Name="EnergyFinishText" Text="--% / --%"
                                            Foreground="#FFB7D8FF" FontFamily="Bahnschrift"
@@ -903,15 +903,15 @@
                                 <Grid.RowDefinitions>
                                     <RowDefinition /><RowDefinition /><RowDefinition />
                                 </Grid.RowDefinitions>
-                                <TextBlock x:Name="FlagScenarioText"
+                                <TextBlock x:Name="FlagScenarioText" Visibility="Collapsed"
                                            Text="FLAGS · LEARNING"
                                            Foreground="#FFFFCA6A" FontFamily="Bahnschrift"
                                            FontSize="9" FontWeight="Bold" />
-                                <TextBlock x:Name="WeatherScenarioText" Grid.Row="1"
+                                <TextBlock x:Name="WeatherScenarioText"
                                            Text="WEATHER · LEARNING"
                                            Foreground="#FF8BC5FF" FontFamily="Bahnschrift"
                                            FontSize="9" FontWeight="Bold" />
-                                <TextBlock x:Name="TrafficScenarioText" Grid.Row="2"
+                                <TextBlock x:Name="TrafficScenarioText" Grid.Row="1"
                                            Text="TRAFFIC · LEARNING"
                                            Foreground="#FF42D3A6" FontFamily="Bahnschrift"
                                            FontSize="9" FontWeight="Bold" />

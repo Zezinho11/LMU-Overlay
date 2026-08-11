@@ -27,17 +27,29 @@ internal sealed class OfficialTimingOptimalProvider : IDisposable
 
     public void Update(LmuTelemetrySnapshot snapshot)
     {
-        if (snapshot.Player is not { } player || snapshot.Session is not { } session)
+        if (snapshot.Player is not { } player ||
+            snapshot.Session is not { } session ||
+            session.GamePhase == LmuGamePhase.SessionOver)
         {
             Volatile.Write(ref _target, null);
             Volatile.Write(ref _value, null);
             return;
         }
 
+        var previous = Volatile.Read(ref _target);
+        if (previous is not null &&
+            previous.VehicleId == player.VehicleId &&
+            previous.SessionCode == session.SessionCode &&
+            string.Equals(previous.TrackName, session.TrackName, StringComparison.Ordinal))
+        {
+            return;
+        }
+
         var target = new TimingTarget(
             $"{session.TrackName}\u001f{session.SessionCode}\u001f{player.VehicleId}",
+            session.TrackName,
+            session.SessionCode,
             player.VehicleId);
-        var previous = Volatile.Read(ref _target);
         if (previous?.SessionKey != target.SessionKey)
         {
             Volatile.Write(ref _value, null);
@@ -115,6 +127,10 @@ internal sealed class OfficialTimingOptimalProvider : IDisposable
         var best3 = double.PositiveInfinity;
         foreach (var lap in laps.EnumerateArray())
         {
+            if (IsExplicitlyInvalid(lap))
+            {
+                continue;
+            }
             var sector1 = Number(lap, "sectorTime1");
             var sector2Cumulative = Number(lap, "sectorTime2");
             var lapTime = Number(lap, "lapTime");
@@ -134,6 +150,32 @@ internal sealed class OfficialTimingOptimalProvider : IDisposable
         return double.IsFinite(best1) && double.IsFinite(best2) && double.IsFinite(best3)
             ? best1 + best2 + best3
             : 0;
+    }
+
+    private static bool IsExplicitlyInvalid(JsonElement lap)
+    {
+        foreach (var property in lap.EnumerateObject())
+        {
+            if ((property.Name.Equals("valid", StringComparison.OrdinalIgnoreCase) ||
+                 property.Name.Equals("isValid", StringComparison.OrdinalIgnoreCase) ||
+                 property.Name.Equals("lapValid", StringComparison.OrdinalIgnoreCase) ||
+                 property.Name.Equals("isLapValid", StringComparison.OrdinalIgnoreCase)) &&
+                property.Value.ValueKind is JsonValueKind.False)
+            {
+                return true;
+            }
+
+            if ((property.Name.Equals("invalid", StringComparison.OrdinalIgnoreCase) ||
+                 property.Name.Equals("isInvalid", StringComparison.OrdinalIgnoreCase) ||
+                 property.Name.Equals("lapInvalid", StringComparison.OrdinalIgnoreCase) ||
+                 property.Name.Equals("lapInvalidated", StringComparison.OrdinalIgnoreCase)) &&
+                property.Value.ValueKind is JsonValueKind.True)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static bool TryGetVehicleHistory(
@@ -175,6 +217,10 @@ internal sealed class OfficialTimingOptimalProvider : IDisposable
         _client.Dispose();
     }
 
-    private sealed record TimingTarget(string SessionKey, int VehicleId);
+    private sealed record TimingTarget(
+        string SessionKey,
+        string TrackName,
+        int SessionCode,
+        int VehicleId);
     private sealed record TimingValue(string SessionKey, double OptimalLapSeconds);
 }

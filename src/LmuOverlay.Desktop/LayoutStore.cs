@@ -493,6 +493,10 @@ public sealed class LayoutStore
             FuelReserveLaps = Math.Clamp(settings.FuelReserveLaps, 0, 5),
             EnergyReservePercent = Math.Clamp(settings.EnergyReservePercent, 0, 25),
             ManualRemainingLaps = Math.Clamp(settings.ManualRemainingLaps, 0, 1000),
+            ManualRemainingMinutes = Math.Clamp(settings.ManualRemainingMinutes, 0, 1440),
+            ManualLapTimeSeconds = Math.Clamp(settings.ManualLapTimeSeconds, 0, 3600),
+            ManualFuelPerLapLiters = Math.Clamp(settings.ManualFuelPerLapLiters, 0, 100),
+            ManualFuelCapacityLiters = Math.Clamp(settings.ManualFuelCapacityLiters, 0, 1000),
             MaximumStintLaps = Math.Clamp(settings.MaximumStintLaps, 0, 1000),
             EstimatedPitLossSeconds = Math.Clamp(
                 settings.EstimatedPitLossSeconds,

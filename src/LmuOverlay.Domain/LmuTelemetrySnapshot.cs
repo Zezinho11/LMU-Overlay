@@ -109,13 +109,13 @@ public sealed record LmuPlayerTelemetry(
     public double ElapsedTime { get; init; }
 }
 
-public sealed record LmuWheelTemperatures(
+public readonly record struct LmuWheelTemperatures(
     double FrontLeftCelsius,
     double FrontRightCelsius,
     double RearLeftCelsius,
     double RearRightCelsius);
 
-public sealed record LmuWheelWear(
+public readonly record struct LmuWheelWear(
     double FrontLeftFraction,
     double FrontRightFraction,
     double RearLeftFraction,
@@ -181,7 +181,9 @@ public sealed record LmuVehicleStanding(
     string RearTireCompound = "",
     int FrontTireCompoundIndex = 0,
     int RearTireCompoundIndex = 0,
-    double VirtualEnergyFraction = -1);
+    double VirtualEnergyFraction = -1,
+    double BestLapSector1Seconds = 0,
+    double BestLapSector2Seconds = 0);
 
 public readonly record struct LmuVector3(double X, double Y, double Z)
 {

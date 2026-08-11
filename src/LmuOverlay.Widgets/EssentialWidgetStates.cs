@@ -2,7 +2,7 @@ using LmuOverlay.Domain;
 
 namespace LmuOverlay.Widgets;
 
-public sealed record DashboardWidgetState(
+public readonly record struct DashboardWidgetState(
     bool Available,
     double SpeedKilometersPerHour,
     string Gear,
@@ -58,7 +58,14 @@ public readonly record struct DashboardSectorTimes(
     double LastSector3Seconds,
     double BestSector1Seconds,
     double BestSector2Seconds,
-    double BestSector3Seconds)
+    double BestSector3Seconds,
+    SectorReferenceOrigin Sector1ReferenceOrigin = SectorReferenceOrigin.None,
+    SectorReferenceOrigin Sector2ReferenceOrigin = SectorReferenceOrigin.None,
+    SectorReferenceOrigin Sector3ReferenceOrigin = SectorReferenceOrigin.None,
+    int RecentSectorIndex = -1,
+    double RecentSectorTimeSeconds = 0,
+    double RecentSectorReferenceSeconds = 0,
+    long RecentSectorExpiresAtTimestamp = 0)
 {
     public double OptimalLapTimeSeconds =>
         IsValid(BestSector1Seconds) &&
@@ -71,7 +78,53 @@ public readonly record struct DashboardSectorTimes(
         seconds > 0 && double.IsFinite(seconds);
 }
 
-public sealed record InputsWidgetState(
+public enum SectorReferenceOrigin
+{
+    None,
+    OutLap,
+    Session,
+    Saved,
+}
+
+public readonly record struct SectorReferenceSeed(
+    double Sector1Seconds,
+    double Sector2Seconds,
+    double Sector3Seconds)
+{
+    public double this[int index] => index switch
+    {
+        0 => Sector1Seconds,
+        1 => Sector2Seconds,
+        2 => Sector3Seconds,
+        _ => throw new ArgumentOutOfRangeException(nameof(index)),
+    };
+}
+
+public readonly record struct PersonalBestLap(
+    double LapTimeSeconds,
+    double Sector1Seconds,
+    double Sector2Seconds,
+    double Sector3Seconds)
+{
+    public bool IsValid =>
+        IsPlausible(LapTimeSeconds) &&
+        IsPlausible(Sector1Seconds) &&
+        IsPlausible(Sector2Seconds) &&
+        IsPlausible(Sector3Seconds) &&
+        Math.Abs(
+            LapTimeSeconds -
+            (Sector1Seconds + Sector2Seconds + Sector3Seconds)) < 0.05;
+
+    public SectorReferenceSeed Sectors => new(
+        Sector1Seconds,
+        Sector2Seconds,
+        Sector3Seconds);
+
+    private static bool IsPlausible(double seconds) =>
+        double.IsFinite(seconds) && seconds is > 1 and < 1_800;
+}
+
+public readonly record struct InputsWidgetState(
     bool Available,
     double Throttle,
     double Brake,

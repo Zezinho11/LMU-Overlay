@@ -8,3 +8,17 @@ public interface ILmuTelemetrySource : IDisposable
 
     LmuTelemetrySnapshot ReadTelemetrySnapshot();
 }
+
+public enum TelemetryUpdateWaitResult
+{
+    Signaled,
+    TimedOut,
+    Cancelled,
+}
+
+public interface IWaitableTelemetrySource
+{
+    TelemetryUpdateWaitResult WaitForUpdate(
+        WaitHandle cancellation,
+        TimeSpan timeout);
+}

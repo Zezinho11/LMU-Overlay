@@ -12,7 +12,13 @@ public sealed record TelemetryRuntimeHealth(
     double AverageReadMilliseconds,
     double MaximumReadMilliseconds,
     DateTimeOffset? LastSuccessfulRead,
-    string LastError);
+    string LastError)
+{
+    public long EventWakeups { get; init; }
+    public long EventTimeouts { get; init; }
+    public long DuplicateSnapshots { get; init; }
+    public long PublishedSnapshots { get; init; }
+}
 
 public sealed class TelemetryRuntime : IAsyncDisposable
 {
@@ -33,6 +39,10 @@ public sealed class TelemetryRuntime : IAsyncDisposable
     private long _maximumReadTicks;
     private long _lastSuccessfulReadUtcTicks;
     private string _lastError = string.Empty;
+    private long _eventWakeups;
+    private long _eventTimeouts;
+    private long _duplicateSnapshots;
+    private long _publishedSnapshots;
 
     public TelemetryRuntime(
         Func<ILmuTelemetrySource> sourceFactory,
@@ -73,7 +83,13 @@ public sealed class TelemetryRuntime : IAsyncDisposable
                 successfulUtcTicks > 0
                     ? new DateTimeOffset(successfulUtcTicks, TimeSpan.Zero)
                     : null,
-                Volatile.Read(ref _lastError));
+                Volatile.Read(ref _lastError))
+            {
+                EventWakeups = Interlocked.Read(ref _eventWakeups),
+                EventTimeouts = Interlocked.Read(ref _eventTimeouts),
+                DuplicateSnapshots = Interlocked.Read(ref _duplicateSnapshots),
+                PublishedSnapshots = Interlocked.Read(ref _publishedSnapshots),
+            };
         }
     }
 
@@ -102,7 +118,27 @@ public sealed class TelemetryRuntime : IAsyncDisposable
         {
             while (!cancellationToken.IsCancellationRequested)
             {
-                if (!WaitUntil(nextAttempt, cancellationToken))
+                var waitedForSourceEvent = source is IWaitableTelemetrySource;
+                if (source is IWaitableTelemetrySource waitable)
+                {
+                    var waitResult = waitable.WaitForUpdate(
+                        _shutdownSignal.WaitHandle,
+                        _pollInterval);
+                    if (waitResult == TelemetryUpdateWaitResult.Cancelled)
+                    {
+                        break;
+                    }
+
+                    if (waitResult == TelemetryUpdateWaitResult.Signaled)
+                    {
+                        Interlocked.Increment(ref _eventWakeups);
+                    }
+                    else
+                    {
+                        Interlocked.Increment(ref _eventTimeouts);
+                    }
+                }
+                else if (!WaitUntil(nextAttempt, cancellationToken))
                 {
                     break;
                 }
@@ -151,14 +187,22 @@ public sealed class TelemetryRuntime : IAsyncDisposable
                     wait = _reconnectInterval;
                 }
 
-                var waitTicks = ToStopwatchTicks(wait);
-                nextAttempt += waitTicks;
                 var afterAttempt = Stopwatch.GetTimestamp();
-                if (nextAttempt <= afterAttempt)
+                if (waitedForSourceEvent && source is not null &&
+                    wait == _pollInterval)
                 {
-                    // Never build a backlog. The dashboard consumes only the
-                    // freshest sample and resumes from the current clock.
-                    nextAttempt = afterAttempt + waitTicks;
+                    nextAttempt = afterAttempt;
+                }
+                else
+                {
+                    var waitTicks = ToStopwatchTicks(wait);
+                    nextAttempt += waitTicks;
+                    if (nextAttempt <= afterAttempt)
+                    {
+                        // Never build a backlog. The dashboard consumes only the
+                        // freshest sample and resumes from the current clock.
+                        nextAttempt = afterAttempt + waitTicks;
+                    }
                 }
             }
         }
@@ -194,8 +238,11 @@ public sealed class TelemetryRuntime : IAsyncDisposable
         Volatile.Write(ref _latest, snapshot);
         if (ReferenceEquals(previous, snapshot))
         {
+            Interlocked.Increment(ref _duplicateSnapshots);
             return;
         }
+
+        Interlocked.Increment(ref _publishedSnapshots);
 
         var handlers = SnapshotPublished;
         if (handlers is null)

@@ -3,7 +3,7 @@
 Extensible telemetry overlay for **Le Mans Ultimate**, designed around the game's
 official shared-memory interface and a strict anti-cheat-safe boundary.
 
-> Project status: `0.4.0-preview.5` functional desktop preview with public
+> Project status: `0.5.0` functional desktop release with public
 > Windows packaging.
 > Extended live-race validation and complete SteamVR widget parity remain planned.
 
@@ -28,10 +28,12 @@ revalidated after LMU, EAC, SteamVR, or overlay changes.
 - Derived HUD metrics and an asynchronous polling service.
 - Background telemetry runtime with automatic reconnect, failure isolation,
   health counters, and a render-thread-safe latest-frame buffer.
-- Reused shared-memory view and read buffer for stable high-frequency polling.
+- Event-driven shared-memory capture through the official `LMU_Data_Event`,
+  with an 8 ms safety timeout, coherent counter checks, a direct read-only
+  mapped pointer and reused buffers.
 - Native low-latency dashboard rendered by Win32, Direct3D 11, Direct2D,
   DirectWrite and DirectComposition. New telemetry snapshots travel directly
-  from the dedicated 240 Hz capture thread to a latest-frame GPU renderer;
+  from the dedicated event-driven capture thread to a latest-frame GPU renderer;
   WPF remains the editor, configuration UI and automatic compatibility fallback.
 - Native Live Standings and Relative surfaces share a Direct3D device, preserve
   the approved wider timing-tower appearance and transparent unused area, and redraw only
@@ -40,9 +42,17 @@ revalidated after LMU, EAC, SteamVR, or overlay changes.
 - Duplicate LMU frames are reused without reparsing, while new player telemetry
   follows an allocation-light path and the graph emits at most one visual point
   per horizontal pixel.
-- Clean out-lap S2 and S3 times seed sector delta references. S1 is used only
-  when the complete sector was driven outside the pit lane, avoiding a false
-  first-lap benchmark on tracks whose pit exit bypasses part of sector 1.
+- The native driver-input surface uses a transparent steering-wheel sprite that
+  rotates with the existing steering signal and uploads a pre-multiplied bitmap
+  directly to Direct2D at resource creation time.
+- Clean out-lap S2 and S3 times seed provisional sector-delta references. Clean
+  personal sectors are persisted per track and vehicle model, allowing a saved
+  S1 reference on the first flying lap. Without an honest reference the dash
+  displays `NEW` instead of comparing against a pit-contaminated S1.
+- Valid personal-best laps are stored locally per track, driver and vehicle
+  model. The saved lap time and all three sectors always come from the same lap.
+  On sector completion the dash shows the new sector and its PB delta for four
+  seconds, then returns to the saved PB-sector values.
 - Reproducible anonymized fixture, parser checks, and Windows CI.
 - Header provenance and compatibility matrix without redistributing proprietary
   Studio 397 files.

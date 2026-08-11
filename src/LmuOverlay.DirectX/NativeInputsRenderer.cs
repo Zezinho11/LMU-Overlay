@@ -2,23 +2,23 @@ using System.Diagnostics;
 
 namespace LmuOverlay.DirectX;
 
-public sealed class NativeDashboardRenderer : IDisposable
+public sealed class NativeInputsRenderer : IDisposable
 {
     private readonly AutoResetEvent _frameReady = new(false);
     private readonly ManualResetEventSlim _shutdown = new(false);
     private readonly object _latestSync = new();
     private readonly Thread _thread;
-    private NativeDashboardFrame _latest;
+    private NativeInputsFrame _latest;
     private bool _hasLatest;
     private Exception? _startupFailure;
     private int _ready;
 
-    public NativeDashboardRenderer()
+    public NativeInputsRenderer()
     {
         _thread = new Thread(Run)
         {
             IsBackground = true,
-            Name = "LMU DirectX dashboard",
+            Name = "LMU DirectX inputs",
             Priority = ThreadPriority.AboveNormal,
         };
         _thread.SetApartmentState(ApartmentState.MTA);
@@ -29,9 +29,10 @@ public sealed class NativeDashboardRenderer : IDisposable
         Volatile.Read(ref _ready) == 1 &&
         _startupFailure is null &&
         _thread.IsAlive;
+
     public string FailureDetail => _startupFailure?.Message ?? string.Empty;
 
-    public void Publish(NativeDashboardFrame frame)
+    public void Publish(NativeInputsFrame frame)
     {
         lock (_latestSync)
         {
@@ -60,7 +61,7 @@ public sealed class NativeDashboardRenderer : IDisposable
     {
         try
         {
-            using var host = new DirectCompositionDashboardHost();
+            using var host = new DirectCompositionInputsHost();
             Volatile.Write(ref _ready, 1);
             while (!_shutdown.IsSet)
             {
@@ -69,7 +70,6 @@ public sealed class NativeDashboardRenderer : IDisposable
                 {
                     host.Render(frame);
                 }
-
                 host.PumpMessages();
             }
         }
@@ -80,7 +80,7 @@ public sealed class NativeDashboardRenderer : IDisposable
         }
     }
 
-    private bool TryGetLatest(out NativeDashboardFrame frame)
+    private bool TryGetLatest(out NativeInputsFrame frame)
     {
         lock (_latestSync)
         {

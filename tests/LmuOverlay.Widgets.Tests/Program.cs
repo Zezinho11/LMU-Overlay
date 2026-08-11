@@ -31,7 +31,7 @@ var player = new LmuPlayerTelemetry(
     VirtualEnergy: 0,
     GapToCarAheadSeconds: 0,
     GapToCarBehindSeconds: 0,
-    CurrentSector: 1,
+    CurrentSector: 0,
     SpeedLimiterActive: false,
     LapInvalidated: false,
     AbsActive: true,
@@ -278,16 +278,68 @@ Assert(strategy.LapsUntilPit == 14,
     "Pit countdown must report the usable stint length.");
 Assert(strategy.FuelToAddLiters == 2.5,
     "Fuel-to-add must close the projected finish deficit.");
-Assert(strategy.RequiredFuelSavingFraction > 0,
-    "A short strategy must expose the required saving target.");
+Assert(strategy.RequiredFuelSavingFraction == 0,
+    "A planned refuel must not be reported as a whole-race fuel-saving deficit.");
 Assert(strategy.Confidence == "LOW",
     "One valid lap must produce low-confidence guidance.");
 Assert(strategy.EstimatedRangeTimeSeconds == strategy.EstimatedRangeLaps * 121,
     "Fuel range time must use the latest valid lap.");
 Assert(strategy.EstimatedTimeToFinishSeconds == 15 * 121,
     "Finish time must use the same reference lap.");
-Assert(strategy.Status == "SHORT", "Negative fuel margin must be highlighted.");
+Assert(strategy.Status == "MARGINAL",
+    "A feasible one-stop strategy must assess the current stint, not the whole race tank.");
 Assert(refueled.Samples == 1, "Refueling must not be recorded as negative consumption.");
+var contaminatedTracker = new FuelStrategyTracker();
+var garageSnapshot = raceSnapshot with
+{
+    Player = player with { LapNumber = 0, FuelLiters = 48.56, VirtualEnergy = 1 },
+    Standings = new[] { Standing(2, "Player", 1, 0, true, true, 0) },
+};
+_ = contaminatedTracker.Update(garageSnapshot);
+_ = contaminatedTracker.Update(garageSnapshot with
+{
+    CapturedAt = garageSnapshot.CapturedAt.AddMilliseconds(100),
+    Player = garageSnapshot.Player! with { FuelLiters = 21.7, VirtualEnergy = 0.21 },
+});
+var rejectedOutLap = contaminatedTracker.Update(garageSnapshot with
+{
+    CapturedAt = garageSnapshot.CapturedAt.AddMinutes(3),
+    Player = garageSnapshot.Player! with
+    {
+        LapNumber = 1,
+        FuelLiters = 20.1,
+        VirtualEnergy = 0.18,
+    },
+    Standings = new[]
+    {
+        Standing(2, "Player", 1, 0, true, false, 1) with
+        {
+            LastLapTimeSeconds = 121,
+        },
+    },
+});
+Assert(rejectedOutLap.Learning && rejectedOutLap.Samples == 0,
+    "Garage fuel changes and the out lap must never become consumption samples.");
+var firstCleanFuelLap = contaminatedTracker.Update(garageSnapshot with
+{
+    CapturedAt = garageSnapshot.CapturedAt.AddMinutes(5),
+    Player = garageSnapshot.Player! with
+    {
+        LapNumber = 2,
+        FuelLiters = 17.6,
+        VirtualEnergy = 0.10,
+    },
+    Standings = new[]
+    {
+        Standing(2, "Player", 1, 0, true, false, 2) with
+        {
+            LastLapTimeSeconds = 120,
+        },
+    },
+});
+Assert(firstCleanFuelLap.Samples == 1 &&
+       Math.Abs(firstCleanFuelLap.AverageConsumptionLitersPerLap - 2.5) < 0.0001,
+    "The first complete flying lap must establish consumption after the out lap.");
 var configuredStrategy = fuelTracker.Update(
     nextLapSnapshot,
     new FuelStrategyOptions(
@@ -367,6 +419,54 @@ Assert(timedFlags.MaximumLaps == 0, "Timed sessions must hide the unlimited-lap 
 Assert(timedStrategy.EstimatedLapsToFinish == 30, "Timed fuel projection must use time and lap pace.");
 Assert(timedStrategy.RequiredFuelLiters == 77.5, "Timed projection must remain within a realistic range.");
 
+var enduranceSession = timedSession with
+{
+    CurrentElapsedTime = 0,
+    EndElapsedTime = 6 * 60 * 60,
+};
+var enduranceStart = raceSnapshot with
+{
+    Session = enduranceSession,
+    Player = player with { FuelLiters = 25 },
+};
+var enduranceTracker = new FuelStrategyTracker();
+_ = enduranceTracker.Update(enduranceStart);
+var enduranceStrategy = enduranceTracker.Update(enduranceStart with
+{
+    Player = player with { FuelLiters = 22.5 },
+    Standings = new[]
+    {
+        standings[0],
+        standings[1] with { CompletedLaps = standings[1].CompletedLaps + 1 },
+        standings[2],
+    },
+});
+Assert(enduranceStrategy.EstimatedLapsToFinish > 170,
+    "A six-hour timed session must project the full duration from the live pace.");
+Assert(enduranceStrategy.EstimatedPitStops is >= 4 and <= 6,
+    "A short opening fill must be followed by tank-capacity stints, not repeated short stints.");
+Assert(enduranceStrategy.FuelToAddLiters > 50 &&
+       enduranceStrategy.FuelToAddLiters <= player.FuelCapacityLiters,
+    "Fuel to add must describe the next stop and stay within tank capacity.");
+Assert(enduranceStrategy.RequiredFuelSavingFraction == 0,
+    "A feasible multi-stop race must not request saving enough to finish on the current tank.");
+
+var manualCalculator = new FuelStrategyTracker().Update(
+    raceSnapshot,
+    new FuelStrategyOptions(
+        ManualRemainingMinutes: 60,
+        ManualLapTimeSeconds: 120,
+        ManualFuelPerLapLiters: 3,
+        ManualFuelCapacityLiters: 60));
+Assert(manualCalculator.EstimatedLapsToFinish == 30,
+    "Manual duration and lap time must produce a deterministic remaining-lap estimate.");
+Assert(manualCalculator.ProjectedConsumptionLitersPerLap == 3 &&
+       manualCalculator.Confidence == "MANUAL" &&
+       !manualCalculator.Learning,
+    "Manual fuel inputs must work before automatic lap sampling is complete.");
+Assert(manualCalculator.EstimatedPitStops > 0,
+    "Manual tank capacity must constrain the generated stint plan.");
+
 var rainSession = session with
 {
     GamePhase = LmuGamePhase.Stopped,
@@ -400,18 +500,18 @@ Assert(
     Math.Abs(energyStrategy.EstimatedVirtualEnergyRangeLaps - 11.5) < 0.0001,
     "Virtual Energy range must use its rolling consumption.");
 Assert(
-    Math.Abs(energyStrategy.RequiredVirtualEnergyFraction - 1.28) < 0.0001,
-    "Virtual Energy finish need must include the reserve lap.");
+    Math.Abs(energyStrategy.RequiredVirtualEnergyFraction - 1.2) < 0.0001,
+    "Virtual Energy need must cover the current stint and its reserve lap.");
 Assert(
-    Math.Abs(energyStrategy.VirtualEnergyMarginFraction + 0.36) < 0.0001,
-    "Virtual Energy margin must compare current energy with finish need.");
+    Math.Abs(energyStrategy.VirtualEnergyMarginFraction + 0.28) < 0.0001,
+    "Virtual Energy margin must compare current energy with the stint need.");
 
 var sectorTracker = new SectorReferenceTracker();
 var noSectorReference = default(DashboardSectorTimes);
 var outLap = raceSnapshot with
 {
     ScoringSequence = 20,
-    Player = player with { LapNumber = 0, CurrentSector = 1 },
+    Player = player with { LapNumber = 0, CurrentSector = 0 },
     Standings = new[] { Standing(1, "Player", 1, 0, true, true, 0) },
 };
 _ = sectorTracker.Update(outLap, noSectorReference);
@@ -423,7 +523,7 @@ _ = sectorTracker.Update(outLapAfterPit, noSectorReference);
 var enteredSector2 = outLapAfterPit with
 {
     ScoringSequence = 21,
-    Player = outLapAfterPit.Player! with { CurrentSector = 2 },
+    Player = outLapAfterPit.Player! with { CurrentSector = 1 },
 };
 var references = sectorTracker.Update(
     enteredSector2,
@@ -433,7 +533,7 @@ Assert(references.BestSector1Seconds == 0,
 var enteredSector3 = enteredSector2 with
 {
     ScoringSequence = 22,
-    Player = enteredSector2.Player! with { CurrentSector = 0 },
+    Player = enteredSector2.Player! with { CurrentSector = 2 },
 };
 references = sectorTracker.Update(
     enteredSector3,
@@ -442,28 +542,115 @@ references = sectorTracker.Update(
         CurrentSector1Seconds = 30,
         CurrentSector2Seconds = 40,
     });
-Assert(references.BestSector2Seconds == 40,
-    $"A clean out-lap sector 2 must seed the first-lap reference (actual {references.BestSector2Seconds}).");
+Assert(references.BestSector2Seconds == 0,
+    "Out-lap sectors must not become timing references.");
 var startedFlyingLap = enteredSector3 with
 {
     ScoringSequence = 23,
-    Player = enteredSector3.Player! with { LapNumber = 1, CurrentSector = 1 },
+    Player = enteredSector3.Player! with { LapNumber = 1, CurrentSector = 0 },
 };
 references = sectorTracker.Update(
     startedFlyingLap,
     noSectorReference with { LastSector3Seconds = 50 });
-Assert(references.BestSector3Seconds == 50,
-    $"A clean out-lap sector 3 must seed the first-lap reference (actual {references.BestSector3Seconds}).");
+Assert(references.BestSector3Seconds == 0,
+    "Out-lap sector 3 must not become a timing reference.");
+
+var persistentExitTracker = new SectorReferenceTracker();
+var persistentExit = outLap with
+{
+    Standings = new[]
+    {
+        Standing(1, "Player", 1, 0, true, false, 0) with
+        {
+            PitState = LmuPitState.Exiting,
+        },
+    },
+};
+_ = persistentExitTracker.Update(persistentExit, noSectorReference);
+var persistentExitS2 = persistentExitTracker.Update(
+    persistentExit with
+    {
+        ScoringSequence = 21,
+        Player = persistentExit.Player! with { CurrentSector = 1 },
+    },
+    noSectorReference with { CurrentSector1Seconds = 30 });
+Assert(persistentExitS2.BestSector1Seconds == 0,
+    "Starting during pit exit must keep only the partial first sector contaminated.");
+var persistentExitS3 = persistentExitTracker.Update(
+    persistentExit with
+    {
+        ScoringSequence = 22,
+        Player = persistentExit.Player! with { CurrentSector = 2 },
+    },
+    noSectorReference with { CurrentSector1Seconds = 30, CurrentSector2Seconds = 40 });
+Assert(persistentExitS3.BestSector2Seconds == 0,
+    "Out-lap sector 2 must remain excluded even after pit exit.");
+var persistentExitFlying = persistentExitTracker.Update(
+    persistentExit with
+    {
+        ScoringSequence = 23,
+        Player = persistentExit.Player! with { LapNumber = 1, CurrentSector = 0 },
+    },
+    noSectorReference with { LastSector3Seconds = 50 });
+Assert(persistentExitFlying.BestSector3Seconds == 0,
+    "Out-lap sector 3 must remain excluded at the start line.");
 var completedFirstFlyingSector1 = startedFlyingLap with
 {
     ScoringSequence = 24,
-    Player = startedFlyingLap.Player! with { CurrentSector = 2 },
+    Player = startedFlyingLap.Player! with { CurrentSector = 1 },
 };
 references = sectorTracker.Update(
     completedFirstFlyingSector1,
     noSectorReference with { CurrentSector1Seconds = 31 });
+Assert(references.BestSector1Seconds == 0,
+    "The first clean sector 1 must display NEW instead of comparing against itself.");
+Assert(sectorTracker.PersistentReferences.Sector1Seconds == 0,
+    "A provisional sector must not be persisted before LMU confirms a valid best.");
+references = sectorTracker.Update(
+    completedFirstFlyingSector1 with
+    {
+        Player = completedFirstFlyingSector1.Player! with
+        {
+            LapNumber = 2,
+            CurrentSector = 0,
+        },
+    },
+    noSectorReference with { BestSector1Seconds = 31 });
 Assert(references.BestSector1Seconds == 31,
-    "Sector 1 must wait for the first clean complete sector when pit exit contaminated the out lap.");
+    "A clean sector 1 must become active on the following lap.");
+Assert(sectorTracker.PersistentReferences.Sector1Seconds == 31,
+    "An official clean sector best must be retained for later sessions.");
+
+var invalidTracker = new SectorReferenceTracker();
+_ = invalidTracker.Update(
+    startedFlyingLap,
+    noSectorReference);
+var provisionalInvalid = invalidTracker.Update(
+    completedFirstFlyingSector1,
+    noSectorReference with { CurrentSector1Seconds = 30.5 });
+Assert(provisionalInvalid.BestSector1Seconds == 0,
+    "A new provisional sector must initially display NEW.");
+var invalidated = invalidTracker.Update(
+    completedFirstFlyingSector1 with
+    {
+        Player = completedFirstFlyingSector1.Player! with { LapInvalidated = true },
+    },
+    noSectorReference);
+Assert(invalidated.BestSector1Seconds == 0,
+    "A sector from an invalidated lap must not remain a delta reference.");
+Assert(invalidated.CurrentSector1Seconds == 0 &&
+       invalidated.CurrentSector2Seconds == 0 &&
+       invalidated.CurrentSector3Seconds == 0,
+    "An invalidated lap must immediately remove all white current-lap sectors.");
+
+var savedTracker = new SectorReferenceTracker();
+var savedReferences = savedTracker.Update(
+    outLap,
+    noSectorReference,
+    new SectorReferenceSeed(29.5, 39.5, 49.5));
+Assert(savedReferences.BestSector1Seconds == 29.5 &&
+       savedReferences.Sector1ReferenceOrigin == SectorReferenceOrigin.Saved,
+    "A matching saved personal reference must enable sector 1 on the first flying lap.");
 
 var clockTracker = new SectorReferenceTracker();
 var clockOutLap = outLap with
@@ -487,7 +674,7 @@ var clockSector2 = clockTracker.Update(
     {
         Player = clockOutLap.Player! with
         {
-            CurrentSector = 2,
+            CurrentSector = 1,
             ElapsedTime = 1_030,
         },
         Standings = new[] { Standing(1, "Player", 1, 0, true, false, 0) },
@@ -495,25 +682,56 @@ var clockSector2 = clockTracker.Update(
     default);
 Assert(clockSector2.BestSector1Seconds == 0,
     "Telemetry clock must preserve pit contamination for out-lap sector 1.");
+Assert(clockSector2.CurrentSector1Seconds == 30 &&
+       clockSector2.CurrentSector2Seconds == 0,
+    "Sector 1 must freeze its completed time while sector 2 starts at zero.");
+var clockSector2Live = clockTracker.Update(
+    clockOutLap with
+    {
+        Player = clockOutLap.Player! with
+        {
+            CurrentSector = 1,
+            ElapsedTime = 1_050,
+        },
+        Standings = new[] { Standing(1, "Player", 1, 0, true, false, 0) },
+    },
+    default);
+Assert(clockSector2Live.CurrentSector2Seconds == 20,
+    "Active sector 2 must count continuously from the telemetry clock.");
 var clockSector3 = clockTracker.Update(
     clockOutLap with
     {
         Player = clockOutLap.Player! with
         {
-            CurrentSector = 0,
+            CurrentSector = 2,
             ElapsedTime = 1_070,
         },
         Standings = new[] { Standing(1, "Player", 1, 0, true, false, 0) },
     },
     default);
-Assert(clockSector3.BestSector2Seconds == 40,
-    "Telemetry clock must capture clean out-lap sector 2 without waiting for scoring.");
+Assert(clockSector3.BestSector2Seconds == 0,
+    "Telemetry clock must not promote out-lap sector 2 to a reference.");
+var clockSector3Live = clockTracker.Update(
+    clockOutLap with
+    {
+        Player = clockOutLap.Player! with
+        {
+            CurrentSector = 2,
+            ElapsedTime = 1_085,
+        },
+        Standings = new[] { Standing(1, "Player", 1, 0, true, false, 0) },
+    },
+    default);
+Assert(clockSector3Live.CurrentSector1Seconds == 30 &&
+       clockSector3Live.CurrentSector2Seconds == 40 &&
+       clockSector3Live.CurrentSector3Seconds == 15,
+    "S1 and S2 must remain visible while active sector 3 counts continuously.");
 _ = clockTracker.Update(
     clockOutLap with
     {
         Player = clockOutLap.Player! with
         {
-            CurrentSector = 0,
+            CurrentSector = 2,
             ElapsedTime = 1_120,
         },
         Standings = new[] { Standing(1, "Player", 1, 0, true, false, 0) },
@@ -525,15 +743,100 @@ var clockFlyingLap = clockTracker.Update(
         Player = clockOutLap.Player! with
         {
             LapNumber = 1,
-            CurrentSector = 1,
+            CurrentSector = 0,
             LapStartElapsedTime = 1_120,
             ElapsedTime = 1_120.02,
         },
         Standings = new[] { Standing(1, "Player", 1, 0, true, false, 1) },
     },
     default);
-Assert(clockFlyingLap.BestSector3Seconds == 50,
-    "Telemetry clock must capture clean out-lap sector 3 at the start line.");
+Assert(clockFlyingLap.BestSector3Seconds == 0,
+    "Telemetry clock must leave out-lap sector 3 out of the references.");
+
+var validLapTracker = new SectorReferenceTracker();
+var validLapBase = raceSnapshot with
+{
+    Player = player with
+    {
+        LapNumber = 1,
+        CurrentSector = 0,
+        LapStartElapsedTime = 1_000,
+        ElapsedTime = 1_005,
+    },
+    Standings = new[] { Standing(1, "Player", 1, 0, true, false, 1) },
+};
+_ = validLapTracker.Update(validLapBase, default);
+_ = validLapTracker.Update(
+    validLapBase with
+    {
+        Player = validLapBase.Player! with
+        {
+            CurrentSector = 1,
+            ElapsedTime = 1_030,
+        },
+    },
+    default);
+_ = validLapTracker.Update(
+    validLapBase with
+    {
+        Player = validLapBase.Player! with
+        {
+            CurrentSector = 2,
+            ElapsedTime = 1_070,
+        },
+    },
+    default);
+_ = validLapTracker.Update(
+    validLapBase with
+    {
+        Player = validLapBase.Player! with
+        {
+            CurrentSector = 2,
+            ElapsedTime = 1_120,
+        },
+    },
+    default);
+_ = validLapTracker.Update(
+    validLapBase with
+    {
+        Player = validLapBase.Player! with
+        {
+            LapNumber = 2,
+            CurrentSector = 0,
+            LapStartElapsedTime = 1_120,
+            ElapsedTime = 1_120.02,
+        },
+    },
+    default);
+_ = validLapTracker.Update(
+    validLapBase with
+    {
+        ScoringSequence = validLapBase.ScoringSequence + 1,
+        Player = validLapBase.Player! with
+        {
+            LapNumber = 2,
+            CurrentSector = 0,
+            LapStartElapsedTime = 1_120,
+            ElapsedTime = 1_120.1,
+        },
+        Standings = new[]
+        {
+            Standing(1, "Player", 1, 0, true, false, 2) with
+            {
+                LastLapTimeSeconds = 120,
+            },
+        },
+    },
+    default(DashboardSectorTimes) with
+    {
+        LastSector1Seconds = 30,
+        LastSector2Seconds = 40,
+        LastSector3Seconds = 50,
+    });
+Assert(validLapTracker.PersistentReferences == new SectorReferenceSeed(30, 40, 50),
+    "A complete valid lap must persist exact S1, S2 and S3 segment times.");
+Assert(validLapTracker.LastCompletedValidLap == new PersonalBestLap(120, 30, 40, 50),
+    "A personal-best candidate must retain all sectors from the same valid lap.");
 
 var stableBand = TireTemperatureClassifier.ClassifyStable(
     100.5,

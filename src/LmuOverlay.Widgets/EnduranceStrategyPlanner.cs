@@ -178,9 +178,13 @@ public static class EnduranceStrategyPlanner
                 var reserve = stintIndex + 1 == stints.Count - 1
                     ? input.ReserveFuelLiters
                     : 0;
-                fuelAtStops.Add(Math.Min(
+                var fuelTarget = Math.Min(
                     input.FuelCapacityLiters,
-                    nextStint * input.ConsumptionLitersPerLap + reserve));
+                    nextStint * input.ConsumptionLitersPerLap + reserve);
+                var fuelExpectedAtStop = stintIndex == 0
+                    ? input.ReserveFuelLiters
+                    : 0;
+                fuelAtStops.Add(Math.Max(0, fuelTarget - fuelExpectedAtStop));
             }
         }
 
