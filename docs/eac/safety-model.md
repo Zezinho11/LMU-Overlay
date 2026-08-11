@@ -10,6 +10,8 @@ Live Timing endpoint as the only game-data boundaries.
 
 - Open the named Windows mapping `LMU_Data`.
 - Request `MemoryMappedFileRights.Read` only.
+- Open `LMU_Data_Event` with `SYNCHRONIZE` access only and wait for producer
+  notifications; never signal, reset, or modify the event.
 - Copy documented telemetry into application-owned memory.
 - Read `/rest/watch/standings/history` from LMU's localhost WebUI solely to
   reproduce the game's theoretical optimal-sector calculation.
@@ -30,6 +32,7 @@ Live Timing endpoint as the only game-data boundaries.
 ## Enforcement
 
 - The source adapter explicitly opens the map with read rights.
+- The named update event is opened with synchronization rights only.
 - The adapter interface exposes snapshots, not writable mapped memory.
 - CI tests parser behavior without requiring the game.
 - Dependency and release review checks the forbidden-interaction list.

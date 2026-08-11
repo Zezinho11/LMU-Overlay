@@ -67,7 +67,7 @@ using (openVr)
 
     await using var telemetry = new TelemetryRuntime(
         () => new LmuSharedMemoryReader(),
-        TimeSpan.FromMilliseconds(4),
+        TimeSpan.FromMilliseconds(8),
         TimeSpan.FromSeconds(1));
     telemetry.Start();
     var fuelTracker = new FuelStrategyTracker();

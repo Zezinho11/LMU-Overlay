@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.IO;
 using System.Windows;
@@ -40,6 +41,8 @@ public partial class OverlayWindow : Window
         Brush(66, 211, 166);
     private static readonly System.Windows.Media.Brush IndicatorActiveBrush =
         Brush(255, 135, 40);
+    private static readonly System.Windows.Media.Brush PersonalBestBrush =
+        Brush(193, 76, 255);
     private static readonly System.Windows.Media.Brush TireUnknownBrush =
         Brush(72, 84, 96);
     private static readonly System.Windows.Media.Brush TireColdBrush =
@@ -73,7 +76,7 @@ public partial class OverlayWindow : Window
 
     private readonly LayoutStore _layoutStore;
     private readonly FuelStrategyTracker _fuelStrategyTracker = new();
-    private readonly SectorReferenceTracker _sectorReferenceTracker = new();
+    private readonly PersistentSectorReferenceTracker _sectorReferenceTracker;
     private readonly Queue<(double TimeSeconds, double Throttle, double Brake)> _pedalHistory = new();
     private readonly int[] _pedalGraphPixels = new int[PedalGraphWidth * PedalGraphHeight];
     private readonly System.Windows.Media.Imaging.WriteableBitmap _pedalGraphBitmap;
@@ -100,11 +103,18 @@ public partial class OverlayWindow : Window
     private FuelStrategyWidgetState? _alertFuelState;
     private RaceControlWidgetState? _alertRaceControlState;
     private bool _nativeDashboardActive;
+    private bool _nativeInputsActive;
     private bool _nativeTimingActive;
 
-    public OverlayWindow(LayoutStore layoutStore)
+    public OverlayWindow(
+        LayoutStore layoutStore,
+        SectorReferenceStore? sectorReferenceStore = null,
+        PersonalBestLapStore? personalBestLapStore = null)
     {
         _layoutStore = layoutStore;
+        _sectorReferenceTracker = new(
+            sectorReferenceStore ?? new SectorReferenceStore(),
+            personalBestLapStore ?? new PersonalBestLapStore());
         _profile = layoutStore.Load();
         InitializeComponent();
         _pedalGraphBitmap = new System.Windows.Media.Imaging.WriteableBitmap(
@@ -150,6 +160,10 @@ public partial class OverlayWindow : Window
             _profile.LiveStandings,
             LiveStandingsWidget.Name);
 
+    public LmuOverlay.DirectX.NativeDashboardBounds GetNativeInputsBounds(
+        Rect gameBounds)
+        => GetNativeBounds(gameBounds, _profile.Inputs, InputsWidget.Name);
+
     public LmuOverlay.DirectX.NativeDashboardBounds GetNativeRelativeBounds(
         Rect gameBounds)
         => GetNativeBounds(gameBounds, _profile.Relative, RelativeWidget.Name);
@@ -173,6 +187,9 @@ public partial class OverlayWindow : Window
 
     public bool NativeDashboardShouldBeVisible =>
         _profile.Diagnostic.Visible && !IsEditMode;
+
+    public bool NativeInputsShouldBeVisible =>
+        _profile.Inputs.Visible && !IsEditMode;
 
     public bool NativeLiveStandingsShouldBeVisible =>
         _profile.LiveStandings.Visible && !IsEditMode;
@@ -202,6 +219,17 @@ public partial class OverlayWindow : Window
         }
 
         _nativeTimingActive = active;
+        ApplyProfile();
+    }
+
+    public void SetNativeInputsActive(bool active)
+    {
+        if (_nativeInputsActive == active)
+        {
+            return;
+        }
+
+        _nativeInputsActive = active;
         ApplyProfile();
     }
 
@@ -305,12 +333,29 @@ public partial class OverlayWindow : Window
             }
         }
 
-        var connected = snapshot.State == LmuConnectionState.Connected;
-        var dashboard = EssentialWidgetStateFactory.CreateDashboard(snapshot);
+        var sessionEnded = snapshot.Session?.GamePhase == LmuGamePhase.SessionOver;
+        var dashboardSnapshot = sessionEnded
+            ? LmuTelemetrySnapshot.Unavailable(
+                LmuConnectionState.Disconnected,
+                "Session ended.")
+            : snapshot;
+        var connected = snapshot.State == LmuConnectionState.Connected && !sessionEnded;
+        var dashboard = EssentialWidgetStateFactory.CreateDashboard(dashboardSnapshot);
+        var trackedSectors = _sectorReferenceTracker.Update(
+            dashboardSnapshot,
+            dashboard.SectorTimes);
+        dashboard = dashboard with
+        {
+            SectorTimes = trackedSectors,
+            BestLapTimeSeconds =
+                _sectorReferenceTracker.PersonalBestLapTimeSeconds > 0
+                    ? _sectorReferenceTracker.PersonalBestLapTimeSeconds
+                    : dashboard.BestLapTimeSeconds,
+        };
         if (!_nativeDashboardActive || IsEditMode)
         {
         SetText(ConnectionText, connected ? "CONECTADO" : snapshot.State.ToString().ToUpperInvariant());
-        var inputs = EssentialWidgetStateFactory.CreateInputs(snapshot);
+        var inputs = EssentialWidgetStateFactory.CreateInputs(dashboardSnapshot);
         SetText(TrackText, dashboard.Available ? dashboard.TrackName : "LMU");
         SetText(SpeedText, dashboard.Available
             ? $"{dashboard.SpeedKilometersPerHour:0} KM/H"
@@ -367,11 +412,10 @@ public partial class OverlayWindow : Window
             : IndicatorEnabledTextBrush);
         SetText(SectorLastLapText, FormatLapTime(dashboard.LastLapTimeSeconds));
         SetText(SectorBestLapText, FormatLapTime(dashboard.BestLapTimeSeconds));
-        var trackedSectors = _sectorReferenceTracker.Update(
-            snapshot,
-            dashboard.SectorTimes);
         UpdateSectorReadings(trackedSectors);
-        SetText(OptimalLapText, $"OPTIMAL {FormatLapTime(officialOptimalLapSeconds)}");
+        SetText(
+            OptimalLapText,
+            $"OPTIMAL {FormatLapTime(sessionEnded ? 0 : officialOptimalLapSeconds)}");
         SetText(DashboardThrottleText, dashboard.Available ? $"{dashboard.Throttle:P0}" : "--");
         SetText(DashboardBrakeText, dashboard.Available ? $"{dashboard.Brake:P0}" : "--");
         SetText(LongitudinalGText, dashboard.Available
@@ -464,7 +508,11 @@ public partial class OverlayWindow : Window
                     _profile.Settings.EstimatedPitLossSeconds,
                     _profile.Settings.AvailableTireSets,
                     _profile.Settings.TireWearLimitPercent / 100,
-                    _profile.Settings.EstimatedTireChangeSeconds));
+                    _profile.Settings.EstimatedTireChangeSeconds,
+                    _profile.Settings.ManualRemainingMinutes,
+                    _profile.Settings.ManualLapTimeSeconds,
+                    _profile.Settings.ManualFuelPerLapLiters,
+                    _profile.Settings.ManualFuelCapacityLiters));
             UpdateFuelStrategy(fuelStrategy);
             var raceControl = EssentialWidgetStateFactory.CreateRaceControl(snapshot);
             UpdateRaceControl(raceControl);
@@ -612,43 +660,30 @@ public partial class OverlayWindow : Window
             Sector1Text,
             Sector1DeltaText,
             sectors.CurrentSector1Seconds,
-            sectors.LastSector1Seconds,
             sectors.BestSector1Seconds);
         UpdateSectorReading(
             Sector2Text,
             Sector2DeltaText,
             sectors.CurrentSector2Seconds,
-            sectors.LastSector2Seconds,
             sectors.BestSector2Seconds);
         UpdateSectorReading(
             Sector3Text,
             Sector3DeltaText,
             sectors.CurrentSector3Seconds,
-            sectors.LastSector3Seconds,
             sectors.BestSector3Seconds);
     }
 
     private static void UpdateSectorReading(
         TextBlock timeText,
-        TextBlock deltaText,
+        TextBlock personalBestText,
         double currentSeconds,
-        double lastSeconds,
         double bestSeconds)
     {
-        var value = currentSeconds > 0 ? currentSeconds : lastSeconds;
-        SetText(timeText, value > 0 ? $"{value:0.000}" : "--.---");
-        if (value <= 0 || bestSeconds <= 0)
-        {
-            SetText(deltaText, "--.---");
-            deltaText.Foreground = System.Windows.Media.Brushes.LightGray;
-            return;
-        }
-
-        var delta = value - bestSeconds;
-        SetText(deltaText, delta.ToString("+0.000;-0.000;0.000"));
-        deltaText.Foreground = delta <= 0
-            ? System.Windows.Media.Brushes.LimeGreen
-            : System.Windows.Media.Brushes.OrangeRed;
+        SetText(timeText, currentSeconds > 0 ? $"{currentSeconds:0.000}" : "--.---");
+        SetText(personalBestText, bestSeconds > 0 ? $"{bestSeconds:0.000}" : "--.---");
+        personalBestText.Foreground = bestSeconds > 0
+            ? PersonalBestBrush
+            : System.Windows.Media.Brushes.LightGray;
     }
 
     private void UpdatePedalGraph(
@@ -956,6 +991,7 @@ public partial class OverlayWindow : Window
     {
         var renderedNatively = !IsEditMode &&
             ((element == DiagnosticWidget && _nativeDashboardActive) ||
+             (element == InputsWidget && _nativeInputsActive) ||
              ((element == LiveStandingsWidget || element == RelativeWidget) &&
               _nativeTimingActive));
         element.Visibility = placement.Visible &&

@@ -1,5 +1,8 @@
 # Roadmap
 
+The prioritized hardening work and its research basis are recorded in the
+[2026-08-05 product and technical audit](audits/2026-08-05-product-technical-audit.md).
+
 ## Phase 0 — foundation (current)
 
 - [x] Verify official LMU shared-memory headers and provenance.
@@ -17,6 +20,10 @@
 - [x] Add configurable stint limits, race-distance override, multi-stop and
   pit-loss projection.
 - [x] Add stateful fuel consumption and finish projection.
+- [x] Capture clean out-lap S2/S3 references and persist clean personal sector
+  bests per track and vehicle model for first-flying-lap deltas.
+- [x] Persist complete personal-best laps per track, driver and vehicle model,
+  keeping all displayed PB sectors tied to the same record lap.
 
 ## Phase 2 — desktop vertical slice
 
@@ -40,9 +47,14 @@
   cadence, allocation, working-set, and CPU soak-test gates.
 - [x] Move telemetry acquisition off the UI thread, reuse shared-memory buffers,
   isolate read failures, and expose runtime health counters.
+- [x] Replace fixed high-frequency polling with `LMU_Data_Event` wakeups,
+  counter-driven scoring refresh, direct read-only mapped copies and an 8 ms
+  recovery timeout.
 - [x] Move the latency-critical dashboard from WPF to a native Win32,
   Direct3D 11, Direct2D/DirectWrite and DirectComposition renderer while
   retaining WPF as the editor and compatibility fallback.
+- [x] Move driver inputs to a latest-frame native DirectComposition surface and
+  add a GPU-backed steering-wheel sprite without changing input semantics.
 
 ## Phase 3 — product coverage
 

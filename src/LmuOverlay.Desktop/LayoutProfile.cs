@@ -44,6 +44,10 @@ public sealed record OverlayProfileSettings
     public double FuelReserveLaps { get; init; } = 1;
     public double EnergyReservePercent { get; init; } = 2;
     public int ManualRemainingLaps { get; init; }
+    public double ManualRemainingMinutes { get; init; }
+    public double ManualLapTimeSeconds { get; init; }
+    public double ManualFuelPerLapLiters { get; init; }
+    public double ManualFuelCapacityLiters { get; init; }
     public int MaximumStintLaps { get; init; }
     public double EstimatedPitLossSeconds { get; init; } = 30;
     public int AvailableTireSets { get; init; }

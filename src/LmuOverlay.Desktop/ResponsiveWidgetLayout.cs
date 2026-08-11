@@ -23,7 +23,7 @@ public static class ResponsiveWidgetLayout
     public static WidgetLayoutSpec For(string widgetName) => widgetName switch
     {
         "DiagnosticWidget" => new(800, 480, 360, 216),
-        "InputsWidget" => new(360, 90, 180, 45),
+        "InputsWidget" => new(520, 220, 260, 110),
         "LiveStandingsWidget" or "RelativeWidget" => new(500, 410, 280, 230),
         "SessionFlagsWidget" => new(500, 190, 250, 95),
         "FuelStrategyWidget" => new(500, 400, 250, 200),

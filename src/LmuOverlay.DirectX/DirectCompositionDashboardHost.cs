@@ -58,6 +58,7 @@ internal sealed class DirectCompositionDashboardHost : IDisposable
     private ID2D1SolidColorBrush? _amber;
     private ID2D1SolidColorBrush? _red;
     private ID2D1SolidColorBrush? _blue;
+    private ID2D1SolidColorBrush? _purple;
     private ID2D1SolidColorBrush? _panel;
     private ID2D1SolidColorBrush? _border;
     private NativeDashboardBounds _bounds;
@@ -68,6 +69,7 @@ internal sealed class DirectCompositionDashboardHost : IDisposable
     private readonly PedalSample[] _pedalHistory = new PedalSample[512];
     private int _pedalHead;
     private int _pedalCount;
+    private string _sessionKey = string.Empty;
 
     public DirectCompositionDashboardHost()
     {
@@ -123,6 +125,12 @@ internal sealed class DirectCompositionDashboardHost : IDisposable
             _visible = true;
         }
         EnsureSwapChain(frame.Bounds.Width, frame.Bounds.Height);
+        if (!string.Equals(_sessionKey, frame.SessionKey, StringComparison.Ordinal))
+        {
+            _sessionKey = frame.SessionKey;
+            _pedalHead = 0;
+            _pedalCount = 0;
+        }
         CapturePedals(frame);
         Draw(frame);
         _renderedSequence = frame.Sequence;
@@ -205,6 +213,7 @@ internal sealed class DirectCompositionDashboardHost : IDisposable
         _amber = drawing.CreateSolidColorBrush(Color(245, 174, 54));
         _red = drawing.CreateSolidColorBrush(Color(247, 66, 77));
         _blue = drawing.CreateSolidColorBrush(Color(66, 111, 255));
+        _purple = drawing.CreateSolidColorBrush(Color(193, 76, 255));
         _panel = drawing.CreateSolidColorBrush(Color(5, 8, 10, 238));
         _border = drawing.CreateSolidColorBrush(Color(66, 211, 166));
     }
@@ -225,18 +234,23 @@ internal sealed class DirectCompositionDashboardHost : IDisposable
 
         FillRounded(drawing, 3, 3, 794, 474, 18, _panel!);
         DrawRounded(drawing, 3, 3, 794, 474, 18, _border!, 3);
-        DrawDashboard(drawing, dashboard);
+        DrawDashboard(drawing, dashboard, frame.CapturedTimestamp, frame.FuelSaveFraction);
 
         drawing.EndDraw().CheckError();
         _swapChain!.Present(1, PresentFlags.None).CheckError();
     }
 
-    private void DrawDashboard(ID2D1DeviceContext drawing, LmuOverlay.Widgets.DashboardWidgetState dashboard)
+    private void DrawDashboard(
+        ID2D1DeviceContext drawing,
+        LmuOverlay.Widgets.DashboardWidgetState dashboard,
+        long timestamp,
+        double fuelSaveFraction)
     {
         DrawText(drawing, dashboard.TrackName.ToUpperInvariant(), 42, 54, 210, 20, 11, _muted!);
         DrawText(drawing, "REDFOX RACING", 236, 34, 328, 36, 26, _white!, TextAlignment.Center);
         DrawText(drawing, dashboard.SessionName, 606, 54, 152, 20, 11, _muted!, TextAlignment.Trailing);
         DrawShiftLights(drawing, dashboard.EngineRpmFraction);
+        DrawSideLights(drawing, dashboard, timestamp, fuelSaveFraction);
         DrawPanel(drawing, 42, 86, 225, 176);
         DrawPanel(drawing, 276, 86, 248, 176);
         DrawPanel(drawing, 533, 86, 225, 176);
@@ -264,7 +278,7 @@ internal sealed class DirectCompositionDashboardHost : IDisposable
         DrawText(drawing, $"LAST {FormatLap(dashboard.LastLapTimeSeconds)}", 548, 123, 190, 20, 13, _muted!);
         DrawText(drawing, $"BEST {FormatLap(dashboard.BestLapTimeSeconds)}", 548, 146, 190, 20, 13, _green!);
         DrawText(drawing, $"OPTIMAL {FormatLap(dashboard.OptimalLapTimeSeconds)}", 548, 169, 190, 20, 13, _cyan!);
-        DrawControlCards(drawing, dashboard);
+        DrawControlCards(drawing, dashboard, timestamp);
         DrawText(drawing, $"OIL {dashboard.EngineOilTemperatureCelsius:0}°  WATER {dashboard.EngineWaterTemperatureCelsius:0}°", 548, 242, 190, 16, 11, _muted!);
 
         DrawText(drawing, "SECTORS", 42, 276, 225, 23, 13, _cyan!, TextAlignment.Center);
@@ -284,29 +298,20 @@ internal sealed class DirectCompositionDashboardHost : IDisposable
         var sectors = dashboard.SectorTimes;
         var values = new[]
         {
-            ("S1", sectors.CurrentSector1Seconds, sectors.LastSector1Seconds, sectors.BestSector1Seconds),
-            ("S2", sectors.CurrentSector2Seconds, sectors.LastSector2Seconds, sectors.BestSector2Seconds),
-            ("S3", sectors.CurrentSector3Seconds, sectors.LastSector3Seconds, sectors.BestSector3Seconds),
+            ("S1", sectors.CurrentSector1Seconds, sectors.BestSector1Seconds),
+            ("S2", sectors.CurrentSector2Seconds, sectors.BestSector2Seconds),
+            ("S3", sectors.CurrentSector3Seconds, sectors.BestSector3Seconds),
         };
         for (var index = 0; index < values.Length; index++)
         {
-            var value = values[index].Item2 > 0 ? values[index].Item2 : values[index].Item3;
+            var current = values[index].Item2;
+            var personalBest = values[index].Item3;
             var y = 314 + (index * 34);
             DrawText(drawing, values[index].Item1, 58, y, 32, 22, 14, _white!);
-            DrawText(drawing, value > 0 ? $"{value:0.000}" : "--.---", 96, y, 76, 22, 14, _white!, TextAlignment.Trailing);
-            var delta = value > 0 && values[index].Item4 > 0
-                ? value - values[index].Item4
-                : double.NaN;
-            DrawText(
-                drawing,
-                double.IsFinite(delta) ? delta.ToString("+0.000;-0.000;0.000") : "--.---",
-                178,
-                y,
-                68,
-                22,
-                12,
-                delta <= 0 ? _green! : _red!,
-                TextAlignment.Trailing);
+            DrawText(drawing, current > 0 ? $"{current:0.000}" : "--.---",
+                88, y, 76, 22, 14, current > 0 ? _white! : _muted!, TextAlignment.Trailing);
+            DrawText(drawing, personalBest > 0 ? $"{personalBest:0.000}" : "--.---",
+                170, y, 76, 22, 14, personalBest > 0 ? _purple! : _muted!, TextAlignment.Trailing);
         }
         DrawText(
             drawing,
@@ -331,7 +336,10 @@ internal sealed class DirectCompositionDashboardHost : IDisposable
         }
     }
 
-    private void DrawControlCards(ID2D1DeviceContext drawing, LmuOverlay.Widgets.DashboardWidgetState dashboard)
+    private void DrawControlCards(
+        ID2D1DeviceContext drawing,
+        LmuOverlay.Widgets.DashboardWidgetState dashboard,
+        long timestamp)
     {
         var values = new[]
         {
@@ -343,9 +351,35 @@ internal sealed class DirectCompositionDashboardHost : IDisposable
         for (var index = 0; index < values.Length; index++)
         {
             var x = 548 + (index * 48);
-            FillRounded(drawing, x, 195, 43, 42, 4, _green!);
+            var active = index == 3
+                ? dashboard.AbsActive
+                : dashboard.TractionControlActive;
+            var blinkOn = (timestamp / Math.Max(1, Stopwatch.Frequency / 8)) % 2 == 0;
+            FillRounded(drawing, x, 195, 43, 42, 4, active && blinkOn ? _amber! : _green!);
             DrawText(drawing, values[index].Item1, x, 197, 43, 14, 9, _panel!, TextAlignment.Center);
             DrawText(drawing, values[index].Item3 > 0 ? values[index].Item2.ToString() : "--", x, 211, 43, 21, 15, _white!, TextAlignment.Center);
+        }
+    }
+
+    private void DrawSideLights(
+        ID2D1DeviceContext drawing,
+        LmuOverlay.Widgets.DashboardWidgetState dashboard,
+        long timestamp,
+        double fuelSaveFraction)
+    {
+        var blinkOn = (timestamp / Math.Max(1, Stopwatch.Frequency / 8)) % 2 == 0;
+        var intervention = dashboard.AbsActive || dashboard.TractionControlActive;
+        var saving = fuelSaveFraction >= 0.005;
+        var brush = intervention
+            ? blinkOn ? _amber! : _red!
+            : saving
+                ? blinkOn ? _cyan! : _blue!
+                : _muted!;
+        for (var index = 0; index < 6; index++)
+        {
+            var y = 157 + (index * 23);
+            drawing.FillEllipse(new Ellipse(new Vector2(20, y), 5, 5), brush);
+            drawing.FillEllipse(new Ellipse(new Vector2(780, y), 5, 5), brush);
         }
     }
 
@@ -361,8 +395,8 @@ internal sealed class DirectCompositionDashboardHost : IDisposable
         foreach (var tire in tires)
         {
             var color = TireBrush(tire.Item2);
-            FillRounded(drawing, tire.Item4, tire.Item5 + 4, 12, 28, 5, color);
-            DrawText(drawing, $"{tire.Item1}  {tire.Item2:0}° · {tire.Item3:P0}", tire.Item4 + 18, tire.Item5, 94, 34, 13, _white!);
+            FillRounded(drawing, tire.Item4, tire.Item5 + 1, 16, 34, 6, color);
+            DrawText(drawing, $"{tire.Item1}  {tire.Item2:0}° · {tire.Item3:P0}", tire.Item4 + 22, tire.Item5, 90, 36, 14, _white!);
         }
         DrawText(drawing, $"COMPOUND {dashboard.TireCompound.ToUpperInvariant()}", 294, 414, 212, 18, 11, _amber!, TextAlignment.Center);
     }
@@ -411,7 +445,11 @@ internal sealed class DirectCompositionDashboardHost : IDisposable
             if (hasPrevious)
             {
                 drawing.DrawLine(previousThrottle, throttlePoint, _green!, 2);
-                drawing.DrawLine(previousBrake, brakePoint, _red!, 2);
+                drawing.DrawLine(
+                    previousBrake,
+                    brakePoint,
+                    sample.AbsActive ? _amber! : _red!,
+                    sample.AbsActive ? 3 : 2);
             }
 
             previousThrottle = throttlePoint;
@@ -432,7 +470,8 @@ internal sealed class DirectCompositionDashboardHost : IDisposable
         _pedalHistory[_pedalHead] = new(
             frame.CapturedTimestamp,
             (float)Math.Clamp(frame.Dashboard.Throttle, 0, 1),
-            (float)Math.Clamp(frame.Dashboard.Brake, 0, 1));
+            (float)Math.Clamp(frame.Dashboard.Brake, 0, 1),
+            frame.Dashboard.AbsActive);
         _pedalHead = (_pedalHead + 1) % _pedalHistory.Length;
         _pedalCount = Math.Min(_pedalHistory.Length, _pedalCount + 1);
     }
@@ -483,7 +522,11 @@ internal sealed class DirectCompositionDashboardHost : IDisposable
     private static Color4 Color(byte red, byte green, byte blue, byte alpha = 255) =>
         new(red / 255f, green / 255f, blue / 255f, alpha / 255f);
 
-    private readonly record struct PedalSample(long Timestamp, float Throttle, float Brake);
+    private readonly record struct PedalSample(
+        long Timestamp,
+        float Throttle,
+        float Brake,
+        bool AbsActive);
 
     private void ReleaseDrawingResources()
     {
@@ -494,6 +537,7 @@ internal sealed class DirectCompositionDashboardHost : IDisposable
         _amber?.Dispose(); _amber = null;
         _red?.Dispose(); _red = null;
         _blue?.Dispose(); _blue = null;
+        _purple?.Dispose(); _purple = null;
         _panel?.Dispose(); _panel = null;
         _border?.Dispose(); _border = null;
         _drawing?.Dispose(); _drawing = null;

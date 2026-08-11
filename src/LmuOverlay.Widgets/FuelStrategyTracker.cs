@@ -54,7 +54,11 @@ public sealed record FuelStrategyOptions(
     double EstimatedPitLossSeconds = 30,
     int AvailableTireSets = 0,
     double TireWearLimitFraction = 0.7,
-    double EstimatedTireChangeSeconds = 15);
+    double EstimatedTireChangeSeconds = 15,
+    double ManualRemainingMinutes = 0,
+    double ManualLapTimeSeconds = 0,
+    double ManualFuelPerLapLiters = 0,
+    double ManualFuelCapacityLiters = 0);
 
 public sealed class FuelStrategyTracker
 {
@@ -73,6 +77,8 @@ public sealed class FuelStrategyTracker
     private double _previousVirtualEnergy;
     private double _previousMaximumTireWear;
     private DateTimeOffset _lastRainSampleAt = DateTimeOffset.MinValue;
+    private DateTimeOffset _previousSampleAt = DateTimeOffset.MinValue;
+    private bool _lapContaminated;
 
     public FuelStrategyWidgetState Update(
         LmuTelemetrySnapshot snapshot,
@@ -96,6 +102,7 @@ public sealed class FuelStrategyTracker
                 session,
                 completedLaps,
                 player.FuelLiters,
+                NormalizeVirtualEnergy(player.VirtualEnergy),
                 MaximumTireWear(player.TireWear));
         }
 
@@ -105,6 +112,18 @@ public sealed class FuelStrategyTracker
         var virtualEnergy = NormalizeVirtualEnergy(player.VirtualEnergy);
         var virtualEnergyRefilled =
             virtualEnergy > _previousVirtualEnergy + 0.005;
+        var inPit = IsInPitLane(playerStanding);
+        var initialOutLap = completedLaps == 0 || player.LapNumber <= 0;
+        var elapsedSincePrevious = _previousSampleAt == DateTimeOffset.MinValue
+            ? TimeSpan.MaxValue
+            : snapshot.CapturedAt - _previousSampleAt;
+        var abruptFuelChange = elapsedSincePrevious >= TimeSpan.Zero &&
+            elapsedSincePrevious < TimeSpan.FromSeconds(2) &&
+            Math.Abs(player.FuelLiters - _previousFuel) > 5;
+        if (inPit || initialOutLap || refueled || virtualEnergyRefilled || abruptFuelChange)
+        {
+            _lapContaminated = true;
+        }
         if (refueled)
         {
             _lapStartFuel = player.FuelLiters;
@@ -118,37 +137,29 @@ public sealed class FuelStrategyTracker
         if (completedLaps > _lastCompletedLaps)
         {
             var consumed = _lapStartFuel - player.FuelLiters;
-            if (!refueled &&
-                consumed > 0.05 &&
-                consumed < Math.Max(1, player.FuelCapacityLiters))
+            if (!_lapContaminated &&
+                IsPlausibleFuelSample(consumed, player.FuelCapacityLiters, _samples))
             {
-                _samples.Enqueue(consumed);
-                while (_samples.Count > MaximumSamples)
-                {
-                    _samples.Dequeue();
-                }
+                EnqueueSample(_samples, consumed);
             }
 
             var virtualEnergyUsed = _lapStartVirtualEnergy - virtualEnergy;
-            if (!virtualEnergyRefilled &&
-                virtualEnergyUsed > 0.0001 &&
-                virtualEnergyUsed <= 1)
+            if (!_lapContaminated &&
+                IsPlausibleEnergySample(virtualEnergyUsed, _virtualEnergySamples))
             {
-                _virtualEnergySamples.Enqueue(virtualEnergyUsed);
-                while (_virtualEnergySamples.Count > MaximumSamples)
-                {
-                    _virtualEnergySamples.Dequeue();
-                }
+                EnqueueSample(_virtualEnergySamples, virtualEnergyUsed);
             }
 
-            if (playerStanding?.LastLapTimeSeconds is > 10 and < 1800)
+            if (!_lapContaminated &&
+                playerStanding?.LastLapTimeSeconds is > 10 and < 1800)
             {
                 EnqueueSample(_paceSamples, playerStanding.LastLapTimeSeconds);
             }
 
             var maximumTireWear = MaximumTireWear(player.TireWear);
             var tireWearUsed = maximumTireWear - _previousMaximumTireWear;
-            if (tireWearUsed > 0.00001 && tireWearUsed < 0.25)
+            if (!_lapContaminated &&
+                tireWearUsed > 0.00001 && tireWearUsed < 0.25)
             {
                 EnqueueSample(_tireWearSamples, tireWearUsed);
             }
@@ -158,41 +169,55 @@ public sealed class FuelStrategyTracker
             _lapStartFuel = player.FuelLiters;
             _lapStartVirtualEnergy = virtualEnergy;
             _lastCompletedLaps = completedLaps;
+            _lapContaminated = inPit || refueled || virtualEnergyRefilled;
         }
 
         _previousFuel = player.FuelLiters;
         _previousVirtualEnergy = virtualEnergy;
-        var average = WeightedAverage(_samples);
-        var projectedConsumption = ConservativeProjection(_samples, average);
+        _previousSampleAt = snapshot.CapturedAt;
+        var learnedAverage = WeightedAverage(_samples);
+        var manualConsumption = Math.Clamp(
+            options.ManualFuelPerLapLiters,
+            0,
+            100);
+        var average = manualConsumption > 0
+            ? manualConsumption
+            : learnedAverage;
+        var projectedConsumption = manualConsumption > 0
+            ? manualConsumption
+            : ConservativeProjection(_samples, average);
         var virtualEnergyAverage = _virtualEnergySamples.Count > 0
             ? WeightedAverage(_virtualEnergySamples)
             : 0;
-        var averagePace = _paceSamples.Count > 0
-            ? WeightedAverage(_paceSamples)
-            : ReferenceLapSeconds(playerStanding);
+        var manualLapTime = Math.Clamp(options.ManualLapTimeSeconds, 0, 3600);
+        var averagePace = manualLapTime > 0
+            ? manualLapTime
+            : _paceSamples.Count > 0
+                ? WeightedAverage(_paceSamples)
+                : ReferenceLapSeconds(playerStanding);
         var paceTrend = Math.Clamp(LinearTrend(_paceSamples), 0, 5);
         var maximumWear = MaximumTireWear(player.TireWear);
         var tireWearPerLap = ConservativeProjection(
             _tireWearSamples,
             WeightedAverage(_tireWearSamples));
+        var referenceLapSeconds = manualLapTime > 0
+            ? manualLapTime
+            : ReferenceLapSeconds(playerStanding);
+        var manualRemainingSeconds = Math.Clamp(
+            options.ManualRemainingMinutes,
+            0,
+            24 * 60) * 60;
         var lapsToFinish = options.ManualRemainingLaps > 0
             ? options.ManualRemainingLaps
-            : EstimateLapsToFinish(session, playerStanding, completedLaps);
-        var referenceLapSeconds = ReferenceLapSeconds(playerStanding);
+            : manualRemainingSeconds > 0 && referenceLapSeconds > 0
+                ? (int)Math.Ceiling(manualRemainingSeconds / referenceLapSeconds)
+                : EstimateLapsToFinish(session, playerStanding, completedLaps);
         var required = projectedConsumption > 0
             ? projectedConsumption * (lapsToFinish + reserveLaps)
             : 0;
-        var margin = projectedConsumption > 0 ? player.FuelLiters - required : 0;
         var estimatedRange = projectedConsumption > 0
             ? player.FuelLiters / projectedConsumption
             : 0;
-        var targetConsumption = lapsToFinish >= 0
-            ? player.FuelLiters / Math.Max(1, lapsToFinish + reserveLaps)
-            : 0;
-        var requiredSaving = projectedConsumption > targetConsumption &&
-            projectedConsumption > 0
-                ? 1 - (targetConsumption / projectedConsumption)
-                : 0;
         var fuelLapsUntilPit = projectedConsumption > 0
             ? Math.Max(
                 0,
@@ -215,29 +240,13 @@ public sealed class FuelStrategyTracker
         var suggestedPitLap = projectedConsumption > 0
             ? completedLaps + lapsUntilPit
             : 0;
-        var requiredVirtualEnergy = virtualEnergyAverage > 0
-            ? virtualEnergyAverage * (lapsToFinish + reserveLaps) + energyReserve
-            : 0;
-        var virtualEnergyMargin = virtualEnergyAverage > 0
-            ? virtualEnergy - requiredVirtualEnergy
-            : 0;
-        var virtualEnergyShort = virtualEnergyAverage > 0 &&
-            virtualEnergyMargin < 0;
-        var virtualEnergyMarginal = virtualEnergyAverage > 0 &&
-            virtualEnergyMargin >= 0 &&
-            virtualEnergyMargin < virtualEnergyAverage * 0.5;
-        var status = _samples.Count == 0
-            ? "LEARNING"
-            : margin < 0 || virtualEnergyShort
-                ? "SHORT"
-                : margin < average * 0.5 || virtualEnergyMarginal
-                    ? "MARGINAL"
-                    : "GOOD";
-
+        var fuelCapacity = options.ManualFuelCapacityLiters > 0
+            ? Math.Clamp(options.ManualFuelCapacityLiters, 1, 1000)
+            : player.FuelCapacityLiters;
         var fuelStintCapacity = projectedConsumption > 0 &&
-            player.FuelCapacityLiters > 0
+            fuelCapacity > 0
                 ? Math.Max(1, (int)Math.Floor(
-                    player.FuelCapacityLiters / projectedConsumption))
+                    fuelCapacity / projectedConsumption))
                 : int.MaxValue;
         var strategyInput = new EnduranceStrategyInput(
             completedLaps,
@@ -248,7 +257,7 @@ public sealed class FuelStrategyTracker
             averagePace,
             paceTrend,
             projectedConsumption,
-            player.FuelCapacityLiters,
+            fuelCapacity,
             projectedConsumption * reserveLaps,
             Math.Clamp(options.EstimatedPitLossSeconds, 0, 600),
             Math.Clamp(options.EstimatedTireChangeSeconds, 0, 180),
@@ -257,6 +266,44 @@ public sealed class FuelStrategyTracker
             Math.Clamp(options.TireWearLimitFraction, 0.2, 0.95),
             Math.Max(0, options.AvailableTireSets));
         var strategy = EnduranceStrategyPlanner.Calculate(strategyInput);
+        var hasPlannedStop = strategy.Available && strategy.Stops > 0;
+        var currentStintTargetLaps = hasPlannedStop
+            ? strategy.StintLaps[0]
+            : lapsToFinish;
+        var currentStintRequired = projectedConsumption > 0
+            ? projectedConsumption * (currentStintTargetLaps + reserveLaps)
+            : 0;
+        var margin = projectedConsumption > 0
+            ? player.FuelLiters - currentStintRequired
+            : 0;
+        var targetConsumption = currentStintTargetLaps >= 0
+            ? player.FuelLiters /
+              Math.Max(1, currentStintTargetLaps + reserveLaps)
+            : 0;
+        var requiredSaving = projectedConsumption > targetConsumption &&
+            projectedConsumption > 0
+                ? 1 - (targetConsumption / projectedConsumption)
+                : 0;
+        var requiredVirtualEnergy = virtualEnergyAverage > 0
+            ? virtualEnergyAverage *
+              (currentStintTargetLaps + reserveLaps) + energyReserve
+            : 0;
+        var virtualEnergyMargin = virtualEnergyAverage > 0
+            ? virtualEnergy - requiredVirtualEnergy
+            : 0;
+        var virtualEnergyShort = virtualEnergyAverage > 0 &&
+            virtualEnergyMargin < 0;
+        var virtualEnergyMarginal = virtualEnergyAverage > 0 &&
+            virtualEnergyMargin >= 0 &&
+            virtualEnergyMargin < virtualEnergyAverage * 0.5;
+        var isLearning = _samples.Count == 0 && manualConsumption <= 0;
+        var status = isLearning
+            ? "LEARNING"
+            : margin < 0 || virtualEnergyShort
+                ? "SHORT"
+                : margin < average * 0.5 || virtualEnergyMarginal
+                    ? "MARGINAL"
+                    : "GOOD";
         var scenarioAdvice = RaceScenarioAdvisor.Calculate(
             strategyInput,
             strategy,
@@ -279,7 +326,7 @@ public sealed class FuelStrategyTracker
 
         return new(
             true,
-            _samples.Count == 0,
+            isLearning,
             player.FuelLiters,
             average,
             _samples.Count,
@@ -300,13 +347,15 @@ public sealed class FuelStrategyTracker
             requiredSaving,
             lapsUntilPit,
             suggestedPitLap,
-            Math.Max(0, required - player.FuelLiters),
-            Confidence(_samples.Count),
+            hasPlannedStop && strategy.FuelAtStopsLiters.Count > 0
+                ? strategy.FuelAtStopsLiters[0]
+                : Math.Max(0, required - player.FuelLiters),
+            manualConsumption > 0 ? "MANUAL" : Confidence(_samples.Count),
             status)
         {
             EstimatedPitStops = estimatedPitStops,
             EstimatedTotalPitLossSeconds = pitLoss,
-            PlanSummary = _samples.Count == 0 || !strategy.Available
+            PlanSummary = isLearning || !strategy.Available
                 ? "LEARNING STINT"
                 : strategy.Summary,
             AveragePaceSeconds = averagePace,
@@ -333,6 +382,7 @@ public sealed class FuelStrategyTracker
         LmuSessionSnapshot session,
         int completedLaps,
         double fuelLiters,
+        double virtualEnergy,
         double maximumTireWear)
     {
         _samples.Clear();
@@ -345,10 +395,56 @@ public sealed class FuelStrategyTracker
         _lastCompletedLaps = completedLaps;
         _lapStartFuel = fuelLiters;
         _previousFuel = fuelLiters;
-        _lapStartVirtualEnergy = 0;
-        _previousVirtualEnergy = 0;
+        _lapStartVirtualEnergy = virtualEnergy;
+        _previousVirtualEnergy = virtualEnergy;
         _previousMaximumTireWear = maximumTireWear;
         _lastRainSampleAt = DateTimeOffset.MinValue;
+        _previousSampleAt = DateTimeOffset.MinValue;
+        _lapContaminated = completedLaps == 0;
+    }
+
+    private static bool IsInPitLane(LmuVehicleStanding? standing) =>
+        standing?.IsInPits == true ||
+        standing?.PitState == LmuPitState.Entering ||
+        standing?.PitState == LmuPitState.Stopped;
+
+    private static bool IsPlausibleFuelSample(
+        double consumed,
+        double capacity,
+        IEnumerable<double> samples)
+    {
+        var maximum = capacity > 0
+            ? Math.Clamp(capacity * 0.25, 5, 20)
+            : 20;
+        if (!double.IsFinite(consumed) || consumed is <= 0.05 || consumed > maximum)
+        {
+            return false;
+        }
+
+        return IsConsistentWithHistory(consumed, samples);
+    }
+
+    private static bool IsPlausibleEnergySample(
+        double consumed,
+        IEnumerable<double> samples) =>
+        double.IsFinite(consumed) &&
+        consumed is > 0.0001 and <= 1 &&
+        IsConsistentWithHistory(consumed, samples);
+
+    private static bool IsConsistentWithHistory(
+        double value,
+        IEnumerable<double> samples)
+    {
+        var history = samples.OrderBy(sample => sample).ToArray();
+        if (history.Length < 2)
+        {
+            return true;
+        }
+
+        var median = history.Length % 2 == 0
+            ? (history[history.Length / 2 - 1] + history[history.Length / 2]) / 2
+            : history[history.Length / 2];
+        return median <= 0 || value >= median * 0.45 && value <= median * 1.8;
     }
 
     private void CaptureRainSample(double rainIntensity, DateTimeOffset capturedAt)

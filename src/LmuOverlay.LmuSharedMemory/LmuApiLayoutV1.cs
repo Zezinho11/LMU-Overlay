@@ -75,6 +75,8 @@ public static class LmuApiLayoutV1
     public const int ScoringFlagOffset = 504;
     public const int ScoringUnderYellowOffset = 505;
     public const int ScoringInGarageOffset = 507;
+    public const int ScoringBestLapSector1Offset = 528;
+    public const int ScoringBestLapSector2Offset = 532;
     public const int ScoringFuelFractionOffset = 578;
     public const int ScoringDrsActiveOffset = 579;
 

@@ -1,14 +1,19 @@
 using System.Globalization;
 using System.IO.MemoryMappedFiles;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
+using Microsoft.Win32.SafeHandles;
 using LmuOverlay.Contracts;
 using LmuOverlay.Domain;
 
 namespace LmuOverlay.LmuSharedMemory;
 
 [SupportedOSPlatform("windows")]
-public sealed class LmuSharedMemoryReader : ILmuTelemetrySource
+public sealed unsafe class LmuSharedMemoryReader :
+    ILmuTelemetrySource,
+    IWaitableTelemetrySource
 {
     private readonly MemoryMappedFile? _map;
     private readonly MemoryMappedViewAccessor? _view;
@@ -16,6 +21,10 @@ public sealed class LmuSharedMemoryReader : ILmuTelemetrySource
     private readonly byte[] _playerBuffer = new byte[LmuApiLayoutV1.VehicleTelemetrySize];
     private readonly LmuConnectionState? _startupFailureState;
     private readonly string _startupFailureDetail = string.Empty;
+    private readonly NamedEventWaitHandle? _updateEvent;
+    private WaitHandle[]? _waitHandles;
+    private byte* _viewPointer;
+    private bool _pointerAcquired;
     private LmuTelemetrySnapshot? _lastSnapshot;
     private long _lastFullParseTimestamp;
 
@@ -30,6 +39,11 @@ public sealed class LmuSharedMemoryReader : ILmuTelemetrySource
                 0,
                 LmuApiLayoutV1.ObjectSize,
                 MemoryMappedFileAccess.Read);
+            _view.SafeMemoryMappedViewHandle.AcquirePointer(ref _viewPointer);
+            _viewPointer += (nint)_view.PointerOffset;
+            _pointerAcquired = true;
+            _updateEvent = NamedEventWaitHandle.TryOpen(
+                LmuApiLayoutV1.EventName);
         }
         catch (FileNotFoundException)
         {
@@ -42,6 +56,27 @@ public sealed class LmuSharedMemoryReader : ILmuTelemetrySource
             _startupFailureState = LmuConnectionState.AccessDenied;
             _startupFailureDetail = "Windows denied read-only access to LMU_Data.";
         }
+    }
+
+    public TelemetryUpdateWaitResult WaitForUpdate(
+        WaitHandle cancellation,
+        TimeSpan timeout)
+    {
+        ArgumentNullException.ThrowIfNull(cancellation);
+        if (_updateEvent is null)
+        {
+            return cancellation.WaitOne(timeout)
+                ? TelemetryUpdateWaitResult.Cancelled
+                : TelemetryUpdateWaitResult.TimedOut;
+        }
+
+        _waitHandles ??= [cancellation, _updateEvent];
+        return WaitHandle.WaitAny(_waitHandles, timeout) switch
+        {
+            0 => TelemetryUpdateWaitResult.Cancelled,
+            1 => TelemetryUpdateWaitResult.Signaled,
+            _ => TelemetryUpdateWaitResult.TimedOut,
+        };
     }
 
     public LmuProbeSnapshot ReadProbeSnapshot()
@@ -86,7 +121,10 @@ public sealed class LmuSharedMemoryReader : ILmuTelemetrySource
         }
 
         var now = Stopwatch.GetTimestamp();
+        var scoringSequence = ReadUInt32(
+            LmuApiLayoutV1.EventOffset(LmuApiLayoutV1.ScoringUpdateEventIndex));
         var requiresFullRead = _lastSnapshot is null ||
+            scoringSequence != _lastSnapshot.ScoringSequence ||
             _lastFullParseTimestamp == 0 ||
             now - _lastFullParseTimestamp >= Stopwatch.Frequency / 5;
         if (!requiresFullRead && TryReadPlayerTelemetryBlock() is { } fastSnapshot)
@@ -100,13 +138,13 @@ public sealed class LmuSharedMemoryReader : ILmuTelemetrySource
 
     private LmuTelemetrySnapshot ReadFullSnapshot()
     {
-        var view = _view ?? throw new ObjectDisposedException(nameof(LmuSharedMemoryReader));
+        _ = _view ?? throw new ObjectDisposedException(nameof(LmuSharedMemoryReader));
         for (var attempt = 0; attempt < 3; attempt++)
         {
-            var scoringBefore = view.ReadUInt32(
+            var scoringBefore = ReadUInt32(
                 LmuApiLayoutV1.EventOffset(LmuApiLayoutV1.ScoringUpdateEventIndex));
 
-            var bytesRead = view.ReadArray(0, _buffer, 0, _buffer.Length);
+            var bytesRead = CopyToBuffer(0, _buffer);
             if (bytesRead != _buffer.Length)
             {
                 return LmuTelemetrySnapshot.Unavailable(
@@ -114,7 +152,7 @@ public sealed class LmuSharedMemoryReader : ILmuTelemetrySource
                     $"Expected {_buffer.Length} bytes, read {bytesRead}.");
             }
 
-            var scoringAfter = view.ReadUInt32(
+            var scoringAfter = ReadUInt32(
                 LmuApiLayoutV1.EventOffset(LmuApiLayoutV1.ScoringUpdateEventIndex));
 
             // Scoring and telemetry are independent producer streams. Requiring
@@ -147,9 +185,9 @@ public sealed class LmuSharedMemoryReader : ILmuTelemetrySource
             return null;
         }
 
-        var activeVehicles = _view.ReadByte(LmuApiLayoutV1.ActiveVehiclesOffset);
-        var reportedIndex = _view.ReadByte(LmuApiLayoutV1.PlayerVehicleIndexOffset);
-        var hasReportedVehicle = _view.ReadBoolean(LmuApiLayoutV1.PlayerHasVehicleOffset);
+        var activeVehicles = ReadByte(LmuApiLayoutV1.ActiveVehiclesOffset);
+        var reportedIndex = ReadByte(LmuApiLayoutV1.PlayerVehicleIndexOffset);
+        var hasReportedVehicle = ReadBoolean(LmuApiLayoutV1.PlayerHasVehicleOffset);
         var playerIndex = ResolvePlayerIndex(
             activeVehicles,
             reportedIndex,
@@ -162,14 +200,12 @@ public sealed class LmuSharedMemoryReader : ILmuTelemetrySource
 
         for (var attempt = 0; attempt < 3; attempt++)
         {
-            var telemetryBefore = _view.ReadUInt32(
+            var telemetryBefore = ReadUInt32(
                 LmuApiLayoutV1.EventOffset(LmuApiLayoutV1.TelemetryUpdateEventIndex));
-            var bytesRead = _view.ReadArray(
+            var bytesRead = CopyToBuffer(
                 LmuApiLayoutV1.VehicleTelemetryOffset(playerIndex),
-                _playerBuffer,
-                0,
-                _playerBuffer.Length);
-            var telemetryAfter = _view.ReadUInt32(
+                _playerBuffer);
+            var telemetryAfter = ReadUInt32(
                 LmuApiLayoutV1.EventOffset(LmuApiLayoutV1.TelemetryUpdateEventIndex));
             if (bytesRead == _playerBuffer.Length && telemetryBefore == telemetryAfter)
             {
@@ -203,7 +239,7 @@ public sealed class LmuSharedMemoryReader : ILmuTelemetrySource
         }
 
         if (hasReportedVehicle && reportedIndex < activeVehicles &&
-            _view.ReadInt32(
+            ReadInt32(
                 LmuApiLayoutV1.VehicleTelemetryOffset(reportedIndex) +
                 LmuApiLayoutV1.TelemetryVehicleIdOffset) == playerVehicleId)
         {
@@ -212,7 +248,7 @@ public sealed class LmuSharedMemoryReader : ILmuTelemetrySource
 
         for (var index = 0; index < activeVehicles; index++)
         {
-            if (_view.ReadInt32(
+            if (ReadInt32(
                     LmuApiLayoutV1.VehicleTelemetryOffset(index) +
                     LmuApiLayoutV1.TelemetryVehicleIdOffset) == playerVehicleId)
             {
@@ -223,9 +259,61 @@ public sealed class LmuSharedMemoryReader : ILmuTelemetrySource
         return -1;
     }
 
+    private int CopyToBuffer(int offset, byte[] destination)
+    {
+        if (!_pointerAcquired || _viewPointer == null)
+        {
+            return 0;
+        }
+
+        new ReadOnlySpan<byte>(_viewPointer + offset, destination.Length)
+            .CopyTo(destination);
+        return destination.Length;
+    }
+
+    private byte ReadByte(int offset) => *(_viewPointer + offset);
+
+    private bool ReadBoolean(int offset) => ReadByte(offset) != 0;
+
+    private int ReadInt32(int offset) =>
+        Unsafe.ReadUnaligned<int>(_viewPointer + offset);
+
+    private uint ReadUInt32(int offset) =>
+        Unsafe.ReadUnaligned<uint>(_viewPointer + offset);
+
     public void Dispose()
     {
+        _updateEvent?.Dispose();
+        if (_pointerAcquired && _view is not null)
+        {
+            _view.SafeMemoryMappedViewHandle.ReleasePointer();
+            _viewPointer = null;
+            _pointerAcquired = false;
+        }
         _view?.Dispose();
         _map?.Dispose();
+    }
+
+    private sealed class NamedEventWaitHandle : WaitHandle
+    {
+        private const uint Synchronize = 0x00100000;
+
+        private NamedEventWaitHandle(IntPtr handle) =>
+            SafeWaitHandle = new SafeWaitHandle(handle, ownsHandle: true);
+
+        public static NamedEventWaitHandle? TryOpen(string name)
+        {
+            var handle = OpenEvent(Synchronize, false, name);
+            return handle == IntPtr.Zero
+                ? null
+                : new NamedEventWaitHandle(handle);
+        }
+
+        [DllImport("kernel32.dll", EntryPoint = "OpenEventW", CharSet = CharSet.Unicode,
+            SetLastError = true)]
+        private static extern IntPtr OpenEvent(
+            uint desiredAccess,
+            [MarshalAs(UnmanagedType.Bool)] bool inheritHandle,
+            string name);
     }
 }

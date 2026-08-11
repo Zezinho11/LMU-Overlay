@@ -49,6 +49,26 @@ await using (var pacedRuntime = new TelemetryRuntime(
         "Read time must not be added to every polling interval.");
 }
 
+var eventSource = new WaitableHealthyTelemetrySource();
+await using (var eventRuntime = new TelemetryRuntime(
+    () => eventSource,
+    TimeSpan.FromMilliseconds(100),
+    TimeSpan.FromMilliseconds(100)))
+{
+    eventRuntime.Start();
+    await WaitUntilAsync(
+        () => eventRuntime.Health.SuccessfulReads >= 1,
+        TimeSpan.FromSeconds(1));
+    eventSource.Signal();
+    await WaitUntilAsync(
+        () => eventRuntime.Health.EventWakeups >= 1,
+        TimeSpan.FromSeconds(1));
+    Require(eventRuntime.Health.SuccessfulReads >= 2,
+        "Named event wake must trigger an immediate telemetry read.");
+    Require(eventRuntime.Health.PublishedSnapshots >= 1,
+        "Runtime must expose publication metrics.");
+}
+
 Console.WriteLine("Core checks passed.");
 return 0;
 
@@ -121,4 +141,42 @@ internal sealed class SlowHealthyTelemetrySource(TimeSpan readDuration) : ILmuTe
     public void Dispose()
     {
     }
+}
+
+internal sealed class WaitableHealthyTelemetrySource :
+    ILmuTelemetrySource,
+    IWaitableTelemetrySource
+{
+    private readonly AutoResetEvent _update = new(false);
+    private static readonly LmuTelemetrySnapshot Snapshot = new(
+        LmuConnectionState.Connected,
+        1,
+        1,
+        1,
+        0,
+        0,
+        null,
+        null,
+        Array.Empty<LmuVehicleStanding>(),
+        DateTimeOffset.UtcNow,
+        string.Empty);
+
+    public void Signal() => _update.Set();
+
+    public TelemetryUpdateWaitResult WaitForUpdate(
+        WaitHandle cancellation,
+        TimeSpan timeout) =>
+        WaitHandle.WaitAny([cancellation, _update], timeout) switch
+        {
+            0 => TelemetryUpdateWaitResult.Cancelled,
+            1 => TelemetryUpdateWaitResult.Signaled,
+            _ => TelemetryUpdateWaitResult.TimedOut,
+        };
+
+    public LmuProbeSnapshot ReadProbeSnapshot() =>
+        LmuProbeSnapshot.Disconnected("event fixture");
+
+    public LmuTelemetrySnapshot ReadTelemetrySnapshot() => Snapshot;
+
+    public void Dispose() => _update.Dispose();
 }

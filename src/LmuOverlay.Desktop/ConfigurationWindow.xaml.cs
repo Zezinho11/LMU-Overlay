@@ -77,6 +77,14 @@ public partial class ConfigurationWindow : Window
             System.Globalization.CultureInfo.InvariantCulture);
         ManualRemainingLaps.Text = profile.Settings.ManualRemainingLaps.ToString(
             System.Globalization.CultureInfo.InvariantCulture);
+        ManualRemainingMinutes.Text = profile.Settings.ManualRemainingMinutes.ToString(
+            System.Globalization.CultureInfo.InvariantCulture);
+        ManualLapTimeSeconds.Text = profile.Settings.ManualLapTimeSeconds.ToString(
+            System.Globalization.CultureInfo.InvariantCulture);
+        ManualFuelPerLapLiters.Text = profile.Settings.ManualFuelPerLapLiters.ToString(
+            System.Globalization.CultureInfo.InvariantCulture);
+        ManualFuelCapacityLiters.Text = profile.Settings.ManualFuelCapacityLiters.ToString(
+            System.Globalization.CultureInfo.InvariantCulture);
         MaximumStintLaps.Text = profile.Settings.MaximumStintLaps.ToString(
             System.Globalization.CultureInfo.InvariantCulture);
         PitLossSeconds.Text = profile.Settings.EstimatedPitLossSeconds.ToString(
@@ -426,6 +434,10 @@ public partial class ConfigurationWindow : Window
             FuelReserveLaps = FuelReserve.Value,
             EnergyReservePercent = ParseDouble(EnergyReserve.Text, 2, 0, 25),
             ManualRemainingLaps = ParseInt(ManualRemainingLaps.Text, 0, 0, 1000),
+            ManualRemainingMinutes = ParseDouble(ManualRemainingMinutes.Text, 0, 0, 1440),
+            ManualLapTimeSeconds = ParseDouble(ManualLapTimeSeconds.Text, 0, 0, 3600),
+            ManualFuelPerLapLiters = ParseDouble(ManualFuelPerLapLiters.Text, 0, 0, 100),
+            ManualFuelCapacityLiters = ParseDouble(ManualFuelCapacityLiters.Text, 0, 0, 1000),
             MaximumStintLaps = ParseInt(MaximumStintLaps.Text, 0, 0, 1000),
             EstimatedPitLossSeconds = ParseDouble(PitLossSeconds.Text, 30, 0, 600),
             AvailableTireSets = ParseInt(AvailableTireSets.Text, 0, 0, 100),

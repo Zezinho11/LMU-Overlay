@@ -7,7 +7,7 @@ Directory.CreateDirectory(root);
 try
 {
     using (var timingHistory = JsonDocument.Parse(
-        """{"42":[{"sectorTime1":30,"sectorTime2":70,"lapTime":120},{"sectorTime1":29,"sectorTime2":71,"lapTime":119}]}"""))
+        """{"42":[{"sectorTime1":1,"sectorTime2":2,"lapTime":3,"valid":false},{"sectorTime1":30,"sectorTime2":70,"lapTime":120,"valid":true},{"sectorTime1":29,"sectorTime2":71,"lapTime":119,"valid":true}]}"""))
     {
         Assert(
             Math.Abs(OfficialTimingOptimalProvider.ParseOptimal(
@@ -21,6 +21,56 @@ try
     Assert(store.Load() == LayoutProfile.Default, "Missing profile must load defaults.");
     Assert(store.ActiveProfileName == LayoutStore.DefaultProfileName, "Default profile must be active.");
     Assert(store.ProfileNames.Count == 1, "A fresh store must contain one profile.");
+
+    var sectorPath = Path.Combine(root, "sector-references.json");
+    var sectorStore = new SectorReferenceStore(sectorPath);
+    Assert(sectorStore.Load("Spa", "GT3") == default,
+        "A fresh sector store must not invent references.");
+    sectorStore.Save("Spa", "GT3", new(29.4, 40.1, 51.2));
+    var persistedSectors = new SectorReferenceStore(sectorPath)
+        .Load("Spa", "GT3");
+    Assert(persistedSectors == new LmuOverlay.Widgets.SectorReferenceSeed(29.4, 40.1, 51.2),
+        "Personal sector references must survive an application restart.");
+    sectorStore.Save("spa", "gt3", new(0, 39.8, 0));
+    persistedSectors = sectorStore.Load("SPA", "GT3");
+    Assert(persistedSectors == new LmuOverlay.Widgets.SectorReferenceSeed(29.4, 39.8, 51.2),
+        "Concurrent dashboard hosts must merge personal bests without erasing sectors.");
+    sectorStore.Save("Spa", "GT3", new(29.1, 40.3, 50.7));
+    persistedSectors = sectorStore.Load("Spa", "GT3");
+    Assert(persistedSectors == new LmuOverlay.Widgets.SectorReferenceSeed(29.1, 39.8, 50.7),
+        "A new valid BEST must update only its faster sectors and preserve a faster existing sector.");
+
+    var personalBestPath = Path.Combine(root, "personal-bests.json");
+    var personalBestStore = new PersonalBestLapStore(personalBestPath);
+    var firstPersonalBest = new LmuOverlay.Widgets.PersonalBestLap(120, 30, 40, 50);
+    Assert(personalBestStore.SaveIfFaster(
+        "Spa", "Driver One", "GT3", firstPersonalBest) == firstPersonalBest,
+        "The first valid personal best must be saved.");
+    var slowerLap = new LmuOverlay.Widgets.PersonalBestLap(121, 30.5, 40.5, 50);
+    Assert(personalBestStore.SaveIfFaster(
+        "Spa", "Driver One", "GT3", slowerLap) == firstPersonalBest,
+        "A slower lap must not overwrite the personal best.");
+    var fasterLap = new LmuOverlay.Widgets.PersonalBestLap(118, 29, 39, 50);
+    Assert(personalBestStore.SaveIfFaster(
+        "Spa", "Driver One", "GT3", fasterLap) == fasterLap,
+        "A faster valid lap must atomically replace the complete record.");
+    Assert(new PersonalBestLapStore(personalBestPath).Load(
+        "SPA", "driver one", "gt3") == fasterLap,
+        "Personal bests must be local and separated by track, driver and vehicle model.");
+    Assert(personalBestStore.Load("Spa", "Driver Two", "GT3") == default,
+        "Different drivers must never share a personal record.");
+    var officialStanding = new LmuOverlay.Domain.LmuVehicleStanding(
+        42, "Driver One", "Car", "GT3", "GT3", 1, 5, 1, 100,
+        118, 119, 0, 0, 0, 0, 0, 0, true, false,
+        LmuOverlay.Domain.LmuPitState.None, 0, false, false, 0.5, false,
+        BestLapSector1Seconds: 29,
+        BestLapSector2Seconds: 39);
+    Assert(PersistentSectorReferenceTracker.OfficialPersonalBest(officialStanding) ==
+           new LmuOverlay.Widgets.PersonalBestLap(118, 29, 39, 50),
+        "Only LMU's official best lap and its own sectors may form a saved PB.");
+    Assert(!PersistentSectorReferenceTracker.OfficialPersonalBest(
+            officialStanding with { BestLapSector2Seconds = 0 }).IsValid,
+        "Incomplete official best-lap sectors must never be persisted.");
 
     var requested = new LayoutProfile(
         LayoutProfile.CurrentSchemaVersion,

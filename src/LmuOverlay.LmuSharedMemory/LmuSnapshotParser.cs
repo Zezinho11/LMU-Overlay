@@ -296,7 +296,9 @@ public static class LmuSnapshotParser
                 metadata?.RearTireCompound ?? string.Empty,
                 metadata?.FrontTireCompoundIndex ?? 0,
                 metadata?.RearTireCompoundIndex ?? 0,
-                metadata?.VirtualEnergyFraction ?? -1);
+                metadata?.VirtualEnergyFraction ?? -1,
+                ReadSingle(data, offset + LmuApiLayoutV1.ScoringBestLapSector1Offset),
+                ReadSingle(data, offset + LmuApiLayoutV1.ScoringBestLapSector2Offset));
         }
 
         return standings;
