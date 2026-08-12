@@ -41,6 +41,15 @@ public sealed record FuelStrategyWidgetState(
     public string PitPlan { get; init; } = string.Empty;
     public string TirePlan { get; init; } = string.Empty;
     public string AlternativePlan { get; init; } = string.Empty;
+    public string FuelSavePlan { get; init; } = string.Empty;
+    public string FuelSavePitPlan { get; init; } = string.Empty;
+    public string FuelSaveTirePlan { get; init; } = string.Empty;
+    public double FuelSaveTargetLitersPerLap { get; init; }
+    public double FuelSaveFraction { get; init; }
+    public bool FuelSaveReducesStopCount { get; init; }
+    public double FinalFuelToAddLiters { get; init; }
+    public double FinalVirtualEnergyTargetFraction { get; init; }
+    public double FuelSaveVirtualEnergyTargetPerLap { get; init; }
     public string FlagScenario { get; init; } = string.Empty;
     public string WeatherScenario { get; init; } = string.Empty;
     public string TrafficScenario { get; init; } = string.Empty;
@@ -197,9 +206,11 @@ public sealed class FuelStrategyTracker
                 : ReferenceLapSeconds(playerStanding);
         var paceTrend = Math.Clamp(LinearTrend(_paceSamples), 0, 5);
         var maximumWear = MaximumTireWear(player.TireWear);
-        var tireWearPerLap = ConservativeProjection(
-            _tireWearSamples,
-            WeightedAverage(_tireWearSamples));
+        var tireWearPerLap = _tireWearSamples.Count >= 3
+            ? ConservativeProjection(
+                _tireWearSamples,
+                WeightedAverage(_tireWearSamples))
+            : 0;
         var referenceLapSeconds = manualLapTime > 0
             ? manualLapTime
             : ReferenceLapSeconds(playerStanding);
@@ -207,6 +218,13 @@ public sealed class FuelStrategyTracker
             options.ManualRemainingMinutes,
             0,
             24 * 60) * 60;
+        var fixedDurationSeconds = options.ManualRemainingLaps > 0
+            ? 0
+            : manualRemainingSeconds > 0
+                ? manualRemainingSeconds
+                : LmuSessionLimits.HasFiniteLapLimit(session.MaximumLaps)
+                    ? 0
+                    : Math.Max(0, session.EndElapsedTime - session.CurrentElapsedTime);
         var lapsToFinish = options.ManualRemainingLaps > 0
             ? options.ManualRemainingLaps
             : manualRemainingSeconds > 0 && referenceLapSeconds > 0
@@ -255,7 +273,7 @@ public sealed class FuelStrategyTracker
             fuelStintCapacity,
             options.MaximumStintLaps,
             averagePace,
-            paceTrend,
+            0,
             projectedConsumption,
             fuelCapacity,
             projectedConsumption * reserveLaps,
@@ -264,8 +282,15 @@ public sealed class FuelStrategyTracker
             maximumWear,
             tireWearPerLap,
             Math.Clamp(options.TireWearLimitFraction, 0.2, 0.95),
-            Math.Max(0, options.AvailableTireSets));
+            Math.Max(0, options.AvailableTireSets))
+        {
+            FixedDurationSeconds = fixedDurationSeconds,
+        };
         var strategy = EnduranceStrategyPlanner.Calculate(strategyInput);
+        var fuelSave = EnduranceStrategyPlanner.CalculateFuelSave(
+            strategyInput,
+            strategy,
+            player.FuelLiters);
         var hasPlannedStop = strategy.Available && strategy.Stops > 0;
         var currentStintTargetLaps = hasPlannedStop
             ? strategy.StintLaps[0]
@@ -367,6 +392,23 @@ public sealed class FuelStrategyTracker
             PitPlan = strategy.PitPlan,
             TirePlan = strategy.TirePlan,
             AlternativePlan = strategy.AlternativeSummary,
+            FuelSavePlan = fuelSave.Summary,
+            FuelSavePitPlan = fuelSave.PitPlan,
+            FuelSaveTirePlan = fuelSave.TirePlan,
+            FuelSaveTargetLitersPerLap = fuelSave.TargetConsumptionLitersPerLap,
+            FuelSaveFraction = fuelSave.SavingFraction,
+            FuelSaveReducesStopCount = fuelSave.ReducesStopCount,
+            FinalFuelToAddLiters = strategy.FuelAtStopsLiters.LastOrDefault(),
+            FinalVirtualEnergyTargetFraction = strategy.StintLaps.Count > 0 &&
+                virtualEnergyAverage > 0
+                    ? Math.Min(
+                        1,
+                        virtualEnergyAverage *
+                        (strategy.StintLaps[^1] + reserveLaps) + energyReserve)
+                    : 0,
+            FuelSaveVirtualEnergyTargetPerLap = virtualEnergyAverage > 0 && fuelSave.Available
+                ? virtualEnergyAverage * (1 - fuelSave.SavingFraction)
+                : 0,
             FlagScenario = scenarioAdvice.FlagState,
             WeatherScenario = scenarioAdvice.Weather,
             TrafficScenario = scenarioAdvice.Traffic,

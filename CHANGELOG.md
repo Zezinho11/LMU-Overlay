@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+## 0.6.6 - 2026-08-12
+
+- Reworked endurance planning around a full-push baseline and a separate,
+  actionable fuel-save alternative on both Desktop and SteamVR.
+- Kept strategy preparation active in Practice while constraining timed plans
+  to the real session clock instead of compounding recent pace variation into
+  fictitious extra hours.
+- Changed stint construction to use full intermediate stints and an exact
+  final splash plus safety reserve, including a final Virtual Energy target.
+- Made tire recommendations require a stable measured wear trend, avoiding an
+  automatic tire change merely because a set reaches 85% life remaining.
+- Preserved LMU sim-racing yellow-flag behavior: no assumed Safety Car, speed
+  reduction or discounted pit loss.
+
 ## 0.6.5 - 2026-08-11
 
 - Added per-profile Brazilian Portuguese/English localization through one

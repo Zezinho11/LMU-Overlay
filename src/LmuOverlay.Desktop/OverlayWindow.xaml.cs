@@ -1844,10 +1844,15 @@ public partial class OverlayWindow : Window
         StrategyPlanText.Text = state.PlanSummary;
         StrategyPitPlanText.Text = $"PIT  {state.PitPlan}";
         StrategyTirePlanText.Text = $"TIRES  {state.TirePlan}";
-        StrategyAlternativeText.Text = state.AlternativePlan;
-        FlagScenarioText.Text = state.FlagScenario;
-        WeatherScenarioText.Text = state.WeatherScenario;
-        TrafficScenarioText.Text = state.TrafficScenario;
+        StrategyAlternativeText.Text = state.EstimatedPitStops > 0
+            ? $"FINAL FILL  +{state.FinalFuelToAddLiters:0.0} L · " +
+              $"NRG {state.FinalVirtualEnergyTargetFraction:P0} · SAFE RESERVE INCLUDED"
+            : "NO FINAL FILL REQUIRED";
+        FlagScenarioText.Text = state.FuelSavePlan;
+        WeatherScenarioText.Text = state.FuelSaveVirtualEnergyTargetPerLap > 0
+            ? $"{state.FuelSavePitPlan} · NRG TARGET {state.FuelSaveVirtualEnergyTargetPerLap:P1}/LAP"
+            : state.FuelSavePitPlan;
+        TrafficScenarioText.Text = $"TIRES  {state.FuelSaveTirePlan}";
         FuelSamplesText.Text = state.Learning
             ? "COMPLETE A LAP TO CALCULATE"
             : $"PIT L{state.SuggestedPitLap} ({state.LapsUntilPit} LAPS)  " +

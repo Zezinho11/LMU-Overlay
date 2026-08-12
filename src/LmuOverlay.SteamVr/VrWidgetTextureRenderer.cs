@@ -208,8 +208,13 @@ public static class VrWidgetTextureRenderer
             canvas.Text("STINT / PIT", 17, style.SecondaryText, new(680, 280, 260, 28), true);
             canvas.Text(state.SuggestedPitLap > 0 ? $"LAP {state.SuggestedPitLap} · {state.LapsUntilPit} TO GO" : "LEARNING",
                 25, style.Attention, new(680, 310, 270, 40), true);
-            StrategyBox(canvas, "PRIMARY STRATEGY", state.PlanSummary, state.PitPlan, state.TirePlan, 390, style.Positive);
-            StrategyBox(canvas, "ALTERNATIVE", state.AlternativePlan, state.FlagScenario, state.WeatherScenario, 540, style.Information);
+            StrategyBox(canvas, "FULL PUSH", state.PlanSummary, state.PitPlan,
+                $"{state.TirePlan} · FINAL +{state.FinalFuelToAddLiters:0.0}L / NRG {state.FinalVirtualEnergyTargetFraction:P0}", 390, style.Positive);
+            StrategyBox(canvas, "FUEL SAVE", state.FuelSavePlan,
+                state.FuelSaveVirtualEnergyTargetPerLap > 0
+                    ? $"{state.FuelSavePitPlan} · NRG {state.FuelSaveVirtualEnergyTargetPerLap:P1}/LAP"
+                    : state.FuelSavePitPlan,
+                state.FuelSaveTirePlan, 540, style.Information);
             canvas.Fill(style.Card, 20, 690, 960, 66);
             canvas.Text($"PACE {Lap(state.AveragePaceSeconds)} · TREND {state.PaceTrendSecondsPerLap:+0.00;-0.00;0.00}/LAP · " +
                         $"STOPS {state.EstimatedPitStops} · TYRE SETS {state.RecommendedTireSets} · CONFIDENCE {state.Confidence}",

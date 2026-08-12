@@ -459,6 +459,67 @@ Assert(enduranceStrategy.FuelToAddLiters > 50 &&
 Assert(enduranceStrategy.RequiredFuelSavingFraction == 0,
     "A feasible multi-stop race must not request saving enough to finish on the current tank.");
 
+var practiceSession = enduranceSession with { Kind = LmuSessionKind.Practice };
+var practiceTracker = new FuelStrategyTracker();
+_ = practiceTracker.Update(enduranceStart with { Session = practiceSession });
+var practiceStrategy = practiceTracker.Update(enduranceStart with
+{
+    Session = practiceSession,
+    Player = player with { FuelLiters = 22.5 },
+    Standings = new[]
+    {
+        standings[0],
+        standings[1] with { CompletedLaps = standings[1].CompletedLaps + 1 },
+        standings[2],
+    },
+});
+Assert(practiceStrategy.EstimatedPitStops > 0 &&
+       practiceStrategy.PlanSummary.StartsWith("FULL PUSH", StringComparison.Ordinal),
+    "Practice must retain the complete planning simulation for event preparation.");
+Assert(Math.Abs(practiceStrategy.EstimatedStrategyTimeSeconds - 6 * 60 * 60) < 0.001,
+    "A timed practice plan must display the actual remaining session duration, not accumulated pace trend.");
+
+var finalSplashInput = new EnduranceStrategyInput(
+    CompletedLaps: 0,
+    RemainingLaps: 100,
+    CurrentFuelRangeLaps: 10,
+    MaximumFuelStintLaps: 20,
+    ConfiguredMaximumStintLaps: 0,
+    ReferencePaceSeconds: 90,
+    PaceDegradationSecondsPerLap: 0,
+    ConsumptionLitersPerLap: 3,
+    FuelCapacityLiters: 60,
+    ReserveFuelLiters: 6,
+    PitLossSeconds: 30,
+    TireChangeSeconds: 15,
+    CurrentMaximumTireWearFraction: 0.15,
+    TireWearFractionPerLap: 0,
+    TireWearLimitFraction: 0.7,
+    AvailableTireSets: 0);
+var finalSplash = EnduranceStrategyPlanner.Calculate(finalSplashInput);
+Assert(finalSplash.StintLaps.SequenceEqual(new[] { 10, 20, 20, 20, 20, 10 }),
+    "Full-push planning must front-load full stints and leave a short final stint.");
+Assert(finalSplash.FuelAtStopsLiters[^1] == 36 &&
+       finalSplash.FuelAtStopsLiters[^1] < finalSplashInput.FuelCapacityLiters,
+    "The final stop must add only the final-stint fuel plus the configured two-lap reserve.");
+var fuelSavePlan = EnduranceStrategyPlanner.CalculateFuelSave(
+    finalSplashInput,
+    finalSplash,
+    currentFuelLiters: 36);
+Assert(fuelSavePlan.Available && fuelSavePlan.SavingFraction is > 0 and <= 0.15,
+    "The alternative box must provide a feasible bounded fuel-save target.");
+Assert(fuelSavePlan.PitPlan.Contains("TARGET", StringComparison.Ordinal) &&
+       fuelSavePlan.TirePlan.Length > 0,
+    "Fuel-save guidance must include both the per-lap target and its tire plan.");
+
+var healthyTires = EnduranceStrategyPlanner.Calculate(finalSplashInput with
+{
+    RemainingLaps = 40,
+    TireWearFractionPerLap = 0.01,
+});
+Assert(healthyTires.TireChangeLaps.Count == 0,
+    "Tires at 85% life must not trigger an automatic change recommendation.");
+
 var manualCalculator = new FuelStrategyTracker().Update(
     raceSnapshot,
     new FuelStrategyOptions(

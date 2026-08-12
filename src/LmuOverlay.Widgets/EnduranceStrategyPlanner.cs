@@ -16,7 +16,10 @@ public sealed record EnduranceStrategyInput(
     double CurrentMaximumTireWearFraction,
     double TireWearFractionPerLap,
     double TireWearLimitFraction,
-    int AvailableTireSets);
+    int AvailableTireSets)
+{
+    public double FixedDurationSeconds { get; init; }
+}
 
 public sealed record EnduranceStrategyPlan(
     bool Available,
@@ -32,6 +35,16 @@ public sealed record EnduranceStrategyPlan(
     string PitPlan,
     string TirePlan,
     string AlternativeSummary);
+
+public sealed record FuelSaveStrategyPlan(
+    bool Available,
+    double TargetConsumptionLitersPerLap,
+    double SavingFraction,
+    bool ReducesStopCount,
+    EnduranceStrategyPlan Strategy,
+    string Summary,
+    string PitPlan,
+    string TirePlan);
 
 public static class EnduranceStrategyPlanner
 {
@@ -67,7 +80,9 @@ public static class EnduranceStrategyPlanner
                 continue;
             }
 
-            var stints = BuildBalancedStints(firstStint, afterFirst, futureStints);
+            var stints = extraStops == 0
+                ? BuildFuelLedStints(firstStint, afterFirst, futureStints, maximumStint)
+                : BuildBalancedStints(firstStint, afterFirst, futureStints);
             if (stints.Any(laps => laps <= 0 || laps > maximumStint))
             {
                 continue;
@@ -91,18 +106,21 @@ public static class EnduranceStrategyPlanner
 
         var best = ordered[0];
         var alternative = ordered.Skip(1).FirstOrDefault();
+        var displayedDuration = input.FixedDurationSeconds > 0
+            ? input.FixedDurationSeconds
+            : best.EstimatedTimeSeconds;
         return new(
             true,
             best.Stints.Count,
             best.Stints.Count - 1,
             best.TireSets,
-            best.EstimatedTimeSeconds,
+            displayedDuration,
             best.Stints,
             best.PitLaps,
             best.TireChangeLaps,
             best.FuelAtStops,
-            $"{best.Stints.Count} STINTS · {best.Stints.Count - 1} STOPS · " +
-            $"{FormatDuration(best.EstimatedTimeSeconds)}",
+            $"FULL PUSH · {best.Stints.Count} STINTS · {best.Stints.Count - 1} STOPS · " +
+            $"{FormatDuration(displayedDuration)}",
             best.PitLaps.Count == 0
                 ? "NO MORE STOPS"
                 : string.Join(" · ", best.PitLaps.Select((lap, index) =>
@@ -113,6 +131,66 @@ public static class EnduranceStrategyPlanner
                 : $"ALT {alternative.Stints.Count} STINTS · " +
                   $"{FormatDuration(alternative.EstimatedTimeSeconds)} · " +
                   $"{alternative.EstimatedTimeSeconds - best.EstimatedTimeSeconds:+0;-0;0}s");
+    }
+
+    public static FuelSaveStrategyPlan CalculateFuelSave(
+        EnduranceStrategyInput input,
+        EnduranceStrategyPlan fullPush,
+        double currentFuelLiters,
+        double maximumSavingFraction = 0.15)
+    {
+        if (!fullPush.Available || fullPush.Stops <= 0 || input.RemainingLaps <= 0)
+        {
+            return FuelSaveUnavailable("FUEL SAVE · NO STOP TO REMOVE");
+        }
+
+        var targetStops = fullPush.Stops - 1;
+        var usableFuel = Math.Max(0, currentFuelLiters) +
+            targetStops * Math.Max(0, input.FuelCapacityLiters) -
+            Math.Max(0, input.ReserveFuelLiters);
+        var targetConsumption = usableFuel / input.RemainingLaps;
+        var saving = input.ConsumptionLitersPerLap > 0
+            ? 1 - targetConsumption / input.ConsumptionLitersPerLap
+            : 0;
+
+        if (targetConsumption > 0 && saving > 0 && saving <= maximumSavingFraction)
+        {
+            for (var attemptedSaving = saving;
+                 attemptedSaving <= maximumSavingFraction + 0.0001;
+                 attemptedSaving += 0.0025)
+            {
+                var attemptedTarget = input.ConsumptionLitersPerLap * (1 - attemptedSaving);
+                var reducedStops = CalculateForConsumption(
+                    input,
+                    currentFuelLiters,
+                    attemptedTarget);
+                if (reducedStops.Available && reducedStops.Stops <= targetStops)
+                {
+                    return FuelSaveResult(
+                        reducedStops,
+                        attemptedTarget,
+                        attemptedSaving,
+                        true);
+                }
+            }
+        }
+
+        var extensionLaps = Math.Max(1, input.CurrentFuelRangeLaps + 1);
+        targetConsumption = Math.Max(0, currentFuelLiters - input.ReserveFuelLiters) /
+            extensionLaps;
+        saving = input.ConsumptionLitersPerLap > 0
+            ? 1 - targetConsumption / input.ConsumptionLitersPerLap
+            : 0;
+        if (targetConsumption <= 0 || saving <= 0 || saving > maximumSavingFraction)
+        {
+            return FuelSaveUnavailable(
+                $"FUEL SAVE · NO SAFE EXTENSION ≤ {maximumSavingFraction:P0}");
+        }
+
+        var extended = CalculateForConsumption(input, currentFuelLiters, targetConsumption);
+        return extended.Available
+            ? FuelSaveResult(extended, targetConsumption, saving, false)
+            : FuelSaveUnavailable("FUEL SAVE · NO VIABLE EXTENSION");
     }
 
     private static Candidate? Evaluate(
@@ -174,13 +252,17 @@ public static class EnduranceStrategyPlanner
             if (stintIndex < stints.Count - 1)
             {
                 pitLaps.Add(cumulativeLaps);
-                var nextStint = stints[stintIndex + 1];
-                var reserve = stintIndex + 1 == stints.Count - 1
+                var nextStintIndex = stintIndex + 1;
+                var nextStint = stints[nextStintIndex];
+                var isFinalFill = nextStintIndex == stints.Count - 1;
+                var reserve = isFinalFill
                     ? input.ReserveFuelLiters
                     : 0;
-                var fuelTarget = Math.Min(
-                    input.FuelCapacityLiters,
-                    nextStint * input.ConsumptionLitersPerLap + reserve);
+                var fuelTarget = isFinalFill
+                    ? Math.Min(
+                        input.FuelCapacityLiters,
+                        nextStint * input.ConsumptionLitersPerLap + reserve)
+                    : input.FuelCapacityLiters;
                 var fuelExpectedAtStop = stintIndex == 0
                     ? input.ReserveFuelLiters
                     : 0;
@@ -227,6 +309,64 @@ public static class EnduranceStrategyPlanner
 
         return result;
     }
+
+    private static IReadOnlyList<int> BuildFuelLedStints(
+        int firstStint,
+        int remainingLaps,
+        int futureStints,
+        int maximumStint)
+    {
+        var result = new List<int> { firstStint };
+        for (var index = 0; index < futureStints; index++)
+        {
+            var slotsAfter = futureStints - index - 1;
+            var laps = Math.Min(maximumStint, remainingLaps - slotsAfter);
+            result.Add(laps);
+            remainingLaps -= laps;
+        }
+        return result;
+    }
+
+    private static EnduranceStrategyPlan CalculateForConsumption(
+        EnduranceStrategyInput input,
+        double currentFuelLiters,
+        double consumption)
+    {
+        var currentRange = Math.Max(1, (int)Math.Floor(
+            Math.Max(0, currentFuelLiters - input.ReserveFuelLiters) / consumption));
+        var maximumRange = Math.Max(1, (int)Math.Floor(
+            input.FuelCapacityLiters / consumption));
+        return Calculate(input with
+        {
+            CurrentFuelRangeLaps = currentRange,
+            MaximumFuelStintLaps = maximumRange,
+            ConsumptionLitersPerLap = consumption,
+        });
+    }
+
+    private static FuelSaveStrategyPlan FuelSaveResult(
+        EnduranceStrategyPlan strategy,
+        double targetConsumption,
+        double saving,
+        bool reducesStops) => new(
+        true,
+        targetConsumption,
+        saving,
+        reducesStops,
+        strategy,
+        $"FUEL SAVE {saving:P1} · {strategy.Stints} STINTS · {strategy.Stops} STOPS",
+        $"TARGET {targetConsumption:0.00} L/LAP · {strategy.PitPlan}",
+        strategy.TirePlan);
+
+    private static FuelSaveStrategyPlan FuelSaveUnavailable(string summary) => new(
+        false,
+        0,
+        0,
+        false,
+        Unavailable(),
+        summary,
+        "TARGET DATA REQUIRED",
+        "KEEP FULL-PUSH TYRE PLAN");
 
     private static string TireSummary(Candidate candidate, int availableSets)
     {
