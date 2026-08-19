@@ -9,7 +9,7 @@ public sealed record LayoutProfile(
     WidgetPlacement SessionFlags,
     WidgetPlacement FuelStrategy)
 {
-    public const int CurrentSchemaVersion = 20;
+    public const int CurrentSchemaVersion = 22;
 
     public WidgetPlacement RaceControl { get; init; } =
         new(0.35, 0.25, 0.26, 0.18, 1, 0.96, true);
@@ -42,7 +42,18 @@ public sealed record OverlayProfileSettings
     public string Theme { get; init; } = "RedFox";
     public string CustomAccentColor { get; init; } = "#42D3A6";
     public string CustomBackgroundColor { get; init; } = "#0A0F1A";
+    public string CustomCardColor { get; init; } = "#121924";
+    public string CustomPrimaryTextColor { get; init; } = "#FFFFFF";
+    public string CustomSecondaryTextColor { get; init; } = "#CAD3DC";
+    public string CustomInformationColor { get; init; } = "#12D9E5";
+    public string CustomAttentionColor { get; init; } = "#FFBE40";
+    public string CustomCriticalColor { get; init; } = "#FF464B";
+    public string CustomPositiveColor { get; init; } = "#42D3A6";
     public string DashboardTitle { get; init; } = "REDFOX RACING";
+    public bool DashboardShowSectors { get; init; } = true;
+    public bool DashboardShowTires { get; init; } = true;
+    public bool DashboardShowTelemetry { get; init; } = true;
+    public string DashboardModuleOrder { get; init; } = LmuOverlay.Widgets.DashboardModuleLayout.DefaultOrder;
     public double DashboardTextScale { get; init; } = 1;
     public double TimingTextScale { get; init; } = 1;
     public double InputsTextScale { get; init; } = 1;
@@ -67,4 +78,7 @@ public sealed record OverlayProfileSettings
     public bool ShowPriorityAlerts { get; init; } = true;
     public bool ReduceMotion { get; init; } = true;
     public int PedalHistorySeconds { get; init; } = 5;
+    public bool EnableOfficialTimingHttp { get; init; } = true;
+    public bool EnableNativeRendering { get; init; } = true;
+    public bool EnableSteamVr { get; init; } = true;
 }

@@ -282,21 +282,17 @@ internal sealed class DirectCompositionTimingHost : IDisposable
 
     private static (string Code, ID2D1Brush Brush) Manufacturer(TimingSurface s, string value)
     {
-        var name = value.ToUpperInvariant();
-        if (name.Contains("BMW")) return ("BMW", s.BrandBlue);
-        if (name.Contains("FERRARI")) return ("FER", s.BrandRed);
-        if (name.Contains("PORSCHE")) return ("POR", s.BrandGray);
-        if (name.Contains("CADILLAC")) return ("CAD", s.BrandYellow);
-        if (name.Contains("ALPINE")) return ("ALP", s.BrandBlue);
-        if (name.Contains("FORD")) return ("FOR", s.BrandBlue);
-        if (name.Contains("LEXUS")) return ("LEX", s.BrandGray);
-        if (name.Contains("ASTON")) return ("AST", s.BrandGreen);
-        if (name.Contains("TOYOTA")) return ("TOY", s.BrandRed);
-        if (name.Contains("CORVETTE")) return ("COR", s.BrandYellow);
-        if (name.Contains("MCLAREN")) return ("MCL", s.BrandOrange);
-        if (name.Contains("LAMBORGHINI")) return ("LAM", s.BrandGreen);
-        if (name.Contains("PEUGEOT")) return ("PEU", s.BrandBlue);
-        return ("---", s.BrandGray);
+        var identity = VehicleCatalog.Resolve(value);
+        var brush = identity.Code switch
+        {
+            "FER" or "TOY" => s.BrandRed,
+            "CAD" or "LAM" or "COR" => s.BrandYellow,
+            "AST" => s.BrandGreen,
+            "MCL" => s.BrandOrange,
+            "BMW" or "ALP" or "FOR" or "PEU" => s.BrandBlue,
+            _ => s.BrandGray,
+        };
+        return (identity.Code, brush);
     }
 
     private static ID2D1Brush ClassBrush(TimingSurface surface, string className)

@@ -211,6 +211,10 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
                 <TextBlock Grid.ColumnSpan="4" Text="PERFIL, ESTRATÉGIA E DESEMPENHO"
                            Foreground="#FF788795" FontWeight="Bold" FontSize="10"
@@ -254,15 +258,16 @@
                 </StackPanel>
                 <StackPanel Grid.Row="2" Grid.Column="1" Margin="0,10,12,0">
                     <TextBlock Text="Cor principal personalizada" Foreground="#FF9BA8B5" FontSize="10" />
-                    <TextBox x:Name="CustomAccentColor" Height="27" ToolTip="Formato hexadecimal, por exemplo #42D3A6" />
+                    <TextBox x:Name="CustomAccentColor" Height="27" TextChanged="CustomColorChanged" ToolTip="Formato hexadecimal, por exemplo #42D3A6" />
                 </StackPanel>
                 <StackPanel Grid.Row="2" Grid.Column="2" Margin="0,10,12,0">
                     <TextBlock Text="Cor de fundo personalizada" Foreground="#FF9BA8B5" FontSize="10" />
-                    <TextBox x:Name="CustomBackgroundColor" Height="27" ToolTip="Formato hexadecimal, por exemplo #0A0F1A" />
+                    <TextBox x:Name="CustomBackgroundColor" Height="27" TextChanged="CustomColorChanged" ToolTip="Formato hexadecimal, por exemplo #0A0F1A" />
                 </StackPanel>
-                <TextBlock Grid.Row="2" Grid.Column="3" Margin="0,10,0,0"
-                           Text="As cores personalizadas entram em uso ao selecionar o tema Personalizado."
-                           Foreground="#FF718096" FontSize="9" TextWrapping="Wrap" />
+                <StackPanel Grid.Row="2" Grid.Column="3" Margin="0,10,0,0">
+                    <TextBlock Text="Cor dos cartões" Foreground="#FF9BA8B5" FontSize="10" />
+                    <TextBox x:Name="CustomCardColor" Height="27" TextChanged="CustomColorChanged" />
+                </StackPanel>
                 <StackPanel Grid.Row="3" Grid.Column="0" Margin="0,10,12,0">
                     <TextBlock Text="Reserva VE (%)" Foreground="#FF9BA8B5" FontSize="10" />
                     <TextBox x:Name="EnergyReserve" Height="27" />
@@ -368,6 +373,74 @@
                 <TextBlock Grid.Row="8" Grid.Column="1" Grid.ColumnSpan="3" Margin="0,10,0,0"
                            Text="As escalas internas alteram a legibilidade sem mudar a posição nem o tamanho externo de cada overlay."
                            Foreground="#FF718096" FontSize="9" TextWrapping="Wrap" />
+                <StackPanel Grid.Row="9" Grid.Column="0" Margin="0,10,12,0">
+                    <TextBlock Text="Texto principal" Foreground="#FF9BA8B5" FontSize="10" />
+                    <TextBox x:Name="CustomPrimaryTextColor" Height="27" TextChanged="CustomColorChanged" />
+                </StackPanel>
+                <StackPanel Grid.Row="9" Grid.Column="1" Margin="0,10,12,0">
+                    <TextBlock Text="Texto secundário" Foreground="#FF9BA8B5" FontSize="10" />
+                    <TextBox x:Name="CustomSecondaryTextColor" Height="27" TextChanged="CustomColorChanged" />
+                </StackPanel>
+                <StackPanel Grid.Row="9" Grid.Column="2" Margin="0,10,12,0">
+                    <TextBlock Text="Informação" Foreground="#FF9BA8B5" FontSize="10" />
+                    <TextBox x:Name="CustomInformationColor" Height="27" TextChanged="CustomColorChanged" />
+                </StackPanel>
+                <StackPanel Grid.Row="9" Grid.Column="3" Margin="0,10,0,0">
+                    <TextBlock Text="Atenção" Foreground="#FF9BA8B5" FontSize="10" />
+                    <TextBox x:Name="CustomAttentionColor" Height="27" TextChanged="CustomColorChanged" />
+                </StackPanel>
+                <StackPanel Grid.Row="10" Grid.Column="0" Margin="0,10,12,0">
+                    <TextBlock Text="Crítico" Foreground="#FF9BA8B5" FontSize="10" />
+                    <TextBox x:Name="CustomCriticalColor" Height="27" TextChanged="CustomColorChanged" />
+                </StackPanel>
+                <StackPanel Grid.Row="10" Grid.Column="1" Margin="0,10,12,0">
+                    <TextBlock Text="Positivo" Foreground="#FF9BA8B5" FontSize="10" />
+                    <TextBox x:Name="CustomPositiveColor" Height="27" TextChanged="CustomColorChanged" />
+                </StackPanel>
+                <StackPanel Grid.Row="10" Grid.Column="2" Margin="0,10,12,0">
+                    <TextBlock Text="Módulos da dashboard" Foreground="#FF9BA8B5" FontSize="10" />
+                    <CheckBox x:Name="DashboardShowSectors" Content="Setores" />
+                    <CheckBox x:Name="DashboardShowTires" Content="Pneus" />
+                    <CheckBox x:Name="DashboardShowTelemetry" Content="Telemetria" />
+                </StackPanel>
+                <TextBlock Grid.Row="10" Grid.Column="3" Margin="0,10,0,0"
+                           Text="Editar qualquer cor ativa automaticamente o tema Personalizado. Os módulos escolhidos são aplicados no Desktop e no VR."
+                           Foreground="#FF718096" FontSize="9" TextWrapping="Wrap" />
+                <StackPanel Grid.Row="11" Grid.Column="0" Grid.ColumnSpan="4"
+                            Margin="0,12,0,0" Orientation="Horizontal">
+                    <TextBlock Text="INTEGRAÇÕES" Foreground="#FF9BA8B5"
+                               FontSize="10" FontWeight="Bold" Margin="0,0,14,0"
+                               VerticalAlignment="Center" />
+                    <CheckBox x:Name="EnableOfficialTimingHttp"
+                              Content="Optimal oficial via HTTP local"
+                              Margin="0,0,18,0" VerticalAlignment="Center" />
+                    <CheckBox x:Name="EnableNativeRendering"
+                              Content="Renderização DirectX"
+                              Margin="0,0,18,0" VerticalAlignment="Center" />
+                    <CheckBox x:Name="EnableSteamVr"
+                              Content="SteamVR" VerticalAlignment="Center" />
+                </StackPanel>
+                <StackPanel Grid.Row="12" Grid.Column="0" Grid.ColumnSpan="4"
+                            Margin="0,12,0,0" Orientation="Horizontal">
+                    <TextBlock Text="ORDEM DOS MÓDULOS" Foreground="#FF9BA8B5"
+                               FontSize="10" FontWeight="Bold" Margin="0,0,14,0"
+                               VerticalAlignment="Center" />
+                    <ComboBox x:Name="DashboardModule1" Width="125" Margin="0,0,8,0">
+                        <ComboBoxItem Content="Setores" Tag="Sectors" />
+                        <ComboBoxItem Content="Pneus" Tag="Tires" />
+                        <ComboBoxItem Content="Telemetria" Tag="Telemetry" />
+                    </ComboBox>
+                    <ComboBox x:Name="DashboardModule2" Width="125" Margin="0,0,8,0">
+                        <ComboBoxItem Content="Setores" Tag="Sectors" />
+                        <ComboBoxItem Content="Pneus" Tag="Tires" />
+                        <ComboBoxItem Content="Telemetria" Tag="Telemetry" />
+                    </ComboBox>
+                    <ComboBox x:Name="DashboardModule3" Width="125">
+                        <ComboBoxItem Content="Setores" Tag="Sectors" />
+                        <ComboBoxItem Content="Pneus" Tag="Tires" />
+                        <ComboBoxItem Content="Telemetria" Tag="Telemetry" />
+                    </ComboBox>
+                </StackPanel>
             </Grid>
         </Border>
         <DockPanel Grid.Row="5" Margin="0,20,0,0">

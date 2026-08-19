@@ -40,14 +40,14 @@ public partial class App
     private long _lastNativeFuelStrategyAt;
     private double _nativeFuelSaveFraction;
     private long _nativeTimingSequence;
-    private IReadOnlyList<LmuVehicleStanding>? _nativeTimingStandingsSource;
     private LiveStandingsWidgetState? _nativeLiveStandingsState;
     private RelativeWidgetState? _nativeRelativeState;
-    private NativeTimingConfiguration? _lastNativeTimingConfiguration;
+    private readonly TimingWidgetTracker _nativeTimingTracker = new();
     private readonly SectorReferenceStore _sectorReferenceStore = new();
     private readonly PersonalBestLapStore _personalBestLapStore = new();
     private PersistentSectorReferenceTracker? _nativeSectorReferenceTracker;
-    private readonly OfficialTimingOptimalProvider _officialTimingOptimal = new();
+    private OfficialTimingOptimalProvider? _officialTimingOptimal;
+    private bool _safeMode;
     private string _nativeSessionKey = string.Empty;
     private string _nativeSessionTrack = string.Empty;
     private int _nativeSessionCode = int.MinValue;
@@ -71,9 +71,24 @@ public partial class App
             new LayoutStore(),
             _sectorReferenceStore,
             _personalBestLapStore);
-        _nativeDashboard = new NativeDashboardRenderer();
-        _nativeInputs = new NativeInputsRenderer();
-        _nativeTiming = new NativeTimingRenderer();
+        _safeMode = e.Args.Contains("--safe-mode", StringComparer.OrdinalIgnoreCase);
+        var settings = _overlay.CurrentProfile.Settings;
+        var nativeEnabled = !_safeMode &&
+            settings.EnableNativeRendering &&
+            !e.Args.Contains("--disable-native-rendering", StringComparer.OrdinalIgnoreCase);
+        var officialTimingEnabled = !_safeMode &&
+            settings.EnableOfficialTimingHttp &&
+            !e.Args.Contains("--disable-optimal-http", StringComparer.OrdinalIgnoreCase);
+        if (nativeEnabled)
+        {
+            _nativeDashboard = new NativeDashboardRenderer();
+            _nativeInputs = new NativeInputsRenderer();
+            _nativeTiming = new NativeTimingRenderer();
+        }
+        _officialTimingOptimal = new OfficialTimingOptimalProvider(new()
+        {
+            Enabled = officialTimingEnabled,
+        });
         _toolbar = new OverlayToolbarWindow(_overlay, ShowConfiguration);
         _telemetryRuntime = new TelemetryRuntime(
             () => new LmuSharedMemoryReader(),
@@ -310,12 +325,12 @@ public partial class App
         _overlay.SetNativeDashboardActive(_nativeDashboard?.IsAvailable == true);
         _overlay.SetNativeInputsActive(_nativeInputs?.IsAvailable == true);
         _overlay.SetNativeTimingActive(_nativeTiming?.IsAvailable == true);
-        _officialTimingOptimal.Update(snapshot);
+        _officialTimingOptimal?.Update(snapshot);
         _overlay.UpdateFrame(
             _gameBounds.Value,
             snapshot,
             slowUpdate,
-            _officialTimingOptimal.GetOptimal(snapshot));
+            _officialTimingOptimal?.GetOptimal(snapshot) ?? 0);
         _lastRenderedSnapshot = snapshot;
         _lastRenderedAt = now;
         if (slowUpdate)
@@ -345,7 +360,8 @@ public partial class App
         _nativeInputs = null;
         _nativeTiming?.Dispose();
         _nativeTiming = null;
-        _officialTimingOptimal.Dispose();
+        _officialTimingOptimal?.Dispose();
+        _officialTimingOptimal = null;
         _configurationWindow?.Close();
         _toolbar?.Close();
         _overlay?.Close();
@@ -364,7 +380,7 @@ public partial class App
 
     private void OnTelemetrySnapshot(LmuTelemetrySnapshot snapshot)
     {
-        _officialTimingOptimal.Update(snapshot);
+        _officialTimingOptimal?.Update(snapshot);
         var sessionEnded = snapshot.Session?.GamePhase == LmuGamePhase.SessionOver;
         var liveSnapshot = sessionEnded
             ? LmuTelemetrySnapshot.Unavailable(
@@ -375,6 +391,10 @@ public partial class App
         var trackedSectors = _nativeSectorReferenceTracker?.Update(
             liveSnapshot,
             dashboard.SectorTimes) ?? dashboard.SectorTimes;
+        var liveOptimal = _officialTimingOptimal?.GetOptimal(snapshot) ?? 0;
+        var persistedOptimal = _nativeSectorReferenceTracker?.ObserveOptimal(
+            liveSnapshot,
+            liveOptimal) ?? liveOptimal;
         dashboard = dashboard with
         {
             SectorTimes = trackedSectors,
@@ -382,7 +402,7 @@ public partial class App
                 _nativeSectorReferenceTracker?.PersonalBestLapTimeSeconds > 0
                     ? _nativeSectorReferenceTracker.PersonalBestLapTimeSeconds
                     : dashboard.BestLapTimeSeconds,
-            OptimalLapTimeSeconds = _officialTimingOptimal.GetOptimal(snapshot),
+            OptimalLapTimeSeconds = persistedOptimal,
         };
         var sessionKey = GetNativeSessionKey(snapshot);
         var capturedTimestamp = Stopwatch.GetTimestamp();
@@ -490,33 +510,13 @@ public partial class App
             overlay.NativeStyle,
             overlay.LiveStandingsMaximumRows,
             overlay.RelativeCarsEachSide);
-        var standingsChanged = !ReferenceEquals(
-            _nativeTimingStandingsSource,
-            snapshot.Standings);
-        if (!standingsChanged && configuration == _lastNativeTimingConfiguration)
-        {
-            return;
-        }
+        var timing = _nativeTimingTracker.Update(
+            snapshot,
+            configuration.LiveStandingsMaximumRows,
+            configuration.RelativeCarsEachSide);
+        _nativeLiveStandingsState = timing.Standings;
+        _nativeRelativeState = timing.Relative;
 
-        var preferencesChanged = _lastNativeTimingConfiguration is null ||
-            configuration.LiveStandingsMaximumRows != _lastNativeTimingConfiguration.LiveStandingsMaximumRows ||
-            configuration.RelativeCarsEachSide != _lastNativeTimingConfiguration.RelativeCarsEachSide;
-        if (standingsChanged || preferencesChanged ||
-            _nativeLiveStandingsState is null ||
-            _nativeRelativeState is null)
-        {
-            _nativeTimingStandingsSource = snapshot.Standings;
-            _nativeLiveStandingsState =
-                EssentialWidgetStateFactory.CreateLiveStandings(
-                    snapshot,
-                    configuration.LiveStandingsMaximumRows);
-            _nativeRelativeState =
-                EssentialWidgetStateFactory.CreateRelative(
-                    snapshot,
-                    configuration.RelativeCarsEachSide);
-        }
-
-        _lastNativeTimingConfiguration = configuration;
         renderer.Publish(new NativeTimingFrame(
             _nativeLiveStandingsState,
             configuration.LiveStandingsBounds,

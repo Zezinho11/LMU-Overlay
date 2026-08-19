@@ -8,6 +8,9 @@ public sealed record VrRenderedFrame(byte[] Pixels, uint Width, uint Height);
 
 public static class VrWidgetTextureRenderer
 {
+    private const string SteeringWheelResource =
+        "LmuOverlay.SteamVr.Assets.steering-wheel.png";
+    private static readonly Lazy<Bitmap?> SteeringWheelImage = new(LoadSteeringWheel);
     private static VrRenderStyle DefaultStyle => VrRenderStyle.From(new VrDesktopSettings());
 
     public static VrRenderedFrame Dashboard(DashboardWidgetState state) =>
@@ -217,7 +220,7 @@ public static class VrWidgetTextureRenderer
                 state.FuelSaveTirePlan, 540, style.Information);
             canvas.Fill(style.Card, 20, 690, 960, 66);
             canvas.Text($"PACE {Lap(state.AveragePaceSeconds)} · TREND {state.PaceTrendSecondsPerLap:+0.00;-0.00;0.00}/LAP · " +
-                        $"STOPS {state.EstimatedPitStops} · TYRE SETS {state.RecommendedTireSets} · CONFIDENCE {state.Confidence}",
+                        $"STOPS {state.EstimatedPitStops} · FINISH {state.FinishProbability:P0} · CONFIDENCE {state.Confidence}",
                 18, style.SecondaryText, new(36, 700, 928, 44), true, StringAlignment.Center);
         });
 
@@ -319,9 +322,27 @@ public static class VrWidgetTextureRenderer
     private static void DrawSteeringWheel(VrCanvas c, double steering)
     {
         var graphics = c.Graphics;
+        // Match the Desktop DirectComposition presentation: a fixed backing
+        // disc and accent outline, with only the photographed wheel rotating.
+        using (var backing = new SolidBrush(c.Style.SecondaryText))
+        using (var outline = new Pen(c.Style.Information, 2.5f))
+        {
+            graphics.FillEllipse(backing, 40, 114, 196, 196);
+            graphics.DrawEllipse(outline, 39, 113, 198, 198);
+        }
         var state = graphics.Save();
         graphics.TranslateTransform(138, 212);
         graphics.RotateTransform((float)Math.Clamp(steering, -1, 1) * 130);
+        if (SteeringWheelImage.Value is { } image)
+        {
+            graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
+            graphics.CompositingQuality = CompositingQuality.HighQuality;
+            graphics.DrawImage(image, new RectangleF(-100, -100, 200, 200));
+            graphics.Restore(state);
+            return;
+        }
+
+        // A vector fallback keeps Inputs usable if an embedded asset is damaged.
         using var rim = new Pen(c.Style.PrimaryText, 18) { StartCap = LineCap.Round, EndCap = LineCap.Round };
         using var spoke = new Pen(c.Style.SecondaryText, 12) { StartCap = LineCap.Round };
         graphics.DrawEllipse(rim, -82, -82, 164, 164);
@@ -331,6 +352,23 @@ public static class VrWidgetTextureRenderer
         using var hub = new SolidBrush(c.Style.Accent);
         graphics.FillEllipse(hub, -24, -24, 48, 48);
         graphics.Restore(state);
+    }
+
+    private static Bitmap? LoadSteeringWheel()
+    {
+        try
+        {
+            using var stream = typeof(VrWidgetTextureRenderer).Assembly
+                .GetManifestResourceStream(SteeringWheelResource);
+            if (stream is null) return null;
+            using var source = new Bitmap(stream);
+            return new Bitmap(source);
+        }
+        catch (Exception exception) when (
+            exception is ArgumentException or IOException or OutOfMemoryException)
+        {
+            return null;
+        }
     }
 
     private static void DrawPedalGraph(VrCanvas c, IReadOnlyList<VrPedalSample> samples, float left, float top, float width, float height)
@@ -414,21 +452,8 @@ public static class VrWidgetTextureRenderer
 
     private static (string Code, Color Color) Manufacturer(string value)
     {
-        var name = value.ToUpperInvariant();
-        return name switch
-        {
-            _ when name.Contains("BMW") => ("BMW", Color.FromArgb(42, 115, 205)),
-            _ when name.Contains("FERRARI") => ("FER", Color.FromArgb(238, 31, 52)),
-            _ when name.Contains("PORSCHE") => ("POR", Color.FromArgb(105, 119, 133)),
-            _ when name.Contains("ASTON") => ("AST", Color.FromArgb(20, 130, 92)),
-            _ when name.Contains("MCLAREN") => ("MCL", Color.FromArgb(224, 104, 24)),
-            _ when name.Contains("FORD") => ("FOR", Color.FromArgb(42, 115, 205)),
-            _ when name.Contains("LEXUS") => ("LEX", Color.FromArgb(105, 119, 133)),
-            _ when name.Contains("TOYOTA") => ("TOY", Color.FromArgb(205, 163, 20)),
-            _ when name.Contains("CADILLAC") => ("CAD", Color.FromArgb(105, 119, 133)),
-            _ when name.Contains("ALPINE") => ("ALP", Color.FromArgb(42, 115, 205)),
-            _ => ("---", Color.FromArgb(105, 119, 133)),
-        };
+        var identity = VehicleCatalog.Resolve(value);
+        return (identity.Code, ColorTranslator.FromHtml(identity.Color));
     }
 
     private static Color ClassColor(string value) => value switch

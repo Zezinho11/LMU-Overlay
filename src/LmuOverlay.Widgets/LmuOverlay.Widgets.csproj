@@ -3,6 +3,9 @@
     <ProjectReference Include="..\LmuOverlay.Domain\LmuOverlay.Domain.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <EmbeddedResource Include="Data\vehicle-catalog.v1.json" />
+  </ItemGroup>
+  <ItemGroup>
     <Compile Include="..\LmuOverlay.Desktop\OfficialTimingOptimalProvider.cs" Link="Timing\OfficialTimingOptimalProvider.cs" />
     <Compile Include="..\LmuOverlay.Desktop\PersistentSectorReferenceTracker.cs" Link="Timing\PersistentSectorReferenceTracker.cs" />
     <Compile Include="..\LmuOverlay.Desktop\SectorReferenceStore.cs" Link="Timing\SectorReferenceStore.cs" />

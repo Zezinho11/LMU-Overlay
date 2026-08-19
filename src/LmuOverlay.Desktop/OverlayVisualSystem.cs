@@ -39,12 +39,18 @@ public static class OverlayVisualSystem
         }
 
         var background = ParseColor(settings.CustomBackgroundColor, Color.FromRgb(10, 15, 26));
-        var primaryText = ContrastRatio(Colors.White, background) >= 4.5
-            ? Colors.White
-            : Colors.Black;
-        var secondaryText = primaryText == Colors.White
-            ? Color.FromRgb(202, 211, 220)
-            : Color.FromRgb(45, 53, 61);
+        var primaryText = ParseColor(settings.CustomPrimaryTextColor, Colors.White);
+        if (ContrastRatio(primaryText, background) < 4.5)
+        {
+            primaryText = ContrastRatio(Colors.White, background) >= 4.5
+                ? Colors.White
+                : Colors.Black;
+        }
+        var secondaryText = ParseColor(
+            settings.CustomSecondaryTextColor,
+            primaryText == Colors.White
+                ? Color.FromRgb(202, 211, 220)
+                : Color.FromRgb(45, 53, 61));
         var accent = ParseColor(settings.CustomAccentColor, Color.FromRgb(66, 211, 166));
         if (ContrastRatio(accent, background) < 2.5)
         {
@@ -55,14 +61,14 @@ public static class OverlayVisualSystem
 
         return new(
             background,
-            Blend(background, primaryText, 0.07),
+            ParseColor(settings.CustomCardColor, Mix(background, primaryText, 0.07)),
             accent,
             primaryText,
             secondaryText,
-            Color.FromRgb(18, 217, 229),
-            Color.FromRgb(255, 190, 64),
-            Color.FromRgb(255, 70, 75),
-            Color.FromRgb(66, 211, 166));
+            ParseColor(settings.CustomInformationColor, Color.FromRgb(18, 217, 229)),
+            ParseColor(settings.CustomAttentionColor, Color.FromRgb(255, 190, 64)),
+            ParseColor(settings.CustomCriticalColor, Color.FromRgb(255, 70, 75)),
+            ParseColor(settings.CustomPositiveColor, Color.FromRgb(66, 211, 166)));
     }
 
     public static OverlayThemePalette Resolve(string theme) => theme switch
@@ -178,7 +184,7 @@ public static class OverlayVisualSystem
         }
     }
 
-    private static Color Blend(Color first, Color second, double amount)
+    public static Color Mix(Color first, Color second, double amount)
     {
         amount = Math.Clamp(amount, 0, 1);
         return Color.FromRgb(

@@ -91,6 +91,11 @@ public readonly record struct SectorReferenceSeed(
     double Sector2Seconds,
     double Sector3Seconds)
 {
+    public double Optimal =>
+        Sector1Seconds > 0 && Sector2Seconds > 0 && Sector3Seconds > 0
+            ? Sector1Seconds + Sector2Seconds + Sector3Seconds
+            : 0;
+
     public double this[int index] => index switch
     {
         0 => Sector1Seconds,
@@ -180,7 +185,20 @@ public sealed record RelativeRowState(
     double RelativeGapSeconds,
     int RelativeLaps,
     bool IsPlayer,
-    bool IsInPitLane);
+    bool IsInPitLane)
+{
+    public RelativeGapSource GapSource { get; init; } = RelativeGapSource.DistanceEstimate;
+    public double GapConfidence { get; init; } = 0.6;
+}
+
+public enum RelativeGapSource
+{
+    Unavailable,
+    Player,
+    OfficialAhead,
+    OfficialBehind,
+    DistanceEstimate,
+}
 
 public sealed record SessionFlagsWidgetState(
     bool Available,
@@ -568,6 +586,7 @@ public static class EssentialWidgetStateFactory
         var player = snapshot.Standings.FirstOrDefault(item => item.IsPlayer) ??
             snapshot.Standings.FirstOrDefault(item =>
                 item.VehicleId == snapshot.Player?.VehicleId);
+        var playerTelemetry = snapshot.Player;
         var lapLength = snapshot.Session?.LapLengthMeters ?? 0;
         if (player is null || !double.IsFinite(lapLength) || lapLength <= 100)
         {
@@ -603,6 +622,16 @@ public static class EssentialWidgetStateFactory
                     lapLength),
             })
             .ToArray();
+        var nearestAheadId = relative
+            .Where(item => item.DistanceMeters > 0)
+            .OrderBy(item => item.DistanceMeters)
+            .Select(item => item.Standing.VehicleId)
+            .FirstOrDefault(int.MinValue);
+        var nearestBehindId = relative
+            .Where(item => item.DistanceMeters < 0)
+            .OrderByDescending(item => item.DistanceMeters)
+            .Select(item => item.Standing.VehicleId)
+            .FirstOrDefault(int.MinValue);
         var count = Math.Max(1, carsEachSide);
         var selected = relative
             .Where(item => item.DistanceMeters > 0)
@@ -619,6 +648,18 @@ public static class EssentialWidgetStateFactory
             .Select(entry =>
             {
                 var item = entry.Standing;
+                var isPlayer = item.VehicleId == player.VehicleId;
+                var officialAhead = item.VehicleId == nearestAheadId &&
+                    IsOfficialGap(playerTelemetry?.GapToCarAheadSeconds ?? 0);
+                var officialBehind = item.VehicleId == nearestBehindId &&
+                    IsOfficialGap(playerTelemetry?.GapToCarBehindSeconds ?? 0);
+                var gap = isPlayer
+                    ? 0
+                    : officialAhead
+                        ? -playerTelemetry!.GapToCarAheadSeconds
+                        : officialBehind
+                            ? playerTelemetry!.GapToCarBehindSeconds
+                            : -entry.DistanceMeters / metersPerSecond;
                 return new RelativeRowState(
                 item.Position,
                 item.DriverName,
@@ -626,16 +667,27 @@ public static class EssentialWidgetStateFactory
                 item.VehicleClass,
                 AbbreviateVehicleClass(item.VehicleClass),
                 ExtractCarNumber(item.VehicleName, item.VehicleModel),
-                item.VehicleId == player.VehicleId
-                    ? 0
-                    : -entry.DistanceMeters / metersPerSecond,
+                gap,
                 0,
-                item.VehicleId == player.VehicleId,
-                item.IsInPits || item.PitState is not LmuPitState.None);
+                isPlayer,
+                item.IsInPits || item.PitState is not LmuPitState.None)
+                {
+                    GapSource = isPlayer
+                        ? RelativeGapSource.Player
+                        : officialAhead
+                            ? RelativeGapSource.OfficialAhead
+                            : officialBehind
+                                ? RelativeGapSource.OfficialBehind
+                                : RelativeGapSource.DistanceEstimate,
+                    GapConfidence = isPlayer || officialAhead || officialBehind ? 1 : 0.6,
+                };
             })
             .ToArray();
         return new RelativeWidgetState(rows);
     }
+
+    private static bool IsOfficialGap(double seconds) =>
+        double.IsFinite(seconds) && seconds is > 0 and < 1_800;
 
     private static double CircularDistance(double distanceMeters, double lapLength)
     {

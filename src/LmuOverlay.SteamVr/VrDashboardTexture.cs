@@ -21,10 +21,45 @@ public static class VrDashboardTexture
         canvas.StrokeRound(style.Accent, 4, 4, 4, Width - 8, Height - 8, 22);
         DrawHeader(canvas, dashboard, style);
         DrawTop(canvas, dashboard, style);
-        DrawSectors(canvas, dashboard, style);
-        DrawTires(canvas, dashboard, style);
-        DrawTelemetry(canvas, dashboard, style, pedalHistory);
+        DrawModules(canvas, dashboard, style, pedalHistory);
         return canvas.Pixels();
+    }
+
+    private static void DrawModules(
+        VrCanvas canvas,
+        DashboardWidgetState dashboard,
+        VrRenderStyle style,
+        IReadOnlyList<VrPedalSample>? pedalHistory)
+    {
+        var nextX = 38f;
+        foreach (var module in DashboardModuleLayout.Parse(style.DashboardModuleOrder))
+        {
+            var (baseX, width, visible) = module switch
+            {
+                DashboardModule.Sectors => (38f, 330f, style.DashboardShowSectors),
+                DashboardModule.Tires => (382f, 430f, style.DashboardShowTires),
+                _ => (826f, 336f, style.DashboardShowTelemetry),
+            };
+            if (visible)
+            {
+                using (canvas.Translate(nextX - baseX, 0))
+                {
+                    switch (module)
+                    {
+                        case DashboardModule.Sectors:
+                            DrawSectors(canvas, dashboard, style);
+                            break;
+                        case DashboardModule.Tires:
+                            DrawTires(canvas, dashboard, style);
+                            break;
+                        case DashboardModule.Telemetry:
+                            DrawTelemetry(canvas, dashboard, style, pedalHistory);
+                            break;
+                    }
+                }
+            }
+            nextX += width + 14;
+        }
     }
 
     private static void DrawHeader(VrCanvas c, DashboardWidgetState state, VrRenderStyle style)

@@ -16,7 +16,11 @@ public sealed record VrRenderStyle(
     float DashboardTextScale,
     float TimingTextScale,
     float InputsTextScale,
-    string Language)
+    string Language,
+    bool DashboardShowSectors,
+    bool DashboardShowTires,
+    bool DashboardShowTelemetry,
+    string DashboardModuleOrder)
 {
     public static VrRenderStyle From(VrDesktopSettings settings)
     {
@@ -71,7 +75,11 @@ public sealed record VrRenderStyle(
             (float)settings.DashboardTextScale,
             (float)settings.TimingTextScale,
             (float)settings.InputsTextScale,
-            settings.Language);
+            settings.Language,
+            settings.DashboardShowSectors,
+            settings.DashboardShowTires,
+            settings.DashboardShowTelemetry,
+            settings.DashboardModuleOrder);
     }
 
     public static string NormalizeHex(string? value, string fallback)
@@ -92,10 +100,18 @@ public sealed record VrRenderStyle(
     private static VrPalette Custom(VrDesktopSettings settings)
     {
         var background = Parse(settings.CustomBackgroundColor, Color.FromArgb(10, 15, 26));
-        var primary = Contrast(Color.White, background) >= 4.5 ? Color.White : Color.Black;
-        var secondary = primary == Color.White
-            ? Color.FromArgb(202, 211, 220)
-            : Color.FromArgb(45, 53, 61);
+        var primary = Parse(settings.CustomPrimaryTextColor, Color.White);
+        if (Contrast(primary, background) < 4.5)
+        {
+            primary = Contrast(Color.White, background) >= 4.5
+                ? Color.White
+                : Color.Black;
+        }
+        var secondary = Parse(
+            settings.CustomSecondaryTextColor,
+            primary == Color.White
+                ? Color.FromArgb(202, 211, 220)
+                : Color.FromArgb(45, 53, 61));
         var accent = Parse(settings.CustomAccentColor, Color.FromArgb(66, 211, 166));
         if (Contrast(accent, background) < 2.5)
         {
@@ -103,7 +119,16 @@ public sealed record VrRenderStyle(
                 ? Color.FromArgb(66, 211, 166)
                 : Color.FromArgb(0, 92, 70);
         }
-        return Palette(background, Blend(background, primary, 0.07), accent, primary, secondary);
+        return new VrPalette(
+            background,
+            Parse(settings.CustomCardColor, Blend(background, primary, 0.07)),
+            accent,
+            primary,
+            secondary,
+            Parse(settings.CustomInformationColor, Color.FromArgb(18, 217, 229)),
+            Parse(settings.CustomAttentionColor, Color.FromArgb(255, 190, 64)),
+            Parse(settings.CustomCriticalColor, Color.FromArgb(255, 70, 75)),
+            Parse(settings.CustomPositiveColor, Color.FromArgb(66, 211, 166)));
     }
 
     private static VrPalette Palette(

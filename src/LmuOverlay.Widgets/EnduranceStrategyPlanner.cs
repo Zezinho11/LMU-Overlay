@@ -19,6 +19,8 @@ public sealed record EnduranceStrategyInput(
     int AvailableTireSets)
 {
     public double FixedDurationSeconds { get; init; }
+    public int CurrentVirtualEnergyRangeLaps { get; init; } = int.MaxValue;
+    public int MaximumVirtualEnergyStintLaps { get; init; } = int.MaxValue;
 }
 
 public sealed record EnduranceStrategyPlan(
@@ -34,7 +36,12 @@ public sealed record EnduranceStrategyPlan(
     string Summary,
     string PitPlan,
     string TirePlan,
-    string AlternativeSummary);
+    string AlternativeSummary)
+{
+    public int PitWindowStartLap { get; init; }
+    public int PitWindowEndLap { get; init; }
+    public string Explanation { get; init; } = string.Empty;
+}
 
 public sealed record FuelSaveStrategyPlan(
     bool Available,
@@ -58,12 +65,18 @@ public static class EnduranceStrategyPlanner
         }
 
         var fuelMaximum = Math.Max(1, input.MaximumFuelStintLaps);
+        var energyMaximum = input.MaximumVirtualEnergyStintLaps is > 0 and < int.MaxValue
+            ? input.MaximumVirtualEnergyStintLaps
+            : int.MaxValue;
         var configuredMaximum = input.ConfiguredMaximumStintLaps > 0
             ? input.ConfiguredMaximumStintLaps
             : int.MaxValue;
-        var maximumStint = Math.Min(fuelMaximum, configuredMaximum);
+        var maximumStint = Math.Min(Math.Min(fuelMaximum, energyMaximum), configuredMaximum);
+        var currentResourceRange = input.CurrentVirtualEnergyRangeLaps is > 0 and < int.MaxValue
+            ? Math.Min(input.CurrentFuelRangeLaps, input.CurrentVirtualEnergyRangeLaps)
+            : input.CurrentFuelRangeLaps;
         var firstStint = Math.Clamp(
-            Math.Max(1, input.CurrentFuelRangeLaps),
+            Math.Max(1, currentResourceRange),
             1,
             Math.Min(maximumStint, input.RemainingLaps));
         var afterFirst = input.RemainingLaps - firstStint;
@@ -109,6 +122,7 @@ public static class EnduranceStrategyPlanner
         var displayedDuration = input.FixedDurationSeconds > 0
             ? input.FixedDurationSeconds
             : best.EstimatedTimeSeconds;
+        var firstPit = best.PitLaps.FirstOrDefault();
         return new(
             true,
             best.Stints.Count,
@@ -130,7 +144,14 @@ public static class EnduranceStrategyPlanner
                 ? "NO VIABLE ALTERNATIVE"
                 : $"ALT {alternative.Stints.Count} STINTS · " +
                   $"{FormatDuration(alternative.EstimatedTimeSeconds)} · " +
-                  $"{alternative.EstimatedTimeSeconds - best.EstimatedTimeSeconds:+0;-0;0}s");
+                  $"{alternative.EstimatedTimeSeconds - best.EstimatedTimeSeconds:+0;-0;0}s")
+        {
+            PitWindowStartLap = firstPit > 0 ? Math.Max(input.CompletedLaps + 1, firstPit - 1) : 0,
+            PitWindowEndLap = firstPit > 0 ? firstPit + 1 : 0,
+            Explanation = $"RESOURCE LIMIT {maximumStint} LAPS · " +
+                $"FUEL {fuelMaximum} · ENERGY {(energyMaximum == int.MaxValue ? "N/A" : energyMaximum)} · " +
+                $"RESERVE {input.ReserveFuelLiters:0.0} L · {candidates.Count} CANDIDATES",
+        };
     }
 
     public static FuelSaveStrategyPlan CalculateFuelSave(

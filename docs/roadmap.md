@@ -72,7 +72,8 @@ The prioritized hardening work and its research basis are recorded in the
 - [x] Add the initial fuel strategy with learned consumption and finish margin.
 - [x] Add configuration UX, profile import/export, diagnostics, and signed
   packaging/update foundations.
-- [ ] Add localization.
+- [x] Add shared Brazilian Portuguese/English localization across WPF,
+  DirectComposition and SteamVR.
 - [x] Add the first configuration window with widget visibility, opacity, and
   live application.
 - [x] Add named profiles and profile import/export.
@@ -98,6 +99,8 @@ The prioritized hardening work and its research basis are recorded in the
   and automatic SteamVR reconnect.
 - [x] Add deterministic texture/profile/settings parity tests without requiring
   a connected headset.
+- [x] Add deterministic PNG export for all eight compositor textures plus a
+  simulated HMD composition used in visual review and CI.
 - [ ] Complete release qualification on physical 90/120 Hz headsets and add
   optional controller-driven in-headset placement.
 

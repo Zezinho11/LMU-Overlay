@@ -15,7 +15,30 @@ try
                 timingHistory.RootElement,
                 42) - 117) < 0.0001,
             "Optimal must use the same per-sector history calculation as LMU Timing.");
+        Assert(OfficialTimingOptimalProvider.HasSupportedSchema(
+                timingHistory.RootElement,
+                42),
+            "The official timing adapter must accept the known LMU history schema.");
     }
+    using (var incompatibleHistory = JsonDocument.Parse(
+        """{"42":[{"sectorOne":30,"sectorTwo":40,"total":120}]}"""))
+    {
+        Assert(!OfficialTimingOptimalProvider.HasSupportedSchema(
+                incompatibleHistory.RootElement,
+                42),
+            "Unknown timing schemas must be rejected instead of contaminating Optimal.");
+    }
+    var hardenedOptions = new OfficialTimingOptimalOptions
+    {
+        BaseAddress = new Uri("https://example.com/"),
+        Timeout = TimeSpan.FromSeconds(30),
+        PollInterval = TimeSpan.FromMilliseconds(1),
+    }.Sanitize();
+    Assert(hardenedOptions.BaseAddress.IsLoopback &&
+           hardenedOptions.BaseAddress.Scheme == Uri.UriSchemeHttp &&
+           hardenedOptions.Timeout <= TimeSpan.FromSeconds(2) &&
+           hardenedOptions.PollInterval >= TimeSpan.FromMilliseconds(250),
+        "The optional HTTP adapter must remain loopback-only and bounded.");
 
     Assert(OfficialTimingOptimalProvider.IsNewSession(
             true, "Monza", 1, 42, 600, "Laguna Seca", 1, 42, 5),
@@ -84,6 +107,20 @@ try
         "Personal bests must be local and separated by track, driver and vehicle model.");
     Assert(personalBestStore.Load("Spa", "Driver Two", "GT3") == default,
         "Different drivers must never share a personal record.");
+    var mixedSectorBest = new LmuOverlay.Widgets.PersonalBestLap(117, 28, 40.5, 48.5);
+    personalBestStore.SaveIfFaster("Spa", "Driver One", "GT3", mixedSectorBest);
+    var timingRecord = personalBestStore.LoadRecord("Spa", "Driver One", "GT3");
+    Assert(timingRecord.BestLap == mixedSectorBest &&
+           timingRecord.BestSectors == new LmuOverlay.Widgets.SectorReferenceSeed(28, 39, 48.5),
+        "A new valid BEST must keep independently faster sectors from prior valid best laps.");
+    Assert(Math.Abs(personalBestStore.SaveOptimalIfFaster(
+            "Spa", "Driver One", "GT3", 114) - 114) < 0.0001 &&
+           Math.Abs(personalBestStore.SaveOptimalIfFaster(
+            "Spa", "Driver One", "GT3", 116) - 114) < 0.0001,
+        "The per-track Optimal must persist only a faster valid value.");
+    Assert(Math.Abs(new PersonalBestLapStore(personalBestPath).LoadRecord(
+            "Spa", "Driver One", "GT3").OptimalLapTimeSeconds - 114) < 0.0001,
+        "Saved Optimal must survive restart and remain isolated by track, driver and car.");
     var officialStanding = new LmuOverlay.Domain.LmuVehicleStanding(
         42, "Driver One", "Car", "GT3", "GT3", 1, 5, 1, 100,
         118, 119, 0, 0, 0, 0, 0, 0, true, false,
@@ -158,7 +195,17 @@ try
             Theme = "Custom",
             CustomAccentColor = "e04b73",
             CustomBackgroundColor = "invalid",
+            CustomCardColor = "#112233",
+            CustomPrimaryTextColor = "#F0F1F2",
+            CustomSecondaryTextColor = "#A0A1A2",
+            CustomInformationColor = "#22CCEE",
+            CustomAttentionColor = "#EEAA22",
+            CustomCriticalColor = "#EE2244",
+            CustomPositiveColor = "#33DD88",
             DashboardTitle = "  BLUE FOX RACING  ",
+            DashboardShowSectors = false,
+            DashboardShowTires = true,
+            DashboardShowTelemetry = false,
             DashboardTextScale = 2,
             TimingTextScale = 0.1,
             InputsTextScale = 1.15,
@@ -172,6 +219,14 @@ try
         "Custom colors must be normalized to six-digit uppercase hex.");
     Assert(custom.Settings.CustomBackgroundColor == "#0A0F1A",
         "Invalid custom colors must safely fall back to the RedFox background.");
+    Assert(custom.Settings.CustomCardColor == "#112233" &&
+           custom.Settings.CustomInformationColor == "#22CCEE" &&
+           custom.Settings.CustomCriticalColor == "#EE2244",
+        "The complete semantic palette must be normalized and persisted.");
+    Assert(!custom.Settings.DashboardShowSectors &&
+           custom.Settings.DashboardShowTires &&
+           !custom.Settings.DashboardShowTelemetry,
+        "Dashboard module composition must be persisted per profile.");
     Assert(custom.Settings.DashboardTitle == "BLUE FOX RACING",
         "Dashboard titles must be trimmed before persistence.");
     Assert(custom.Settings.DashboardTextScale == 1.25 &&
@@ -184,6 +239,10 @@ try
     var customPalette = OverlayVisualSystem.Resolve(custom.Settings);
     Assert(customPalette.Accent.R == 224 && customPalette.Accent.G == 75 && customPalette.Accent.B == 115,
         "The custom palette must use the persisted accent color.");
+    Assert(customPalette.Card.R == 17 && customPalette.Card.G == 34 && customPalette.Card.B == 51 &&
+           customPalette.Information.R == 34 && customPalette.Information.G == 204 &&
+           customPalette.Critical.B == 68,
+        "Custom card and semantic colors must reach the resolved Desktop palette.");
     Assert(OverlayVisualSystem.ContrastRatio(customPalette.PrimaryText, customPalette.Background) >= 4.5,
         "Custom themes must preserve readable primary text contrast.");
     var lightPalette = OverlayVisualSystem.Resolve(custom.Settings with

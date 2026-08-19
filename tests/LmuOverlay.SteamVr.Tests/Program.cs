@@ -42,6 +42,11 @@ Require(texture.Length == VrDashboardTexture.Width * VrDashboardTexture.Height *
     "VR renderer returns a complete RGBA frame.");
 Require(texture.Where((_, index) => index % 4 == 3).Any(alpha => alpha > 0),
     "VR frame contains visible pixels outside its transparent rounded corners.");
+Require(
+    typeof(VrWidgetTextureRenderer).Assembly.GetManifestResourceNames().Contains(
+        "LmuOverlay.SteamVr.Assets.steering-wheel.png",
+        StringComparer.Ordinal),
+    "SteamVR Inputs must embed the same transparent steering-wheel artwork as Desktop.");
 
 var standingsFrame = VrWidgetTextureRenderer.LiveStandings(
     EssentialWidgetStateFactory.CreateLiveStandings(unavailable));
@@ -122,7 +127,15 @@ try
                 "Theme": "Custom",
                 "CustomAccentColor": "#FF2200",
                 "CustomBackgroundColor": "#050607",
+                "CustomCardColor": "#112233",
+                "CustomInformationColor": "#22CCEE",
+                "CustomAttentionColor": "#EEAA22",
+                "CustomCriticalColor": "#EE2244",
+                "CustomPositiveColor": "#33DD88",
                 "DashboardTitle": "VR TEST",
+                "DashboardShowSectors": false,
+                "DashboardShowTires": true,
+                "DashboardShowTelemetry": false,
                 "RefreshRateHz": 120,
                 "LiveStandingsMaximumRows": 10,
                 "RelativeCarsEachSide": 5
@@ -136,6 +149,14 @@ try
         "SteamVR follows the active desktop visual profile.");
     Require(settings.RefreshRateHz == 120 && settings.RelativeCarsEachSide == 5,
         "SteamVR follows desktop update and timing-density settings.");
+    var customStyle = VrRenderStyle.From(settings);
+    Require(customStyle.Card.R == 17 && customStyle.Card.G == 34 && customStyle.Card.B == 51 &&
+            customStyle.Information.R == 34 && customStyle.Information.G == 204 &&
+            customStyle.Critical.B == 68,
+        "SteamVR must resolve the complete Desktop custom palette.");
+    Require(!customStyle.DashboardShowSectors && customStyle.DashboardShowTires &&
+            !customStyle.DashboardShowTelemetry,
+        "SteamVR must follow the Desktop dashboard module composition.");
     var accessibleSettings = settings with { Theme = "ColorVisionSafe" };
     var accessibleStyle = VrRenderStyle.From(accessibleSettings);
     Require(accessibleStyle.Information != accessibleStyle.Attention &&
@@ -176,6 +197,22 @@ try
 finally
 {
     if (File.Exists(diagnosticsPath)) File.Delete(diagnosticsPath);
+}
+
+var baselinePath = System.IO.Path.Combine(
+    System.IO.Path.GetTempPath(),
+    $"lmu-overlay-vr-baselines-{Guid.NewGuid():N}");
+try
+{
+    var baselines = VrVisualBaselineWriter.Write(baselinePath);
+    Require(baselines.Count == 9 && baselines.All(File.Exists),
+        "VR visual qualification must export all eight surfaces and the HMD composition.");
+    Require(baselines.All(path => new FileInfo(path).Length > 1_024),
+        "VR visual baselines must contain rendered PNG data.");
+}
+finally
+{
+    if (Directory.Exists(baselinePath)) Directory.Delete(baselinePath, true);
 }
 
 Console.WriteLine("SteamVR foundation checks passed.");

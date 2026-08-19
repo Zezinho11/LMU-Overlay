@@ -6,6 +6,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\LmuOverlay.Contracts\LmuOverlay.Contracts.csproj" />
@@ -13,5 +15,10 @@
     <ProjectReference Include="..\LmuOverlay.Domain\LmuOverlay.Domain.csproj" />
     <ProjectReference Include="..\LmuOverlay.LmuSharedMemory\LmuOverlay.LmuSharedMemory.csproj" />
     <ProjectReference Include="..\LmuOverlay.Widgets\LmuOverlay.Widgets.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="..\LmuOverlay.DirectX\Assets\steering-wheel.png"
+                      Link="Assets\steering-wheel.png"
+                      LogicalName="LmuOverlay.SteamVr.Assets.steering-wheel.png" />
   </ItemGroup>
 </Project>

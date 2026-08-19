@@ -17,7 +17,11 @@ public sealed record NativeOverlayStyle(
     double DashboardTextScale,
     double TimingTextScale,
     double InputsTextScale,
-    string Language)
+    string Language,
+    bool DashboardShowSectors,
+    bool DashboardShowTires,
+    bool DashboardShowTelemetry,
+    string DashboardModuleOrder)
 {
     public static NativeOverlayStyle RedFox { get; } = new(
         new(10, 15, 26),
@@ -34,5 +38,9 @@ public sealed record NativeOverlayStyle(
         1,
         1,
         1,
-        "pt-BR");
+        "pt-BR",
+        true,
+        true,
+        true,
+        "Sectors,Tires,Telemetry");
 }

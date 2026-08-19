@@ -9,7 +9,18 @@ public sealed record VrDesktopSettings
     public string Theme { get; init; } = "RedFox";
     public string CustomAccentColor { get; init; } = "#42D3A6";
     public string CustomBackgroundColor { get; init; } = "#0A0F1A";
+    public string CustomCardColor { get; init; } = "#121924";
+    public string CustomPrimaryTextColor { get; init; } = "#FFFFFF";
+    public string CustomSecondaryTextColor { get; init; } = "#CAD3DC";
+    public string CustomInformationColor { get; init; } = "#12D9E5";
+    public string CustomAttentionColor { get; init; } = "#FFBE40";
+    public string CustomCriticalColor { get; init; } = "#FF464B";
+    public string CustomPositiveColor { get; init; } = "#42D3A6";
     public string DashboardTitle { get; init; } = "REDFOX RACING";
+    public bool DashboardShowSectors { get; init; } = true;
+    public bool DashboardShowTires { get; init; } = true;
+    public bool DashboardShowTelemetry { get; init; } = true;
+    public string DashboardModuleOrder { get; init; } = DashboardModuleLayout.DefaultOrder;
     public double DashboardTextScale { get; init; } = 1;
     public double TimingTextScale { get; init; } = 1;
     public double InputsTextScale { get; init; } = 1;
@@ -32,6 +43,8 @@ public sealed record VrDesktopSettings
     public int PedalHistorySeconds { get; init; } = 5;
     public bool ShowPriorityAlerts { get; init; } = true;
     public bool ReduceMotion { get; init; } = true;
+    public bool EnableOfficialTimingHttp { get; init; } = true;
+    public bool EnableSteamVr { get; init; } = true;
 
     public VrDesktopSettings Sanitize() => this with
     {
@@ -41,9 +54,17 @@ public sealed record VrDesktopSettings
             : "RedFox",
         CustomAccentColor = VrRenderStyle.NormalizeHex(CustomAccentColor, "#42D3A6"),
         CustomBackgroundColor = VrRenderStyle.NormalizeHex(CustomBackgroundColor, "#0A0F1A"),
+        CustomCardColor = VrRenderStyle.NormalizeHex(CustomCardColor, "#121924"),
+        CustomPrimaryTextColor = VrRenderStyle.NormalizeHex(CustomPrimaryTextColor, "#FFFFFF"),
+        CustomSecondaryTextColor = VrRenderStyle.NormalizeHex(CustomSecondaryTextColor, "#CAD3DC"),
+        CustomInformationColor = VrRenderStyle.NormalizeHex(CustomInformationColor, "#12D9E5"),
+        CustomAttentionColor = VrRenderStyle.NormalizeHex(CustomAttentionColor, "#FFBE40"),
+        CustomCriticalColor = VrRenderStyle.NormalizeHex(CustomCriticalColor, "#FF464B"),
+        CustomPositiveColor = VrRenderStyle.NormalizeHex(CustomPositiveColor, "#42D3A6"),
         DashboardTitle = string.IsNullOrWhiteSpace(DashboardTitle)
             ? "REDFOX RACING"
             : new string(DashboardTitle.Trim().Where(value => !char.IsControl(value)).Take(24).ToArray()),
+        DashboardModuleOrder = DashboardModuleLayout.Normalize(DashboardModuleOrder),
         DashboardTextScale = Math.Clamp(DashboardTextScale <= 0 ? 1 : DashboardTextScale, 0.8, 1.25),
         TimingTextScale = Math.Clamp(TimingTextScale <= 0 ? 1 : TimingTextScale, 0.8, 1.25),
         InputsTextScale = Math.Clamp(InputsTextScale <= 0 ? 1 : InputsTextScale, 0.8, 1.25),

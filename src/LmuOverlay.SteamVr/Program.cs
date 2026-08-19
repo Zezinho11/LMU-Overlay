@@ -23,11 +23,29 @@ if (!OperatingSystem.IsWindows())
 var profileStore = new SteamVrProfileStore();
 var desktopSettingsReader = new DesktopProfileSettingsReader();
 var diagnosticsPath = ArgumentValue(args, "--diagnostics");
+var visualBaselinePath = ArgumentValue(args, "--capture-vr-baselines");
+if (!string.IsNullOrWhiteSpace(visualBaselinePath))
+{
+    var files = VrVisualBaselineWriter.Write(
+        visualBaselinePath,
+        desktopSettingsReader.Load());
+    Console.WriteLine($"SteamVR visual baselines written to {Path.GetFullPath(visualBaselinePath)}");
+    foreach (var file in files) Console.WriteLine(file);
+    return 0;
+}
 if (args.Contains("--configure", StringComparer.OrdinalIgnoreCase) ||
     args.Contains("--configure-vr", StringComparer.OrdinalIgnoreCase))
 {
     ApplicationConfiguration.Initialize();
     Application.Run(new SteamVrConfigurationForm(profileStore));
+    return 0;
+}
+var startupSettings = desktopSettingsReader.Load();
+if (args.Contains("--safe-mode", StringComparer.OrdinalIgnoreCase) ||
+    (!startupSettings.EnableSteamVr &&
+     !args.Contains("--force-vr", StringComparer.OrdinalIgnoreCase)))
+{
+    Console.WriteLine("SteamVR is disabled by safe mode or the active desktop profile.");
     return 0;
 }
 var profile = ApplyPreset(profileStore.Load(), args);
@@ -44,11 +62,16 @@ await using var telemetry = new TelemetryRuntime(
     TimeSpan.FromMilliseconds(8),
     TimeSpan.FromSeconds(1));
 telemetry.Start();
-using var officialOptimal = new OfficialTimingOptimalProvider();
+using var officialOptimal = new OfficialTimingOptimalProvider(new()
+{
+    Enabled = startupSettings.EnableOfficialTimingHttp &&
+        !args.Contains("--disable-optimal-http", StringComparer.OrdinalIgnoreCase),
+});
 var sectors = new PersistentSectorReferenceTracker(
     new SectorReferenceStore(),
     new PersonalBestLapStore());
 var fuelTracker = new FuelStrategyTracker();
+var timingTracker = new TimingWidgetTracker();
 var pedalHistory = new Queue<VrPedalSample>();
 var pedalSession = string.Empty;
 
@@ -151,13 +174,15 @@ while (!shutdown.IsCancellationRequested)
                     : snapshot;
                 var dashboard = EssentialWidgetStateFactory.CreateDashboard(live);
                 var trackedSectors = sectors.Update(live, dashboard.SectorTimes);
+                var liveOptimal = officialOptimal.GetOptimal(snapshot);
+                var persistedOptimal = sectors.ObserveOptimal(live, liveOptimal);
                 dashboard = dashboard with
                 {
                     SectorTimes = trackedSectors,
                     BestLapTimeSeconds = sectors.PersonalBestLapTimeSeconds > 0
                         ? sectors.PersonalBestLapTimeSeconds
                         : dashboard.BestLapTimeSeconds,
-                    OptimalLapTimeSeconds = officialOptimal.GetOptimal(snapshot),
+                    OptimalLapTimeSeconds = persistedOptimal,
                 };
                 var inputs = EssentialWidgetStateFactory.CreateInputs(live);
                 UpdatePedalHistory(
@@ -183,17 +208,17 @@ while (!shutdown.IsCancellationRequested)
 
                 if (lastTimingUpdate == 0 || now - lastTimingUpdate >= Stopwatch.Frequency / 10)
                 {
+                    var timing = timingTracker.Update(
+                        live,
+                        settings.LiveStandingsMaximumRows,
+                        settings.RelativeCarsEachSide);
                     Submit(openVr, standingsKey, profile.LiveStandings,
                         VrWidgetTextureRenderer.LiveStandings(
-                            EssentialWidgetStateFactory.CreateLiveStandings(
-                                live,
-                                settings.LiveStandingsMaximumRows),
+                            timing.Standings,
                             style));
                     Submit(openVr, relativeKey, profile.Relative,
                         VrWidgetTextureRenderer.Relative(
-                            EssentialWidgetStateFactory.CreateRelative(
-                                live,
-                                settings.RelativeCarsEachSide),
+                            timing.Relative,
                             style));
                     raceControl = EssentialWidgetStateFactory.CreateRaceControl(live);
                     Submit(openVr, raceControlKey, profile.RaceControl,

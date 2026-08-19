@@ -13,6 +13,7 @@ public sealed class PersistentSectorReferenceTracker
     private string _vehicleModel = string.Empty;
     private SectorReferenceSeed _saved;
     private PersonalBestLap _personalBest;
+    private double _personalOptimal;
 
     public PersistentSectorReferenceTracker(
         SectorReferenceStore sectorStore,
@@ -24,6 +25,7 @@ public sealed class PersistentSectorReferenceTracker
 
     public double PersonalBestLapTimeSeconds =>
         _personalBest.IsValid ? _personalBest.LapTimeSeconds : 0;
+    public double PersonalOptimalLapTimeSeconds => _personalOptimal;
 
     public DashboardSectorTimes Update(
         LmuTelemetrySnapshot snapshot,
@@ -51,11 +53,17 @@ public sealed class PersistentSectorReferenceTracker
             _trackName = session.TrackName;
             _driverName = driverName ?? string.Empty;
             _vehicleModel = vehicleModel;
-            _personalBest = _personalBestStore.Load(
+            var timing = _personalBestStore.LoadRecord(
                 _trackName,
                 _driverName,
                 _vehicleModel);
-            _saved = _sectorStore.Load(_trackName, _vehicleModel);
+            _personalBest = timing.BestLap;
+            _personalOptimal = timing.OptimalLapTimeSeconds;
+            _saved = timing.BestSectors;
+            if (_saved == default)
+            {
+                _saved = _sectorStore.Load(_trackName, _vehicleModel);
+            }
             _tracker = new SectorReferenceTracker();
         }
 
@@ -71,11 +79,10 @@ public sealed class PersistentSectorReferenceTracker
                 _driverName,
                 _vehicleModel,
                 officialBest);
-            _sectorStore.Save(
-                _trackName,
-                _vehicleModel,
-                officialBest.Sectors);
-            _saved = _sectorStore.Load(_trackName, _vehicleModel);
+            var timing = _personalBestStore.LoadRecord(
+                _trackName, _driverName, _vehicleModel);
+            _saved = timing.BestSectors;
+            _personalOptimal = timing.OptimalLapTimeSeconds;
         }
 
         var hasSavedSectors = _saved.Sector1Seconds > 0 ||
@@ -96,6 +103,34 @@ public sealed class PersistentSectorReferenceTracker
                         : result.RecentSectorReferenceSeconds,
             }
             : result;
+    }
+
+    public double ObserveOptimal(LmuTelemetrySnapshot snapshot, double optimalLapTimeSeconds)
+    {
+        if (snapshot.Session is not { } session || snapshot.Player is not { } player ||
+            !double.IsFinite(optimalLapTimeSeconds) || optimalLapTimeSeconds is <= 10 or >= 1_800)
+        {
+            return PersonalOptimalLapTimeSeconds;
+        }
+
+        var standing = snapshot.Standings.FirstOrDefault(item =>
+            item.IsPlayer || item.VehicleId == player.VehicleId);
+        var driver = !string.IsNullOrWhiteSpace(standing?.DriverName)
+            ? standing.DriverName
+            : session.PlayerName;
+        var model = string.IsNullOrWhiteSpace(player.VehicleModel)
+            ? player.VehicleName
+            : player.VehicleModel;
+        if (!string.Equals(_trackName, session.TrackName, StringComparison.Ordinal) ||
+            !string.Equals(_driverName, driver, StringComparison.Ordinal) ||
+            !string.Equals(_vehicleModel, model, StringComparison.Ordinal))
+        {
+            return 0;
+        }
+
+        _personalOptimal = _personalBestStore.SaveOptimalIfFaster(
+            _trackName, _driverName, _vehicleModel, optimalLapTimeSeconds);
+        return _personalOptimal;
     }
 
     private static double Sector(SectorReferenceSeed sectors, int index) => index switch
