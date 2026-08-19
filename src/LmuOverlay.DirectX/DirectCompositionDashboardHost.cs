@@ -257,7 +257,11 @@ internal sealed class DirectCompositionDashboardHost : IDisposable
             frame.CapturedTimestamp,
             frame.FuelSaveFraction,
             (frame.Style ?? NativeOverlayStyle.RedFox).DashboardTitle,
-            (frame.Style ?? NativeOverlayStyle.RedFox).Language);
+            (frame.Style ?? NativeOverlayStyle.RedFox).Language,
+            (frame.Style ?? NativeOverlayStyle.RedFox).DashboardShowSectors,
+            (frame.Style ?? NativeOverlayStyle.RedFox).DashboardShowTires,
+            (frame.Style ?? NativeOverlayStyle.RedFox).DashboardShowTelemetry,
+            (frame.Style ?? NativeOverlayStyle.RedFox).DashboardModuleOrder);
 
         drawing.EndDraw().CheckError();
         _swapChain!.Present(1, PresentFlags.None).CheckError();
@@ -269,7 +273,11 @@ internal sealed class DirectCompositionDashboardHost : IDisposable
         long timestamp,
         double fuelSaveFraction,
         string dashboardTitle,
-        string language)
+        string language,
+        bool showSectors,
+        bool showTires,
+        bool showTelemetry,
+        string dashboardModuleOrder)
     {
         string T(LmuOverlay.Widgets.OverlayTextKey key) => LmuOverlay.Widgets.OverlayText.Get(language, key);
         DrawText(drawing, dashboard.TrackName.ToUpperInvariant(), 42, 54, 210, 20, 11, _muted!);
@@ -280,9 +288,6 @@ internal sealed class DirectCompositionDashboardHost : IDisposable
         DrawPanel(drawing, 42, 86, 225, 176);
         DrawPanel(drawing, 276, 86, 248, 176);
         DrawPanel(drawing, 533, 86, 225, 176);
-        DrawPanel(drawing, 42, 272, 225, 164);
-        DrawPanel(drawing, 276, 272, 248, 164);
-        DrawPanel(drawing, 533, 272, 225, 164);
 
         DrawText(drawing, $"{T(LmuOverlay.Widgets.OverlayTextKey.Position)} {(dashboard.Available ? dashboard.Position.ToString() : "--")}", 56, 104, 120, 24, 17, _green!);
         DrawText(drawing, $"{T(LmuOverlay.Widgets.OverlayTextKey.Lap)} {(dashboard.Available ? dashboard.LapNumber.ToString() : "--")}", 56, 130, 120, 22, 15, _white!);
@@ -307,11 +312,68 @@ internal sealed class DirectCompositionDashboardHost : IDisposable
         DrawControlCards(drawing, dashboard, timestamp);
         DrawText(drawing, $"OIL {dashboard.EngineOilTemperatureCelsius:0}°  WATER {dashboard.EngineWaterTemperatureCelsius:0}°", 548, 242, 190, 16, 11, _muted!);
 
-        DrawText(drawing, T(LmuOverlay.Widgets.OverlayTextKey.Sectors), 42, 276, 225, 23, 13, _cyan!, TextAlignment.Center);
-        DrawText(drawing, T(LmuOverlay.Widgets.OverlayTextKey.TyreTempWear), 276, 276, 248, 23, 12, _amber!, TextAlignment.Center);
+        DrawModules(
+            drawing,
+            dashboard,
+            language,
+            showSectors,
+            showTires,
+            showTelemetry,
+            dashboardModuleOrder);
+    }
+
+    private void DrawModules(
+        ID2D1DeviceContext drawing,
+        LmuOverlay.Widgets.DashboardWidgetState dashboard,
+        string language,
+        bool showSectors,
+        bool showTires,
+        bool showTelemetry,
+        string order)
+    {
+        var nextX = 42f;
+        var baseTransform = drawing.Transform;
+        foreach (var module in LmuOverlay.Widgets.DashboardModuleLayout.Parse(order))
+        {
+            var (baseX, width, visible) = module switch
+            {
+                LmuOverlay.Widgets.DashboardModule.Sectors => (42f, 225f, showSectors),
+                LmuOverlay.Widgets.DashboardModule.Tires => (276f, 248f, showTires),
+                _ => (533f, 225f, showTelemetry),
+            };
+            if (visible)
+            {
+                drawing.Transform = Matrix3x2.CreateTranslation(nextX - baseX, 0) * baseTransform;
+                switch (module)
+                {
+                    case LmuOverlay.Widgets.DashboardModule.Sectors:
+                        DrawPanel(drawing, 42, 272, 225, 164);
+                        DrawText(drawing, LmuOverlay.Widgets.OverlayText.Get(language, LmuOverlay.Widgets.OverlayTextKey.Sectors), 42, 276, 225, 23, 13, _cyan!, TextAlignment.Center);
+                        DrawSectors(drawing, dashboard);
+                        break;
+                    case LmuOverlay.Widgets.DashboardModule.Tires:
+                        DrawPanel(drawing, 276, 272, 248, 164);
+                        DrawText(drawing, LmuOverlay.Widgets.OverlayText.Get(language, LmuOverlay.Widgets.OverlayTextKey.TyreTempWear), 276, 276, 248, 23, 12, _amber!, TextAlignment.Center);
+                        DrawTires(drawing, dashboard);
+                        break;
+                    default:
+                        DrawTelemetryModule(drawing, dashboard, language);
+                        break;
+                }
+                nextX += width + 9;
+            }
+        }
+        drawing.Transform = baseTransform;
+    }
+
+    private void DrawTelemetryModule(
+        ID2D1DeviceContext drawing,
+        LmuOverlay.Widgets.DashboardWidgetState dashboard,
+        string language)
+    {
+        string T(LmuOverlay.Widgets.OverlayTextKey key) => LmuOverlay.Widgets.OverlayText.Get(language, key);
+        DrawPanel(drawing, 533, 272, 225, 164);
         DrawText(drawing, T(LmuOverlay.Widgets.OverlayTextKey.Telemetry), 533, 276, 225, 23, 13, _cyan!, TextAlignment.Center);
-        DrawSectors(drawing, dashboard);
-        DrawTires(drawing, dashboard);
         DrawPedals(drawing, dashboard);
         DrawText(drawing, $"{T(LmuOverlay.Widgets.OverlayTextKey.Throttle)} {dashboard.Throttle:P0}", 548, 309, 90, 20, 13, _green!);
         DrawText(drawing, $"{T(LmuOverlay.Widgets.OverlayTextKey.Brake)} {dashboard.Brake:P0}", 648, 309, 90, 20, 13, _red!);

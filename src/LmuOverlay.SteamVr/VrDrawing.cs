@@ -30,6 +30,13 @@ internal sealed class VrCanvas : IDisposable
     public VrRenderStyle Style { get; }
     public Graphics Graphics => _graphics;
 
+    public IDisposable Translate(float x, float y)
+    {
+        var state = _graphics.Save();
+        _graphics.TranslateTransform(x, y);
+        return new GraphicsScope(_graphics, state);
+    }
+
     public void Fill(Color color, float x, float y, float width, float height)
     {
         using var brush = new SolidBrush(color);
@@ -142,6 +149,11 @@ internal sealed class VrCanvas : IDisposable
         _fonts.Clear();
         _graphics.Dispose();
         _bitmap.Dispose();
+    }
+
+    private sealed class GraphicsScope(Graphics graphics, GraphicsState state) : IDisposable
+    {
+        public void Dispose() => graphics.Restore(state);
     }
 }
 

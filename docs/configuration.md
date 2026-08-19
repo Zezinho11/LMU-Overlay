@@ -33,8 +33,14 @@ versions so incompatible data is rejected instead of partially applied.
 - Select Brazilian Portuguese or English per profile. The same saved language
   is used by the WPF editor/fallback, native DirectComposition surfaces,
   toolbar and SteamVR surfaces/configuration editor.
-- Customize the dashboard team name, main accent and background colors using
-  six-digit hexadecimal values such as `#42D3A6`.
+- Customize the dashboard team name and the complete semantic palette using
+  six-digit hexadecimal values such as `#42D3A6`: background, cards, accent,
+  primary/secondary text, information, attention, critical and positive.
+  Editing any color automatically selects the custom theme, and each valid
+  field displays its own color preview on the input border.
+- Compose the dashboard by independently showing or hiding the Sectors, Tyre
+  Temp/Wear and Telemetry modules. Composition is stored in the profile and
+  applied identically to WPF edit mode, native DirectComposition and SteamVR.
 - Scale dashboard, timing-tower and inputs text independently from 0.80x to
   1.25x without moving or resizing the overlay surface.
 - Choose 6-12 visible Live Standings cars and 2-5 track-relative cars on each
@@ -53,9 +59,15 @@ Profiles from schema 19 or older migrate to Brazilian Portuguese; unknown
 language identifiers also fail safely to `pt-BR`.
 
 Visual settings are applied both to the editable WPF preview and to the locked
-DirectComposition renderers used during driving. Flag, warning, tire-condition
-and manufacturer colors remain standardized so customization cannot hide
-critical race information.
+DirectComposition renderers used during driving. The same profile is consumed
+by SteamVR. Tire-temperature bands, manufacturer identities and flag-card
+identity remain standardized; the general information/attention/critical
+palette can be customized and is still protected by contrast validation.
+
+The profile schema is intentionally renderer-neutral: palette tokens and
+dashboard-module choices are data, rather than WPF-only properties. This is the
+foundation for a later internal drag-and-drop dashboard builder without having
+to create incompatible Desktop and VR layouts.
 
 The built-in visual presets include Minimal, Broadcast and Endurance Pro in
 addition to the race-mode layout presets. Applying a preset changes the active

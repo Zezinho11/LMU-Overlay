@@ -3,9 +3,9 @@
 Extensible telemetry overlay for **Le Mans Ultimate**, designed around the game's
 official shared-memory interface and a strict anti-cheat-safe boundary.
 
-> Project status: `0.6.5` desktop customization, SteamVR parity, localization
-> and runtime hardening
-> release with public Windows packaging.
+> Project status: `0.8.0` — complete semantic customization, persistent
+> per-track personal timing, Strategy Engine hardening, SteamVR parity and
+> runtime resilience.
 > SteamVR desktop-feature parity is implemented; extended live validation on
 > multiple headsets remains part of release qualification.
 
@@ -52,7 +52,9 @@ revalidated after LMU, EAC, SteamVR, or overlay changes.
   S1 reference on the first flying lap. Without an honest reference the dash
   displays `NEW` instead of comparing against a pit-contaminated S1.
 - Valid personal-best laps are stored locally per track, driver and vehicle
-  model. The saved lap time and all three sectors always come from the same lap.
+  model. Optimal is persisted under the same identity and only replaced by a
+  faster valid value. Independent sector records are replaced only when the
+  corresponding sector of a new officially valid best lap is faster.
   On sector completion the dash shows the new sector and its PB delta for four
   seconds, then returns to the saved PB-sector values.
 - Reproducible anonymized fixture, parser checks, and Windows CI.
@@ -163,6 +165,18 @@ LmuOverlay.SteamVr.exe --configure-vr
 ```
 
 Use `--vr-preset endurance` to restore the complete endurance arrangement.
+
+Emergency isolation is available with `--safe-mode`; it disables native
+rendering and the optional localhost Optimal endpoint while retaining the
+read-only shared-memory WPF fallback. Individual integrations can also be
+disabled in the active profile.
+
+Generate all eight real SteamVR texture surfaces plus a deterministic simulated
+HMD composition without connecting a headset:
+
+```powershell
+LmuOverlay.SteamVr.exe --capture-vr-baselines artifacts\vr-preview
+```
 
 Generate reproducible desktop screenshots for visual review with:
 

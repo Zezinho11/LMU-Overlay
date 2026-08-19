@@ -1,6 +1,28 @@
 # Changelog
 
-## Unreleased
+## 0.8.0 - 2026-08-19
+
+- Fixed custom colors being saved without affecting several overlay surfaces;
+  editing a valid color now activates the custom theme automatically.
+- Expanded profile themes to a complete semantic palette for backgrounds,
+  cards, accent, text, information, attention, critical and positive states.
+- Applied the same palette to the WPF editor/fallback, native Desktop
+  renderers and SteamVR while preserving functional tyre/brand identities.
+- Added per-profile Dashboard composition controls for Sectors, Tyres and
+  Telemetry, shared by Desktop and VR.
+- Added persistent faster-only Optimal timing per track, driver and vehicle,
+  sharing the existing valid personal-record identity across Desktop and VR.
+- Hardened the optional localhost Optimal provider with schema validation,
+  short timeouts, exponential circuit backoff and independent kill switches.
+- Added a versioned vehicle manufacturer catalog and coherent generation-aware
+  timing cache for Relative and Live Standings.
+- Added independent Fuel/Virtual Energy stint constraints, robust comparable
+  samples and deterministic bounded strategy scenarios with finish probability.
+- Declared Per-Monitor DPI v2 awareness for both executable hosts.
+- Added deterministic PNG qualification output for every SteamVR surface and a
+  simulated headset composition through `--capture-vr-baselines`.
+- Replaced the SteamVR Inputs placeholder wheel with the same transparent
+  steering-wheel artwork used by Desktop, preserving live steering rotation.
 
 ## 0.6.6 - 2026-08-12
 

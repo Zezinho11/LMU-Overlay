@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Diagnostics;
 using System.Net.Http;
 using System.Text.Json;
 using LmuOverlay.Domain;
@@ -13,11 +14,9 @@ namespace LmuOverlay.Widgets;
 /// </summary>
 public sealed class OfficialTimingOptimalProvider : IDisposable
 {
-    private readonly HttpClient _client = new()
-    {
-        BaseAddress = new Uri("http://127.0.0.1:6397/"),
-        Timeout = TimeSpan.FromMilliseconds(750),
-    };
+    public const int SupportedHistorySchemaVersion = 1;
+    private readonly OfficialTimingOptimalOptions _options;
+    private readonly HttpClient _client;
     private readonly CancellationTokenSource _cancellation = new();
     private readonly Task _worker;
     private TimingTarget? _target;
@@ -28,11 +27,29 @@ public sealed class OfficialTimingOptimalProvider : IDisposable
     private int _lastVehicleId;
     private double _lastSessionElapsedTime;
     private long _sessionGeneration;
+    private int _consecutiveFailures;
+    private long _nextAttemptAt;
+    private string _lastError = string.Empty;
+    private DateTimeOffset? _lastSuccessAt;
 
-    public OfficialTimingOptimalProvider() => _worker = Task.Run(PollAsync);
+    public OfficialTimingOptimalProvider(OfficialTimingOptimalOptions? options = null)
+    {
+        _options = (options ?? new()).Sanitize();
+        _client = new HttpClient
+        {
+            BaseAddress = _options.BaseAddress,
+            Timeout = _options.Timeout,
+        };
+        _worker = _options.Enabled ? Task.Run(PollAsync) : Task.CompletedTask;
+    }
 
     public void Update(LmuTelemetrySnapshot snapshot)
     {
+        if (!_options.Enabled)
+        {
+            return;
+        }
+
         if (snapshot.Player is not { } player ||
             snapshot.Session is not { } session ||
             session.GamePhase == LmuGamePhase.SessionOver)
@@ -82,6 +99,13 @@ public sealed class OfficialTimingOptimalProvider : IDisposable
         Volatile.Write(ref _target, target);
     }
 
+    public OfficialTimingOptimalDiagnostics Diagnostics => new(
+        _options.Enabled,
+        Volatile.Read(ref _consecutiveFailures),
+        Volatile.Read(ref _nextAttemptAt) > Stopwatch.GetTimestamp(),
+        _lastSuccessAt,
+        Volatile.Read(ref _lastError));
+
     public double GetOptimal(LmuTelemetrySnapshot snapshot)
     {
         var target = Volatile.Read(ref _target);
@@ -93,13 +117,17 @@ public sealed class OfficialTimingOptimalProvider : IDisposable
 
     private async Task PollAsync()
     {
-        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
+        using var timer = new PeriodicTimer(_options.PollInterval);
         try
         {
             while (await timer.WaitForNextTickAsync(_cancellation.Token).ConfigureAwait(false))
             {
                 var target = Volatile.Read(ref _target);
                 if (target is null)
+                {
+                    continue;
+                }
+                if (Volatile.Read(ref _nextAttemptAt) > Stopwatch.GetTimestamp())
                 {
                     continue;
                 }
@@ -120,12 +148,18 @@ public sealed class OfficialTimingOptimalProvider : IDisposable
                     using var document = await JsonDocument.ParseAsync(
                         stream,
                         cancellationToken: _cancellation.Token).ConfigureAwait(false);
+                    if (!HasSupportedSchema(document.RootElement, target.VehicleId))
+                    {
+                        RecordFailure("Unsupported or incomplete LMU timing history schema.");
+                        continue;
+                    }
                     if (target.DiscardExistingHistory &&
                         target.ExcludedLapSignatures is null)
                     {
                         target.ExcludedLapSignatures = CaptureLapSignatures(
                             document.RootElement,
                             target.VehicleId);
+                        RecordSuccess();
                         continue;
                     }
 
@@ -137,11 +171,12 @@ public sealed class OfficialTimingOptimalProvider : IDisposable
                     {
                         Volatile.Write(ref _value, new TimingValue(target.SessionKey, optimal));
                     }
+                    RecordSuccess();
                 }
                 catch (Exception exception) when (
                     exception is HttpRequestException or TaskCanceledException or JsonException)
                 {
-                    // The local UI server is optional and may start after the overlay.
+                    RecordFailure(exception.Message);
                 }
             }
         }
@@ -152,6 +187,34 @@ public sealed class OfficialTimingOptimalProvider : IDisposable
 
     public static double ParseOptimal(JsonElement history, int vehicleId)
         => ParseOptimal(history, vehicleId, excludedLapSignatures: null);
+
+    public static bool HasSupportedSchema(JsonElement history, int vehicleId)
+    {
+        if (history.ValueKind != JsonValueKind.Object ||
+            !TryGetVehicleHistory(history, vehicleId, out var laps) ||
+            laps.ValueKind != JsonValueKind.Array)
+        {
+            return false;
+        }
+
+        foreach (var lap in laps.EnumerateArray())
+        {
+            if (lap.ValueKind != JsonValueKind.Object)
+            {
+                return false;
+            }
+
+            if (HasNumber(lap, "sectorTime1") &&
+                HasNumber(lap, "sectorTime2") &&
+                HasNumber(lap, "lapTime"))
+            {
+                return true;
+            }
+        }
+
+        // An empty history is valid at the beginning of a session.
+        return laps.GetArrayLength() == 0;
+    }
 
     public static bool IsNewSession(
         bool hasPreviousSession,
@@ -291,6 +354,43 @@ public sealed class OfficialTimingOptimalProvider : IDisposable
         return 0;
     }
 
+    private static bool HasNumber(JsonElement value, string name)
+    {
+        foreach (var property in value.EnumerateObject())
+        {
+            if (string.Equals(property.Name, name, StringComparison.OrdinalIgnoreCase) &&
+                property.Value.ValueKind == JsonValueKind.Number &&
+                property.Value.TryGetDouble(out var number) &&
+                double.IsFinite(number))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void RecordSuccess()
+    {
+        Interlocked.Exchange(ref _consecutiveFailures, 0);
+        Interlocked.Exchange(ref _nextAttemptAt, 0);
+        Volatile.Write(ref _lastError, string.Empty);
+        _lastSuccessAt = DateTimeOffset.UtcNow;
+    }
+
+    private void RecordFailure(string message)
+    {
+        var failures = Interlocked.Increment(ref _consecutiveFailures);
+        var exponent = Math.Min(Math.Max(0, failures - 1), 6);
+        var delaySeconds = Math.Min(
+            _options.MaximumBackoff.TotalSeconds,
+            _options.InitialBackoff.TotalSeconds * Math.Pow(2, exponent));
+        Interlocked.Exchange(
+            ref _nextAttemptAt,
+            Stopwatch.GetTimestamp() +
+            (long)(Stopwatch.Frequency * Math.Max(0, delaySeconds)));
+        Volatile.Write(ref _lastError, message);
+    }
+
     private static bool Valid(double seconds) =>
         double.IsFinite(seconds) && seconds is > 0 and < 1_800;
 
@@ -327,3 +427,36 @@ public sealed class OfficialTimingOptimalProvider : IDisposable
     }
     private sealed record TimingValue(string SessionKey, double OptimalLapSeconds);
 }
+
+public sealed record OfficialTimingOptimalOptions
+{
+    public bool Enabled { get; init; } = true;
+    public Uri BaseAddress { get; init; } = new("http://127.0.0.1:6397/");
+    public TimeSpan Timeout { get; init; } = TimeSpan.FromMilliseconds(500);
+    public TimeSpan PollInterval { get; init; } = TimeSpan.FromSeconds(1);
+    public TimeSpan InitialBackoff { get; init; } = TimeSpan.FromSeconds(1);
+    public TimeSpan MaximumBackoff { get; init; } = TimeSpan.FromSeconds(30);
+
+    public OfficialTimingOptimalOptions Sanitize()
+    {
+        var loopback = BaseAddress.IsLoopback &&
+            BaseAddress.Scheme == Uri.UriSchemeHttp
+            ? BaseAddress
+            : new Uri("http://127.0.0.1:6397/");
+        return this with
+        {
+            BaseAddress = loopback,
+            Timeout = TimeSpan.FromMilliseconds(Math.Clamp(Timeout.TotalMilliseconds, 100, 2_000)),
+            PollInterval = TimeSpan.FromMilliseconds(Math.Clamp(PollInterval.TotalMilliseconds, 250, 5_000)),
+            InitialBackoff = TimeSpan.FromMilliseconds(Math.Clamp(InitialBackoff.TotalMilliseconds, 250, 5_000)),
+            MaximumBackoff = TimeSpan.FromSeconds(Math.Clamp(MaximumBackoff.TotalSeconds, 1, 120)),
+        };
+    }
+}
+
+public sealed record OfficialTimingOptimalDiagnostics(
+    bool Enabled,
+    int ConsecutiveFailures,
+    bool CircuitOpen,
+    DateTimeOffset? LastSuccessAt,
+    string LastError);

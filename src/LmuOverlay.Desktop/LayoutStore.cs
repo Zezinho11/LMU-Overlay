@@ -494,7 +494,30 @@ public sealed class LayoutStore
             CustomBackgroundColor = OverlayVisualSystem.NormalizeHexColor(
                 settings.CustomBackgroundColor,
                 "#0A0F1A"),
+            CustomCardColor = OverlayVisualSystem.NormalizeHexColor(
+                settings.CustomCardColor,
+                "#121924"),
+            CustomPrimaryTextColor = OverlayVisualSystem.NormalizeHexColor(
+                settings.CustomPrimaryTextColor,
+                "#FFFFFF"),
+            CustomSecondaryTextColor = OverlayVisualSystem.NormalizeHexColor(
+                settings.CustomSecondaryTextColor,
+                "#CAD3DC"),
+            CustomInformationColor = OverlayVisualSystem.NormalizeHexColor(
+                settings.CustomInformationColor,
+                "#12D9E5"),
+            CustomAttentionColor = OverlayVisualSystem.NormalizeHexColor(
+                settings.CustomAttentionColor,
+                "#FFBE40"),
+            CustomCriticalColor = OverlayVisualSystem.NormalizeHexColor(
+                settings.CustomCriticalColor,
+                "#FF464B"),
+            CustomPositiveColor = OverlayVisualSystem.NormalizeHexColor(
+                settings.CustomPositiveColor,
+                "#42D3A6"),
             DashboardTitle = SanitizeDashboardTitle(settings.DashboardTitle),
+            DashboardModuleOrder = LmuOverlay.Widgets.DashboardModuleLayout.Normalize(
+                settings.DashboardModuleOrder),
             DashboardTextScale = Math.Clamp(
                 settings.DashboardTextScale <= 0 ? 1 : settings.DashboardTextScale,
                 0.8,

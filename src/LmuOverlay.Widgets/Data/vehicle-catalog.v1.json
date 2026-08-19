@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "entries": [
+    { "tokens": ["BMW", "M4 GT3", "M HYBRID V8"], "manufacturer": "BMW", "code": "BMW", "color": "#2F80ED" },
+    { "tokens": ["PORSCHE", "963", "911 GT3 R"], "manufacturer": "Porsche", "code": "POR", "color": "#788591" },
+    { "tokens": ["FERRARI", "499P", "296 GT3"], "manufacturer": "Ferrari", "code": "FER", "color": "#ED1C2E" },
+    { "tokens": ["ASTON MARTIN", "VANTAGE", "VALKYRIE"], "manufacturer": "Aston Martin", "code": "AST", "color": "#159B78" },
+    { "tokens": ["FORD", "MUSTANG GT3"], "manufacturer": "Ford", "code": "FOR", "color": "#2878D0" },
+    { "tokens": ["LEXUS", "RC F GT3"], "manufacturer": "Lexus", "code": "LEX", "color": "#697784" },
+    { "tokens": ["MCLAREN", "720S"], "manufacturer": "McLaren", "code": "MCL", "color": "#FF7A21" },
+    { "tokens": ["TOYOTA", "GR010"], "manufacturer": "Toyota", "code": "TOY", "color": "#E31D2B" },
+    { "tokens": ["PEUGEOT", "9X8"], "manufacturer": "Peugeot", "code": "PEU", "color": "#40556B" },
+    { "tokens": ["ALPINE", "A424"], "manufacturer": "Alpine", "code": "ALP", "color": "#2474C8" },
+    { "tokens": ["CADILLAC", "V-SERIES.R", "V SERIES R"], "manufacturer": "Cadillac", "code": "CAD", "color": "#C7A84A" },
+    { "tokens": ["LAMBORGHINI", "SC63", "HURACAN"], "manufacturer": "Lamborghini", "code": "LAM", "color": "#E0B51B" },
+    { "tokens": ["CORVETTE", "Z06 GT3.R"], "manufacturer": "Corvette", "code": "COR", "color": "#D6B42C" },
+    { "tokens": ["ISOTTA", "TIPO 6"], "manufacturer": "Isotta Fraschini", "code": "ISO", "color": "#B7BCC5" },
+    { "tokens": ["ORECA", "07 GIBSON"], "manufacturer": "Oreca", "code": "ORE", "color": "#607D9B" }
+  ]
+}

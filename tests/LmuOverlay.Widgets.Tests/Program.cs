@@ -1,6 +1,11 @@
 using LmuOverlay.Domain;
 using LmuOverlay.Widgets;
 
+Assert(VehicleCatalog.Resolve("BMW M4 GT3").Code == "BMW" &&
+       VehicleCatalog.Resolve("Ferrari 296 GT3").Code == "FER" &&
+       VehicleCatalog.Resolve("Unknown Prototype").Code == "---",
+    "The versioned vehicle catalog must resolve known manufacturers and fail explicitly.");
+
 var player = new LmuPlayerTelemetry(
     VehicleId: 1,
     VehicleName: "Car",
@@ -141,6 +146,19 @@ Assert(relative.Rows[1].CarNumber == "6",
     "Relative must use only explicit official race numbers.");
 Assert(string.IsNullOrEmpty(relative.SessionName) && relative.SessionRemainingSeconds == 0,
     "Relative must not carry a redundant session header or clock.");
+var officialRelative = EssentialWidgetStateFactory.CreateRelative(raceSnapshot with
+{
+    Player = raceSnapshot.Player! with
+    {
+        GapToCarAheadSeconds = 2.4,
+        GapToCarBehindSeconds = 3.1,
+    },
+});
+Assert(officialRelative.Rows[0].GapSource == RelativeGapSource.OfficialAhead &&
+       Math.Abs(officialRelative.Rows[0].RelativeGapSeconds + 2.4) < 0.0001 &&
+       officialRelative.Rows[2].GapSource == RelativeGapSource.OfficialBehind &&
+       Math.Abs(officialRelative.Rows[2].RelativeGapSeconds - 3.1) < 0.0001,
+    "Relative must prefer LMU's official immediate ahead/behind gaps.");
 Assert(sessionFlags.FlagName == "YELLOW", "FCY must produce a yellow flag state.");
 Assert(sessionFlags.TrackGripName == "HEAVY",
     "Official RealRoad level 3 must render as heavy grip.");
@@ -175,6 +193,53 @@ Assert(Math.Abs(tireFuelRow.VirtualEnergyFraction - 0.78) < 0.0001 &&
        tireFuelRow.TireCompound == "Medium" &&
        tireFuelRow.TireCompoundIndex == 2,
     "Standings must expose each car's official Virtual Energy and tire compound.");
+var timingTracker = new TimingWidgetTracker();
+var metadataSnapshot = raceSnapshot with
+{
+    ScoringSequence = 10,
+    Standings = standings.Select(item => item with
+    {
+        VehicleModel = "BMW M4 GT3",
+        VirtualEnergyFraction = 0.78,
+        FrontTireCompound = "Medium",
+        RearTireCompound = "Medium",
+    }).ToArray(),
+};
+timingTracker.Update(metadataSnapshot, 12, 4);
+var temporarilyMissing = timingTracker.Update(metadataSnapshot with
+{
+    ScoringSequence = 11,
+    CapturedAt = metadataSnapshot.CapturedAt.AddMilliseconds(100),
+    Standings = metadataSnapshot.Standings.Select(item => item with
+    {
+        VehicleModel = string.Empty,
+        VirtualEnergyFraction = -1,
+        FrontTireCompound = string.Empty,
+        RearTireCompound = string.Empty,
+    }).ToArray(),
+}, 12, 4).Standings;
+Assert(temporarilyMissing.Classes.SelectMany(group => group.Rows).All(row =>
+        row.VehicleModel == "BMW M4 GT3" &&
+        Math.Abs(row.VirtualEnergyFraction - 0.78) < 0.0001),
+    "Short metadata gaps may reuse data only for the exact same timing identity.");
+var reusedSlot = timingTracker.Update(metadataSnapshot with
+{
+    ScoringSequence = 12,
+    CapturedAt = metadataSnapshot.CapturedAt.AddMilliseconds(200),
+    Standings = metadataSnapshot.Standings.Select((item, index) => index == 0
+        ? item with
+        {
+            DriverName = "Replacement Driver",
+            VehicleName = "Replacement",
+            VehicleModel = string.Empty,
+            VirtualEnergyFraction = -1,
+        }
+        : item).ToArray(),
+}, 12, 4).Standings;
+var replacement = reusedSlot.Classes.SelectMany(group => group.Rows)
+    .Single(row => row.DriverName == "Replacement Driver");
+Assert(replacement.VehicleModel == string.Empty && replacement.VirtualEnergyFraction < 0,
+    "A reused timing slot must never inherit the previous driver's metadata.");
 Assert(raceControl.RequiresAttention, "Damage must raise race-control attention.");
 Assert(raceControl.HasCriticalDamage, "Overheating must be critical damage.");
 Assert(raceControl.DamageStatus == "CRITICAL", "Critical damage must be explicit.");
@@ -392,6 +457,20 @@ Assert(optimizedPlan.PitLaps.Count == optimizedPlan.Stops,
     "Every planned stop must expose its race lap.");
 Assert(optimizedPlan.TireSets <= 3,
     "Strategy must respect the configured tire allocation.");
+var probabilistic = StrategyScenarioSimulator.Simulate(new(
+    optimizedPlan, scenarioInput.RemainingLaps, 50,
+    scenarioInput.ConsumptionLitersPerLap, 0.03,
+    scenarioInput.ReferencePaceSeconds, 0.4, 2,
+    scenarioInput.ReserveFuelLiters, 42, 512));
+var probabilisticReplay = StrategyScenarioSimulator.Simulate(new(
+    optimizedPlan, scenarioInput.RemainingLaps, 50,
+    scenarioInput.ConsumptionLitersPerLap, 0.03,
+    scenarioInput.ReferencePaceSeconds, 0.4, 2,
+    scenarioInput.ReserveFuelLiters, 42, 512));
+Assert(probabilistic.Available && probabilistic == probabilisticReplay &&
+       probabilistic.P10TimeSeconds <= probabilistic.MedianTimeSeconds &&
+       probabilistic.MedianTimeSeconds <= probabilistic.P90TimeSeconds,
+    "Scenario simulation must be deterministic, bounded and report probability ranges.");
 var scenarioAdvice = RaceScenarioAdvisor.Calculate(
     scenarioInput,
     optimizedPlan,
@@ -569,10 +648,10 @@ Assert(
     Math.Abs(energyStrategy.EstimatedVirtualEnergyRangeLaps - 11.5) < 0.0001,
     "Virtual Energy range must use its rolling consumption.");
 Assert(
-    Math.Abs(energyStrategy.RequiredVirtualEnergyFraction - 1.2) < 0.0001,
-    "Virtual Energy need must cover the current stint and its reserve lap.");
+    Math.Abs(energyStrategy.RequiredVirtualEnergyFraction - 0.88) < 0.0001,
+    "Virtual Energy need must cover the resource-constrained current stint and its reserve lap.");
 Assert(
-    Math.Abs(energyStrategy.VirtualEnergyMarginFraction + 0.28) < 0.0001,
+    Math.Abs(energyStrategy.VirtualEnergyMarginFraction - 0.04) < 0.0001,
     "Virtual Energy margin must compare current energy with the stint need.");
 
 var sectorTracker = new SectorReferenceTracker();

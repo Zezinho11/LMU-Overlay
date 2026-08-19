@@ -53,6 +53,8 @@ public sealed record FuelStrategyWidgetState(
     public string FlagScenario { get; init; } = string.Empty;
     public string WeatherScenario { get; init; } = string.Empty;
     public string TrafficScenario { get; init; } = string.Empty;
+    public string ProbabilisticScenario { get; init; } = string.Empty;
+    public double FinishProbability { get; init; }
 }
 
 public sealed record FuelStrategyOptions(
@@ -71,7 +73,7 @@ public sealed record FuelStrategyOptions(
 
 public sealed class FuelStrategyTracker
 {
-    private const int MaximumSamples = 8;
+    private const int MaximumSamples = 12;
     private readonly Queue<double> _samples = new();
     private readonly Queue<double> _virtualEnergySamples = new();
     private readonly Queue<double> _paceSamples = new();
@@ -88,6 +90,9 @@ public sealed class FuelStrategyTracker
     private DateTimeOffset _lastRainSampleAt = DateTimeOffset.MinValue;
     private DateTimeOffset _previousSampleAt = DateTimeOffset.MinValue;
     private bool _lapContaminated;
+    private double _lapStartRain;
+    private int _scenarioCompletedLaps = int.MinValue;
+    private StrategyScenarioResult _scenario = new(false, 0, 0, 0, 0, 0, "SCENARIOS · LEARNING");
 
     public FuelStrategyWidgetState Update(
         LmuTelemetrySnapshot snapshot,
@@ -129,7 +134,9 @@ public sealed class FuelStrategyTracker
         var abruptFuelChange = elapsedSincePrevious >= TimeSpan.Zero &&
             elapsedSincePrevious < TimeSpan.FromSeconds(2) &&
             Math.Abs(player.FuelLiters - _previousFuel) > 5;
-        if (inPit || initialOutLap || refueled || virtualEnergyRefilled || abruptFuelChange)
+        var conditionChanged = Math.Abs(session.Weather.RainIntensity - _lapStartRain) > 0.08;
+        if (inPit || initialOutLap || refueled || virtualEnergyRefilled || abruptFuelChange ||
+            player.LapInvalidated || conditionChanged)
         {
             _lapContaminated = true;
         }
@@ -146,7 +153,8 @@ public sealed class FuelStrategyTracker
         if (completedLaps > _lastCompletedLaps)
         {
             var consumed = _lapStartFuel - player.FuelLiters;
-            if (!_lapContaminated &&
+            var trafficAffected = player.GapToCarAheadSeconds is > 0 and < 1.5;
+            if (!_lapContaminated && !trafficAffected &&
                 IsPlausibleFuelSample(consumed, player.FuelCapacityLiters, _samples))
             {
                 EnqueueSample(_samples, consumed);
@@ -177,6 +185,7 @@ public sealed class FuelStrategyTracker
 
             _lapStartFuel = player.FuelLiters;
             _lapStartVirtualEnergy = virtualEnergy;
+            _lapStartRain = session.Weather.RainIntensity;
             _lastCompletedLaps = completedLaps;
             _lapContaminated = inPit || refueled || virtualEnergyRefilled;
         }
@@ -184,7 +193,7 @@ public sealed class FuelStrategyTracker
         _previousFuel = player.FuelLiters;
         _previousVirtualEnergy = virtualEnergy;
         _previousSampleAt = snapshot.CapturedAt;
-        var learnedAverage = WeightedAverage(_samples);
+        var learnedAverage = RobustMedian(_samples);
         var manualConsumption = Math.Clamp(
             options.ManualFuelPerLapLiters,
             0,
@@ -194,22 +203,22 @@ public sealed class FuelStrategyTracker
             : learnedAverage;
         var projectedConsumption = manualConsumption > 0
             ? manualConsumption
-            : ConservativeProjection(_samples, average);
+            : RobustConservative(_samples, average);
         var virtualEnergyAverage = _virtualEnergySamples.Count > 0
-            ? WeightedAverage(_virtualEnergySamples)
+            ? RobustMedian(_virtualEnergySamples)
             : 0;
         var manualLapTime = Math.Clamp(options.ManualLapTimeSeconds, 0, 3600);
         var averagePace = manualLapTime > 0
             ? manualLapTime
             : _paceSamples.Count > 0
-                ? WeightedAverage(_paceSamples)
+                ? RobustMedian(_paceSamples)
                 : ReferenceLapSeconds(playerStanding);
         var paceTrend = Math.Clamp(LinearTrend(_paceSamples), 0, 5);
         var maximumWear = MaximumTireWear(player.TireWear);
         var tireWearPerLap = _tireWearSamples.Count >= 3
-            ? ConservativeProjection(
+            ? RobustConservative(
                 _tireWearSamples,
-                WeightedAverage(_tireWearSamples))
+                RobustMedian(_tireWearSamples))
             : 0;
         var referenceLapSeconds = manualLapTime > 0
             ? manualLapTime
@@ -285,12 +294,33 @@ public sealed class FuelStrategyTracker
             Math.Max(0, options.AvailableTireSets))
         {
             FixedDurationSeconds = fixedDurationSeconds,
+            CurrentVirtualEnergyRangeLaps = energyLapsUntilPit == int.MaxValue
+                ? int.MaxValue
+                : Math.Max(1, energyLapsUntilPit),
+            MaximumVirtualEnergyStintLaps = virtualEnergyAverage > 0
+                ? Math.Max(1, (int)Math.Floor((1 - energyReserve) / virtualEnergyAverage))
+                : int.MaxValue,
         };
         var strategy = EnduranceStrategyPlanner.Calculate(strategyInput);
         var fuelSave = EnduranceStrategyPlanner.CalculateFuelSave(
             strategyInput,
             strategy,
             player.FuelLiters);
+        if (_scenarioCompletedLaps != completedLaps && strategy.Available)
+        {
+            _scenarioCompletedLaps = completedLaps;
+            _scenario = StrategyScenarioSimulator.Simulate(new(
+                strategy,
+                lapsToFinish,
+                player.FuelLiters,
+                projectedConsumption,
+                RobustSigma(_samples),
+                averagePace,
+                RobustSigma(_paceSamples),
+                Math.Max(1, options.EstimatedPitLossSeconds * 0.08),
+                projectedConsumption * reserveLaps,
+                HashCode.Combine(session.TrackName, session.SessionCode, completedLaps)));
+        }
         var hasPlannedStop = strategy.Available && strategy.Stops > 0;
         var currentStintTargetLaps = hasPlannedStop
             ? strategy.StintLaps[0]
@@ -412,6 +442,8 @@ public sealed class FuelStrategyTracker
             FlagScenario = scenarioAdvice.FlagState,
             WeatherScenario = scenarioAdvice.Weather,
             TrafficScenario = scenarioAdvice.Traffic,
+            ProbabilisticScenario = _scenario.Summary,
+            FinishProbability = _scenario.FinishProbability,
         };
     }
 
@@ -443,6 +475,9 @@ public sealed class FuelStrategyTracker
         _lastRainSampleAt = DateTimeOffset.MinValue;
         _previousSampleAt = DateTimeOffset.MinValue;
         _lapContaminated = completedLaps == 0;
+        _lapStartRain = session.Weather.RainIntensity;
+        _scenarioCompletedLaps = int.MinValue;
+        _scenario = new(false, 0, 0, 0, 0, 0, "SCENARIOS · LEARNING");
     }
 
     private static bool IsInPitLane(LmuVehicleStanding? standing) =>
@@ -623,6 +658,27 @@ public sealed class FuelStrategyTracker
             value => Math.Pow(value - weightedAverage, 2)) / values.Length;
         return weightedAverage + Math.Sqrt(variance) * 0.35;
     }
+
+    private static double RobustMedian(IEnumerable<double> samples)
+    {
+        var values = samples.Where(double.IsFinite).OrderBy(value => value).ToArray();
+        if (values.Length == 0) return 0;
+        return values.Length % 2 == 0
+            ? (values[values.Length / 2 - 1] + values[values.Length / 2]) / 2
+            : values[values.Length / 2];
+    }
+
+    private static double RobustSigma(IEnumerable<double> samples)
+    {
+        var values = samples.Where(double.IsFinite).ToArray();
+        if (values.Length < 3) return 0;
+        var median = RobustMedian(values);
+        var mad = RobustMedian(values.Select(value => Math.Abs(value - median)));
+        return mad * 1.4826;
+    }
+
+    private static double RobustConservative(IEnumerable<double> samples, double median) =>
+        median + RobustSigma(samples) * 0.5;
 
     private static string Confidence(int samples) => samples switch
     {

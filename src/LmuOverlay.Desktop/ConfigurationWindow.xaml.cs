@@ -15,6 +15,7 @@ public partial class ConfigurationWindow : Window
 {
     private readonly OverlayWindow _overlay;
     private bool _refreshingProfiles;
+    private bool _loadingProfile;
 
     public ConfigurationWindow(OverlayWindow overlay)
     {
@@ -37,6 +38,7 @@ public partial class ConfigurationWindow : Window
 
     private void LoadProfile()
     {
+        _loadingProfile = true;
         var profile = _overlay.CurrentProfile;
         Set(DashboardVisible, DashboardOpacity, DashboardScale, profile.Diagnostic);
         Set(InputsVisible, InputsOpacity, InputsScale, profile.Inputs);
@@ -71,6 +73,20 @@ public partial class ConfigurationWindow : Window
         DashboardTitle.Text = profile.Settings.DashboardTitle;
         CustomAccentColor.Text = profile.Settings.CustomAccentColor;
         CustomBackgroundColor.Text = profile.Settings.CustomBackgroundColor;
+        CustomCardColor.Text = profile.Settings.CustomCardColor;
+        CustomPrimaryTextColor.Text = profile.Settings.CustomPrimaryTextColor;
+        CustomSecondaryTextColor.Text = profile.Settings.CustomSecondaryTextColor;
+        CustomInformationColor.Text = profile.Settings.CustomInformationColor;
+        CustomAttentionColor.Text = profile.Settings.CustomAttentionColor;
+        CustomCriticalColor.Text = profile.Settings.CustomCriticalColor;
+        CustomPositiveColor.Text = profile.Settings.CustomPositiveColor;
+        DashboardShowSectors.IsChecked = profile.Settings.DashboardShowSectors;
+        DashboardShowTires.IsChecked = profile.Settings.DashboardShowTires;
+        DashboardShowTelemetry.IsChecked = profile.Settings.DashboardShowTelemetry;
+        var moduleOrder = DashboardModuleLayout.Parse(profile.Settings.DashboardModuleOrder);
+        SelectTaggedItem(DashboardModule1, moduleOrder[0].ToString());
+        SelectTaggedItem(DashboardModule2, moduleOrder[1].ToString());
+        SelectTaggedItem(DashboardModule3, moduleOrder[2].ToString());
         DashboardTextScale.Value = profile.Settings.DashboardTextScale;
         TimingTextScale.Value = profile.Settings.TimingTextScale;
         InputsTextScale.Value = profile.Settings.InputsTextScale;
@@ -79,6 +95,9 @@ public partial class ConfigurationWindow : Window
         PedalHistory.Value = profile.Settings.PedalHistorySeconds;
         PriorityAlerts.IsChecked = profile.Settings.ShowPriorityAlerts;
         ReduceMotion.IsChecked = profile.Settings.ReduceMotion;
+        EnableOfficialTimingHttp.IsChecked = profile.Settings.EnableOfficialTimingHttp;
+        EnableNativeRendering.IsChecked = profile.Settings.EnableNativeRendering;
+        EnableSteamVr.IsChecked = profile.Settings.EnableSteamVr;
         foreach (var item in DensitySelector.Items.OfType<ComboBoxItem>())
         {
             if (string.Equals(
@@ -113,6 +132,7 @@ public partial class ConfigurationWindow : Window
             System.Globalization.CultureInfo.InvariantCulture);
         TireChangeSeconds.Text = profile.Settings.EstimatedTireChangeSeconds.ToString(
             System.Globalization.CultureInfo.InvariantCulture);
+        _loadingProfile = false;
     }
 
     private void ProfileSelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -437,6 +457,25 @@ public partial class ConfigurationWindow : Window
     {
         var theme = (ThemeSelector.SelectedItem as ComboBoxItem)?.Tag?.ToString()
             ?? "RedFox";
+        var customColorsChanged = new[]
+        {
+            (CustomAccentColor.Text, current.CustomAccentColor),
+            (CustomBackgroundColor.Text, current.CustomBackgroundColor),
+            (CustomCardColor.Text, current.CustomCardColor),
+            (CustomPrimaryTextColor.Text, current.CustomPrimaryTextColor),
+            (CustomSecondaryTextColor.Text, current.CustomSecondaryTextColor),
+            (CustomInformationColor.Text, current.CustomInformationColor),
+            (CustomAttentionColor.Text, current.CustomAttentionColor),
+            (CustomCriticalColor.Text, current.CustomCriticalColor),
+            (CustomPositiveColor.Text, current.CustomPositiveColor),
+        }.Any(pair => !string.Equals(
+            OverlayVisualSystem.NormalizeHexColor(pair.Item1, pair.Item2),
+            pair.Item2,
+            StringComparison.OrdinalIgnoreCase));
+        if (customColorsChanged)
+        {
+            theme = "Custom";
+        }
         var density = (DensitySelector.SelectedItem as ComboBoxItem)?.Tag?.ToString()
             ?? "Auto";
         return current with
@@ -447,6 +486,22 @@ public partial class ConfigurationWindow : Window
             DashboardTitle = DashboardTitle.Text,
             CustomAccentColor = CustomAccentColor.Text,
             CustomBackgroundColor = CustomBackgroundColor.Text,
+            CustomCardColor = CustomCardColor.Text,
+            CustomPrimaryTextColor = CustomPrimaryTextColor.Text,
+            CustomSecondaryTextColor = CustomSecondaryTextColor.Text,
+            CustomInformationColor = CustomInformationColor.Text,
+            CustomAttentionColor = CustomAttentionColor.Text,
+            CustomCriticalColor = CustomCriticalColor.Text,
+            CustomPositiveColor = CustomPositiveColor.Text,
+            DashboardShowSectors = DashboardShowSectors.IsChecked == true,
+            DashboardShowTires = DashboardShowTires.IsChecked == true,
+            DashboardShowTelemetry = DashboardShowTelemetry.IsChecked == true,
+            DashboardModuleOrder = DashboardModuleLayout.Normalize(string.Join(',', new[]
+            {
+                SelectedTag(DashboardModule1, "Sectors"),
+                SelectedTag(DashboardModule2, "Tires"),
+                SelectedTag(DashboardModule3, "Telemetry"),
+            })),
             DashboardTextScale = DashboardTextScale.Value,
             TimingTextScale = TimingTextScale.Value,
             InputsTextScale = InputsTextScale.Value,
@@ -459,6 +514,9 @@ public partial class ConfigurationWindow : Window
             PedalHistorySeconds = (int)Math.Round(PedalHistory.Value),
             ShowPriorityAlerts = PriorityAlerts.IsChecked == true,
             ReduceMotion = ReduceMotion.IsChecked == true,
+            EnableOfficialTimingHttp = EnableOfficialTimingHttp.IsChecked == true,
+            EnableNativeRendering = EnableNativeRendering.IsChecked == true,
+            EnableSteamVr = EnableSteamVr.IsChecked == true,
             FuelReserveLaps = FuelReserve.Value,
             EnergyReservePercent = ParseDouble(EnergyReserve.Text, 2, 0, 25),
             ManualRemainingLaps = ParseInt(ManualRemainingLaps.Text, 0, 0, 1000),
@@ -472,6 +530,36 @@ public partial class ConfigurationWindow : Window
             TireWearLimitPercent = ParseDouble(TireWearLimit.Text, 70, 20, 95),
             EstimatedTireChangeSeconds = ParseDouble(TireChangeSeconds.Text, 15, 0, 180),
         };
+    }
+
+    private void CustomColorChanged(object sender, TextChangedEventArgs e)
+    {
+        if (sender is not WpfTextBox input)
+        {
+            return;
+        }
+
+        var normalized = OverlayVisualSystem.NormalizeHexColor(input.Text, string.Empty);
+        var valid = normalized.Length == 7;
+        input.BorderBrush = valid
+            ? new System.Windows.Media.SolidColorBrush(
+                (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(normalized)!)
+            : System.Windows.Media.Brushes.IndianRed;
+        input.BorderThickness = new Thickness(valid ? 2 : 1);
+
+        if (_loadingProfile || !valid)
+        {
+            return;
+        }
+
+        foreach (var item in ThemeSelector.Items.OfType<ComboBoxItem>())
+        {
+            if (string.Equals(item.Tag?.ToString(), "Custom", StringComparison.Ordinal))
+            {
+                ThemeSelector.SelectedItem = item;
+                break;
+            }
+        }
     }
 
     private void LanguageSelector_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -513,4 +601,13 @@ public partial class ConfigurationWindow : Window
             out var value)
             ? Math.Clamp(value, minimum, maximum)
             : fallback;
+
+    private static string SelectedTag(System.Windows.Controls.ComboBox comboBox, string fallback) =>
+        (comboBox.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Tag?.ToString() ?? fallback;
+
+    private static void SelectTaggedItem(System.Windows.Controls.ComboBox comboBox, string tag)
+    {
+        comboBox.SelectedItem = comboBox.Items.OfType<System.Windows.Controls.ComboBoxItem>().FirstOrDefault(item =>
+            string.Equals(item.Tag?.ToString(), tag, StringComparison.OrdinalIgnoreCase));
+    }
 }
