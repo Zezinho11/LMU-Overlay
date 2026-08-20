@@ -19,6 +19,13 @@ memory. See [the complete safety model](docs/eac/safety-model.md).
 No software can promise future EAC allow-list status. Every release must be
 revalidated after LMU, EAC, SteamVR, or overlay changes.
 
+## Architecture
+
+The codebase is divided into independent Domain, shared-memory, Configuration,
+Timing, Strategy, Widgets, Application, DirectX, Desktop and SteamVR assemblies.
+Desktop and VR consume the same presentation-neutral state instead of carrying
+separate racing logic. See [module boundaries](docs/architecture/module-boundaries.md).
+
 ## Current capabilities
 
 - Typed domain and telemetry-source boundary.

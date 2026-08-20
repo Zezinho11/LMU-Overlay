@@ -9,7 +9,7 @@ public sealed record LayoutProfile(
     WidgetPlacement SessionFlags,
     WidgetPlacement FuelStrategy)
 {
-    public const int CurrentSchemaVersion = 22;
+    public const int CurrentSchemaVersion = 23;
 
     public WidgetPlacement RaceControl { get; init; } =
         new(0.35, 0.25, 0.26, 0.18, 1, 0.96, true);
@@ -57,6 +57,7 @@ public sealed record OverlayProfileSettings
     public double DashboardTextScale { get; init; } = 1;
     public double TimingTextScale { get; init; } = 1;
     public double InputsTextScale { get; init; } = 1;
+    public string SteeringWheelImagePath { get; init; } = string.Empty;
     public int LiveStandingsMaximumRows { get; init; } = 12;
     public int RelativeCarsEachSide { get; init; } = 4;
     public int RefreshRateHz { get; init; } = 120;

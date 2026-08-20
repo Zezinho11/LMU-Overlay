@@ -1,4 +1,6 @@
 using LmuOverlay.Domain;
+using LmuOverlay.Strategy.Learning;
+using LmuOverlay.Strategy.Planning;
 
 namespace LmuOverlay.Widgets;
 
@@ -55,6 +57,7 @@ public sealed record FuelStrategyWidgetState(
     public string TrafficScenario { get; init; } = string.Empty;
     public string ProbabilisticScenario { get; init; } = string.Empty;
     public double FinishProbability { get; init; }
+    public double EffectiveFuelCapacityLiters { get; init; }
 }
 
 public sealed record FuelStrategyOptions(
@@ -73,20 +76,17 @@ public sealed record FuelStrategyOptions(
 
 public sealed class FuelStrategyTracker
 {
-    private const int MaximumSamples = 12;
-    private readonly Queue<double> _samples = new();
-    private readonly Queue<double> _virtualEnergySamples = new();
-    private readonly Queue<double> _paceSamples = new();
-    private readonly Queue<double> _tireWearSamples = new();
-    private readonly Queue<double> _rainSamples = new();
+    private readonly StrategyLearningModel _learning = new();
+    private readonly RobustSampleWindow _rainSamples = new(20);
     private string _trackName = string.Empty;
+    private string _vehicleIdentity = string.Empty;
+    private int _gameVersion;
     private int _sessionCode = int.MinValue;
     private int _lastCompletedLaps = -1;
     private double _lapStartFuel;
     private double _previousFuel;
     private double _lapStartVirtualEnergy;
     private double _previousVirtualEnergy;
-    private double _previousMaximumTireWear;
     private DateTimeOffset _lastRainSampleAt = DateTimeOffset.MinValue;
     private DateTimeOffset _previousSampleAt = DateTimeOffset.MinValue;
     private bool _lapContaminated;
@@ -110,20 +110,24 @@ public sealed class FuelStrategyTracker
         var playerStanding = snapshot.Standings.FirstOrDefault(item => item.IsPlayer);
         var completedLaps = playerStanding?.CompletedLaps
             ?? Math.Max(0, player.LapNumber - 1);
-        if (HasSessionChanged(session, completedLaps))
+        var vehicleIdentity = $"{player.VehicleModel}\u001f{player.VehicleName}";
+        if (HasSessionChanged(session, completedLaps, vehicleIdentity, snapshot.GameVersion))
         {
             Reset(
                 session,
                 completedLaps,
                 player.FuelLiters,
                 NormalizeVirtualEnergy(player.VirtualEnergy),
-                MaximumTireWear(player.TireWear));
+                player.TireWear,
+                vehicleIdentity,
+                snapshot.GameVersion);
         }
 
         CaptureRainSample(session.Weather.RainIntensity, snapshot.CapturedAt);
 
         var refueled = player.FuelLiters > _previousFuel + 0.5;
         var virtualEnergy = NormalizeVirtualEnergy(player.VirtualEnergy);
+        _learning.ObserveResources(player.FuelLiters, virtualEnergy);
         var virtualEnergyRefilled =
             virtualEnergy > _previousVirtualEnergy + 0.005;
         var inPit = IsInPitLane(playerStanding);
@@ -154,34 +158,28 @@ public sealed class FuelStrategyTracker
         {
             var consumed = _lapStartFuel - player.FuelLiters;
             var trafficAffected = player.GapToCarAheadSeconds is > 0 and < 1.5;
-            if (!_lapContaminated && !trafficAffected &&
-                IsPlausibleFuelSample(consumed, player.FuelCapacityLiters, _samples))
-            {
-                EnqueueSample(_samples, consumed);
-            }
+            var validFuelSample = !_lapContaminated && !trafficAffected &&
+                IsPlausibleFuelSample(
+                    consumed,
+                    player.FuelCapacityLiters,
+                    _learning.FuelSamples);
 
             var virtualEnergyUsed = _lapStartVirtualEnergy - virtualEnergy;
-            if (!_lapContaminated &&
-                IsPlausibleEnergySample(virtualEnergyUsed, _virtualEnergySamples))
-            {
-                EnqueueSample(_virtualEnergySamples, virtualEnergyUsed);
-            }
-
-            if (!_lapContaminated &&
-                playerStanding?.LastLapTimeSeconds is > 10 and < 1800)
-            {
-                EnqueueSample(_paceSamples, playerStanding.LastLapTimeSeconds);
-            }
-
-            var maximumTireWear = MaximumTireWear(player.TireWear);
-            var tireWearUsed = maximumTireWear - _previousMaximumTireWear;
-            if (!_lapContaminated &&
-                tireWearUsed > 0.00001 && tireWearUsed < 0.25)
-            {
-                EnqueueSample(_tireWearSamples, tireWearUsed);
-            }
-
-            _previousMaximumTireWear = maximumTireWear;
+            var validEnergySample = !_lapContaminated &&
+                IsPlausibleEnergySample(
+                    virtualEnergyUsed,
+                    _learning.EnergySamples);
+            var lapTime = playerStanding?.LastLapTimeSeconds ?? 0;
+            var validPace = !_lapContaminated && lapTime is > 10 and < 1800;
+            _learning.AddCompletedLap(
+                consumed,
+                validFuelSample,
+                virtualEnergyUsed,
+                validEnergySample,
+                lapTime,
+                validPace,
+                player.TireWear,
+                !_lapContaminated);
 
             _lapStartFuel = player.FuelLiters;
             _lapStartVirtualEnergy = virtualEnergy;
@@ -193,7 +191,7 @@ public sealed class FuelStrategyTracker
         _previousFuel = player.FuelLiters;
         _previousVirtualEnergy = virtualEnergy;
         _previousSampleAt = snapshot.CapturedAt;
-        var learnedAverage = RobustMedian(_samples);
+        var learnedAverage = _learning.FuelMedian;
         var manualConsumption = Math.Clamp(
             options.ManualFuelPerLapLiters,
             0,
@@ -203,26 +201,23 @@ public sealed class FuelStrategyTracker
             : learnedAverage;
         var projectedConsumption = manualConsumption > 0
             ? manualConsumption
-            : RobustConservative(_samples, average);
-        var virtualEnergyAverage = _virtualEnergySamples.Count > 0
-            ? RobustMedian(_virtualEnergySamples)
+            : _learning.FuelConservative;
+        var virtualEnergyAverage = _learning.EnergyMedian > 0
+            ? _learning.EnergyMedian
             : 0;
         var manualLapTime = Math.Clamp(options.ManualLapTimeSeconds, 0, 3600);
         var averagePace = manualLapTime > 0
             ? manualLapTime
-            : _paceSamples.Count > 0
-                ? RobustMedian(_paceSamples)
-                : ReferenceLapSeconds(playerStanding);
-        var paceTrend = Math.Clamp(LinearTrend(_paceSamples), 0, 5);
+            : _learning.PaceMedian > 0
+                ? _learning.PaceMedian
+                : SessionHorizonCalculator.ReferenceLapSeconds(playerStanding);
+        var paceTrend = Math.Clamp(_learning.PaceTrend, 0, 5);
         var maximumWear = MaximumTireWear(player.TireWear);
-        var tireWearPerLap = _tireWearSamples.Count >= 3
-            ? RobustConservative(
-                _tireWearSamples,
-                RobustMedian(_tireWearSamples))
-            : 0;
+        var tireWearPerLap = _learning.MaximumTireWearPerLap;
+        var wheelWearPerLap = _learning.TireWearPerLap;
         var referenceLapSeconds = manualLapTime > 0
             ? manualLapTime
-            : ReferenceLapSeconds(playerStanding);
+            : SessionHorizonCalculator.ReferenceLapSeconds(playerStanding);
         var manualRemainingSeconds = Math.Clamp(
             options.ManualRemainingMinutes,
             0,
@@ -238,7 +233,10 @@ public sealed class FuelStrategyTracker
             ? options.ManualRemainingLaps
             : manualRemainingSeconds > 0 && referenceLapSeconds > 0
                 ? (int)Math.Ceiling(manualRemainingSeconds / referenceLapSeconds)
-                : EstimateLapsToFinish(session, playerStanding, completedLaps);
+                : SessionHorizonCalculator.RemainingLaps(
+                    session,
+                    playerStanding,
+                    completedLaps);
         var required = projectedConsumption > 0
             ? projectedConsumption * (lapsToFinish + reserveLaps)
             : 0;
@@ -267,9 +265,10 @@ public sealed class FuelStrategyTracker
         var suggestedPitLap = projectedConsumption > 0
             ? completedLaps + lapsUntilPit
             : 0;
-        var fuelCapacity = options.ManualFuelCapacityLiters > 0
-            ? Math.Clamp(options.ManualFuelCapacityLiters, 1, 1000)
-            : player.FuelCapacityLiters;
+        var capacityEstimate = _learning.EstimateFuelCapacity(
+            player.FuelCapacityLiters,
+            options.ManualFuelCapacityLiters);
+        var fuelCapacity = capacityEstimate.Liters;
         var fuelStintCapacity = projectedConsumption > 0 &&
             fuelCapacity > 0
                 ? Math.Max(1, (int)Math.Floor(
@@ -294,12 +293,18 @@ public sealed class FuelStrategyTracker
             Math.Max(0, options.AvailableTireSets))
         {
             FixedDurationSeconds = fixedDurationSeconds,
+            CurrentFuelLiters = player.FuelLiters,
+            CurrentVirtualEnergyFraction = virtualEnergy,
+            VirtualEnergyFractionPerLap = virtualEnergyAverage,
+            VirtualEnergyReserveFraction = energyReserve,
             CurrentVirtualEnergyRangeLaps = energyLapsUntilPit == int.MaxValue
                 ? int.MaxValue
                 : Math.Max(1, energyLapsUntilPit),
             MaximumVirtualEnergyStintLaps = virtualEnergyAverage > 0
                 ? Math.Max(1, (int)Math.Floor((1 - energyReserve) / virtualEnergyAverage))
                 : int.MaxValue,
+            CurrentTireWear = player.TireWear,
+            TireWearPerLap = wheelWearPerLap,
         };
         var strategy = EnduranceStrategyPlanner.Calculate(strategyInput);
         var fuelSave = EnduranceStrategyPlanner.CalculateFuelSave(
@@ -314,9 +319,9 @@ public sealed class FuelStrategyTracker
                 lapsToFinish,
                 player.FuelLiters,
                 projectedConsumption,
-                RobustSigma(_samples),
+                _learning.FuelSigma,
                 averagePace,
-                RobustSigma(_paceSamples),
+                _learning.PaceSigma,
                 Math.Max(1, options.EstimatedPitLossSeconds * 0.08),
                 projectedConsumption * reserveLaps,
                 HashCode.Combine(session.TrackName, session.SessionCode, completedLaps)));
@@ -351,7 +356,7 @@ public sealed class FuelStrategyTracker
         var virtualEnergyMarginal = virtualEnergyAverage > 0 &&
             virtualEnergyMargin >= 0 &&
             virtualEnergyMargin < virtualEnergyAverage * 0.5;
-        var isLearning = _samples.Count == 0 && manualConsumption <= 0;
+        var isLearning = _learning.FuelSampleCount == 0 && manualConsumption <= 0;
         var status = isLearning
             ? "LEARNING"
             : margin < 0 || virtualEnergyShort
@@ -366,7 +371,7 @@ public sealed class FuelStrategyTracker
                 session.GamePhase,
                 session.Weather.RainIntensity,
                 session.Weather.AveragePathWetness,
-                LinearTrend(_rainSamples),
+                _rainSamples.Trend,
                 player.GapToCarAheadSeconds,
                 player.GapToCarBehindSeconds,
                 completedLaps,
@@ -384,7 +389,7 @@ public sealed class FuelStrategyTracker
             isLearning,
             player.FuelLiters,
             average,
-            _samples.Count,
+            _learning.FuelSampleCount,
             estimatedRange,
             estimatedRange * referenceLapSeconds,
             lapsToFinish,
@@ -405,7 +410,7 @@ public sealed class FuelStrategyTracker
             hasPlannedStop && strategy.FuelAtStopsLiters.Count > 0
                 ? strategy.FuelAtStopsLiters[0]
                 : Math.Max(0, required - player.FuelLiters),
-            manualConsumption > 0 ? "MANUAL" : Confidence(_samples.Count),
+            manualConsumption > 0 ? "MANUAL" : Confidence(_learning.FuelSampleCount),
             status)
         {
             EstimatedPitStops = estimatedPitStops,
@@ -444,11 +449,20 @@ public sealed class FuelStrategyTracker
             TrafficScenario = scenarioAdvice.Traffic,
             ProbabilisticScenario = _scenario.Summary,
             FinishProbability = _scenario.FinishProbability,
+            EffectiveFuelCapacityLiters = capacityEstimate.Publish
+                ? fuelCapacity
+                : 0,
         };
     }
 
-    private bool HasSessionChanged(LmuSessionSnapshot session, int completedLaps) =>
+    private bool HasSessionChanged(
+        LmuSessionSnapshot session,
+        int completedLaps,
+        string vehicleIdentity,
+        int gameVersion) =>
         !string.Equals(_trackName, session.TrackName, StringComparison.Ordinal) ||
+        !string.Equals(_vehicleIdentity, vehicleIdentity, StringComparison.Ordinal) ||
+        _gameVersion != gameVersion ||
         _sessionCode != session.SessionCode ||
         completedLaps < _lastCompletedLaps;
 
@@ -457,21 +471,21 @@ public sealed class FuelStrategyTracker
         int completedLaps,
         double fuelLiters,
         double virtualEnergy,
-        double maximumTireWear)
+        LmuWheelWear tireWear,
+        string vehicleIdentity,
+        int gameVersion)
     {
-        _samples.Clear();
-        _virtualEnergySamples.Clear();
-        _paceSamples.Clear();
-        _tireWearSamples.Clear();
+        _learning.Reset(fuelLiters, virtualEnergy, tireWear);
         _rainSamples.Clear();
         _trackName = session.TrackName;
+        _vehicleIdentity = vehicleIdentity;
+        _gameVersion = gameVersion;
         _sessionCode = session.SessionCode;
         _lastCompletedLaps = completedLaps;
         _lapStartFuel = fuelLiters;
         _previousFuel = fuelLiters;
         _lapStartVirtualEnergy = virtualEnergy;
         _previousVirtualEnergy = virtualEnergy;
-        _previousMaximumTireWear = maximumTireWear;
         _lastRainSampleAt = DateTimeOffset.MinValue;
         _previousSampleAt = DateTimeOffset.MinValue;
         _lapContaminated = completedLaps == 0;
@@ -532,11 +546,7 @@ public sealed class FuelStrategyTracker
             return;
         }
 
-        _rainSamples.Enqueue(Math.Clamp(rainIntensity, 0, 1));
-        while (_rainSamples.Count > 20)
-        {
-            _rainSamples.Dequeue();
-        }
+        _rainSamples.Add(Math.Clamp(rainIntensity, 0, 1));
 
         _lastRainSampleAt = capturedAt;
     }
@@ -558,127 +568,12 @@ public sealed class FuelStrategyTracker
                 : $"{front}/{rear}";
     }
 
-    private static void EnqueueSample(Queue<double> samples, double value)
-    {
-        samples.Enqueue(value);
-        while (samples.Count > MaximumSamples)
-        {
-            samples.Dequeue();
-        }
-    }
-
     private static double MaximumTireWear(LmuWheelWear wear) => Math.Max(
         Math.Max(wear.FrontLeftFraction, wear.FrontRightFraction),
         Math.Max(wear.RearLeftFraction, wear.RearRightFraction));
 
-    private static double LinearTrend(IEnumerable<double> samples)
-    {
-        var values = samples.ToArray();
-        if (values.Length < 3)
-        {
-            return 0;
-        }
-
-        var xMean = (values.Length - 1) / 2d;
-        var yMean = values.Average();
-        var numerator = 0d;
-        var denominator = 0d;
-        for (var index = 0; index < values.Length; index++)
-        {
-            var x = index - xMean;
-            numerator += x * (values[index] - yMean);
-            denominator += x * x;
-        }
-
-        return denominator > 0 ? numerator / denominator : 0;
-    }
-
     private static double NormalizeVirtualEnergy(double value) =>
         double.IsFinite(value) ? Math.Clamp(value, 0, 1) : 0;
-
-    private static int EstimateLapsToFinish(
-        LmuSessionSnapshot session,
-        LmuVehicleStanding? playerStanding,
-        int completedLaps)
-    {
-        if (LmuSessionLimits.HasFiniteLapLimit(session.MaximumLaps))
-        {
-            return Math.Max(0, session.MaximumLaps - completedLaps);
-        }
-
-        var remainingSeconds = Math.Max(
-            0,
-            session.EndElapsedTime - session.CurrentElapsedTime);
-        var referenceLapSeconds = playerStanding?.LastLapTimeSeconds > 0
-            ? playerStanding.LastLapTimeSeconds
-            : playerStanding?.BestLapTimeSeconds ?? 0;
-        return remainingSeconds > 0 && referenceLapSeconds > 0
-            ? (int)Math.Ceiling(remainingSeconds / referenceLapSeconds)
-            : 0;
-    }
-
-    private static double ReferenceLapSeconds(LmuVehicleStanding? standing) =>
-        standing?.LastLapTimeSeconds > 0
-            ? standing.LastLapTimeSeconds
-            : standing?.BestLapTimeSeconds > 0
-                ? standing.BestLapTimeSeconds
-                : 0;
-
-    private static double WeightedAverage(IEnumerable<double> samples)
-    {
-        var values = samples.ToArray();
-        if (values.Length == 0)
-        {
-            return 0;
-        }
-
-        double weightedTotal = 0;
-        double totalWeight = 0;
-        for (var index = 0; index < values.Length; index++)
-        {
-            var weight = index + 1;
-            weightedTotal += values[index] * weight;
-            totalWeight += weight;
-        }
-
-        return weightedTotal / totalWeight;
-    }
-
-    private static double ConservativeProjection(
-        IEnumerable<double> samples,
-        double weightedAverage)
-    {
-        var values = samples.ToArray();
-        if (values.Length < 2)
-        {
-            return weightedAverage;
-        }
-
-        var variance = values.Sum(
-            value => Math.Pow(value - weightedAverage, 2)) / values.Length;
-        return weightedAverage + Math.Sqrt(variance) * 0.35;
-    }
-
-    private static double RobustMedian(IEnumerable<double> samples)
-    {
-        var values = samples.Where(double.IsFinite).OrderBy(value => value).ToArray();
-        if (values.Length == 0) return 0;
-        return values.Length % 2 == 0
-            ? (values[values.Length / 2 - 1] + values[values.Length / 2]) / 2
-            : values[values.Length / 2];
-    }
-
-    private static double RobustSigma(IEnumerable<double> samples)
-    {
-        var values = samples.Where(double.IsFinite).ToArray();
-        if (values.Length < 3) return 0;
-        var median = RobustMedian(values);
-        var mad = RobustMedian(values.Select(value => Math.Abs(value - median)));
-        return mad * 1.4826;
-    }
-
-    private static double RobustConservative(IEnumerable<double> samples, double median) =>
-        median + RobustSigma(samples) * 0.5;
 
     private static string Confidence(int samples) => samples switch
     {

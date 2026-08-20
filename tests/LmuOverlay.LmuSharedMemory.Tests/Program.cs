@@ -85,7 +85,9 @@ WriteText(
     "Medium");
 data[telemetry + LmuApiLayoutV1.TelemetryFrontTireCompoundIndexOffset] = 2;
 data[telemetry + LmuApiLayoutV1.TelemetryRearTireCompoundIndexOffset] = 2;
+WriteSingle(data, telemetry + LmuApiLayoutV1.TelemetryVisualSteeringWheelRangeOffset, 540);
 WriteDouble(data, telemetry + LmuApiLayoutV1.TelemetryRearBrakeBiasOffset, 0.43);
+WriteSingle(data, telemetry + LmuApiLayoutV1.TelemetryPhysicalSteeringWheelRangeOffset, 900);
 WriteDouble(data, telemetry + LmuApiLayoutV1.TelemetryDeltaBestOffset, -0.2);
 WriteDouble(data, telemetry + LmuApiLayoutV1.TelemetryBatteryChargeOffset, 0.6);
 WriteSingle(data, telemetry + LmuApiLayoutV1.TelemetryRegenerationOffset, 25);
@@ -181,6 +183,10 @@ Require(snapshot.Player?.Brake == 0.1, "Brake input");
 Require(snapshot.Player?.EngineWaterTemperatureCelsius == 78, "Water temperature");
 Require(snapshot.Player?.EngineOilTemperatureCelsius == 92, "Oil temperature");
 Require(snapshot.Player?.RearBrakeBiasFraction == 0.43, "Rear brake bias");
+Require(snapshot.Player?.VisualSteeringWheelRangeDegrees == 540,
+    "Visual steering-wheel range");
+Require(snapshot.Player?.PhysicalSteeringWheelRangeDegrees == 900,
+    "Physical steering-wheel range");
 Require(snapshot.Player?.TractionControlLevel == 4, "TC level");
 Require(snapshot.Player?.TractionControlSlipLevel == 7, "TC slip level");
 Require(snapshot.Player?.TractionControlCutLevel == 3, "TC cut level");
@@ -303,6 +309,13 @@ Require(probe.PlayerVehicleName == expected.PlayerVehicleName, "Probe player veh
 
 var shortSnapshot = LmuSnapshotParser.ParseTelemetry(new byte[128]);
 Require(shortSnapshot.State == LmuConnectionState.IncompatibleLayout, "Short layout");
+
+var extendedLayout = new byte[LmuApiLayoutV1.ObjectSize + 512];
+data.CopyTo(extendedLayout, 0);
+var extendedSnapshot = LmuSnapshotParser.ParseTelemetry(extendedLayout);
+Require(extendedSnapshot.State == LmuConnectionState.Connected &&
+        extendedSnapshot.Player?.VehicleId == snapshot.Player?.VehicleId,
+    "An append-only layout must preserve validated v1 fields without reading the extension");
 
 var invalidCounts = new byte[LmuApiLayoutV1.ObjectSize];
 WriteInt32(

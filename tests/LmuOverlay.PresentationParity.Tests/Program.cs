@@ -1,5 +1,7 @@
+using LmuOverlay.Application;
 using LmuOverlay.Core;
 using LmuOverlay.Desktop;
+using LmuOverlay.Domain;
 using LmuOverlay.SteamVr;
 using LmuOverlay.Widgets;
 
@@ -21,8 +23,15 @@ Require(OverlayText.Get("en-US", OverlayTextKey.FuelAndEnergy) == "Fuel & virtua
     "The shared catalog must expose English.");
 Require(OverlayText.Normalize("unsupported") == OverlayText.PortugueseBrazil,
     "Unknown language values must migrate safely to Brazilian Portuguese.");
-Require(new VrDesktopSettings { Language = "en-US" }.Sanitize().Language == OverlayText.EnglishUnitedStates,
+Require(LayoutStore.SanitizeSettings(new OverlayProfileSettings { Language = "en-US" }).Language == OverlayText.EnglishUnitedStates,
     "SteamVR must preserve the same supported language used by Desktop.");
+
+var disconnectedFrame = new EssentialOverlayFrameComposer().Compose(
+    LmuTelemetrySnapshot.Unavailable(LmuConnectionState.Disconnected, "parity test"));
+Require(!disconnectedFrame.Dashboard.Available && !disconnectedFrame.Inputs.Available,
+    "The shared composer must keep Desktop and SteamVR unavailable-state semantics aligned.");
+Require(!disconnectedFrame.SessionFlags.Available && !disconnectedFrame.RaceControl.Available,
+    "The shared composer must cover session and race-control states too.");
 
 Require(PresentationRecoveryPolicy.DelayForFailure(1) == TimeSpan.FromMilliseconds(250),
     "Recovery starts quickly.");

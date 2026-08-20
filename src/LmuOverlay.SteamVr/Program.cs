@@ -1,5 +1,7 @@
 using System.Diagnostics;
+using LmuOverlay.Application;
 using LmuOverlay.Core;
+using LmuOverlay.Desktop;
 using LmuOverlay.Domain;
 using LmuOverlay.LmuSharedMemory;
 using LmuOverlay.SteamVr;
@@ -22,6 +24,7 @@ if (!OperatingSystem.IsWindows())
 
 var profileStore = new SteamVrProfileStore();
 var desktopSettingsReader = new DesktopProfileSettingsReader();
+var frameComposer = new EssentialOverlayFrameComposer();
 var diagnosticsPath = ArgumentValue(args, "--diagnostics");
 var visualBaselinePath = ArgumentValue(args, "--capture-vr-baselines");
 if (!string.IsNullOrWhiteSpace(visualBaselinePath))
@@ -41,6 +44,20 @@ if (args.Contains("--configure", StringComparer.OrdinalIgnoreCase) ||
     return 0;
 }
 var startupSettings = desktopSettingsReader.Load();
+var compatibility = GameCompatibilityProbe.Detect();
+var vrPreflight = VrRuntimeProbe.Detect();
+var backend = VrBackendSelector.Select(
+    ArgumentValue(args, "--vr-backend"),
+    !args.Contains("--no-vr-fallback", StringComparer.OrdinalIgnoreCase),
+    vrPreflight);
+Console.WriteLine($"LMU compatibility: {compatibility.State} · build {compatibility.InstalledBuildId} · {compatibility.Detail}");
+Console.WriteLine($"VR preflight: {vrPreflight.Detail}");
+Console.WriteLine($"VR backend: requested={backend.Requested} selected={backend.Selected} · {backend.Detail}");
+if (!backend.CanStart)
+{
+    Console.Error.WriteLine("VR preflight failed safely. Desktop remains available.");
+    return 3;
+}
 if (args.Contains("--safe-mode", StringComparer.OrdinalIgnoreCase) ||
     (!startupSettings.EnableSteamVr &&
      !args.Contains("--force-vr", StringComparer.OrdinalIgnoreCase)))
@@ -68,8 +85,8 @@ using var officialOptimal = new OfficialTimingOptimalProvider(new()
         !args.Contains("--disable-optimal-http", StringComparer.OrdinalIgnoreCase),
 });
 var sectors = new PersistentSectorReferenceTracker(
-    new SectorReferenceStore(),
-    new PersonalBestLapStore());
+    new SectorReferenceStore(compatibilityGeneration: compatibility.CompatibilityGeneration),
+    new PersonalBestLapStore(compatibilityGeneration: compatibility.CompatibilityGeneration));
 var fuelTracker = new FuelStrategyTracker();
 var timingTracker = new TimingWidgetTracker();
 var pedalHistory = new Queue<VrPedalSample>();
@@ -172,7 +189,8 @@ while (!shutdown.IsCancellationRequested)
                         LmuConnectionState.Disconnected,
                         "Session ended.")
                     : snapshot;
-                var dashboard = EssentialWidgetStateFactory.CreateDashboard(live);
+                var essentialFrame = frameComposer.Compose(live);
+                var dashboard = essentialFrame.Dashboard;
                 var trackedSectors = sectors.Update(live, dashboard.SectorTimes);
                 var liveOptimal = officialOptimal.GetOptimal(snapshot);
                 var persistedOptimal = sectors.ObserveOptimal(live, liveOptimal);
@@ -184,7 +202,7 @@ while (!shutdown.IsCancellationRequested)
                         : dashboard.BestLapTimeSeconds,
                     OptimalLapTimeSeconds = persistedOptimal,
                 };
-                var inputs = EssentialWidgetStateFactory.CreateInputs(live);
+                var inputs = essentialFrame.Inputs;
                 UpdatePedalHistory(
                     pedalHistory,
                     ref pedalSession,
@@ -220,7 +238,7 @@ while (!shutdown.IsCancellationRequested)
                         VrWidgetTextureRenderer.Relative(
                             timing.Relative,
                             style));
-                    raceControl = EssentialWidgetStateFactory.CreateRaceControl(live);
+                    raceControl = essentialFrame.RaceControl;
                     Submit(openVr, raceControlKey, profile.RaceControl,
                         VrWidgetTextureRenderer.RaceControl(raceControl, style));
                     lastTimingUpdate = now;
@@ -231,7 +249,7 @@ while (!shutdown.IsCancellationRequested)
                     fuelStrategy = fuelTracker.Update(live, settings.FuelOptions());
                     Submit(openVr, fuelKey, profile.FuelStrategy,
                         VrWidgetTextureRenderer.Fuel(fuelStrategy, style));
-                    sessionFlags = EssentialWidgetStateFactory.CreateSessionFlags(live);
+                    sessionFlags = essentialFrame.SessionFlags;
                     Submit(openVr, sessionKey, profile.SessionFlags,
                         VrWidgetTextureRenderer.Session(sessionFlags, style));
                     lastStrategyUpdate = now;
@@ -335,7 +353,7 @@ static void UpdatePedalHistory(
     ref string currentSession,
     string session,
     InputsWidgetState inputs,
-    VrDesktopSettings settings)
+    OverlayProfileSettings settings)
 {
     if (!string.Equals(currentSession, session, StringComparison.Ordinal))
     {
@@ -347,7 +365,11 @@ static void UpdatePedalHistory(
         history.Clear();
         return;
     }
-    history.Enqueue(new((float)inputs.Throttle, (float)inputs.Brake));
+    history.Enqueue(new(
+        (float)inputs.Throttle,
+        (float)inputs.Brake,
+        inputs.AbsActive,
+        inputs.TractionControlActive));
     var capacity = Math.Clamp(settings.RefreshRateHz * settings.PedalHistorySeconds, 180, 1_200);
     while (history.Count > capacity) history.Dequeue();
 }

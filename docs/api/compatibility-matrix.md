@@ -62,4 +62,7 @@ to the LMU adapter.
 
 Unknown layouts fail closed as `IncompatibleLayout` or `InvalidData`.
 
+The runtime preflight, extensible catalogs and build-scoped persistence are
+documented in [compatibility-preflight.md](compatibility-preflight.md).
+
 See [live validation evidence](live-validation.md).

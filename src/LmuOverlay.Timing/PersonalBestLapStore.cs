@@ -1,6 +1,5 @@
 using System.IO;
 using System.Text.Json;
-using LmuOverlay.Widgets;
 
 namespace LmuOverlay.Widgets;
 
@@ -8,7 +7,7 @@ public sealed class PersonalBestLapStore
 {
     // Versions 1-2 could contain reconstructed laps or a cumulative S1+S2
     // split persisted as S2. Start a clean official-only individual-split catalog.
-    private const int SchemaVersion = 4;
+    private const int SchemaVersion = 5;
     private static readonly JsonSerializerOptions Options = new()
     {
         PropertyNameCaseInsensitive = true,
@@ -17,14 +16,16 @@ public sealed class PersonalBestLapStore
 
     private readonly object _sync = new();
     private readonly string _path;
+    private readonly string _generation;
     private Catalog? _catalog;
 
-    public PersonalBestLapStore(string? path = null)
+    public PersonalBestLapStore(string? path = null, string compatibilityGeneration = "layout-v1")
     {
         _path = path ?? Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "LMU Overlay",
             "personal-bests.json");
+        _generation = NormalizeGeneration(compatibilityGeneration);
     }
 
     public PersonalBestLap Load(
@@ -55,7 +56,7 @@ public sealed class PersonalBestLapStore
         lock (_sync)
         {
             if (!EnsureCatalog().Entries.TryGetValue(
-                    Key(trackName, driverName, vehicleModel), out var entry))
+                    Key(trackName, driverName, vehicleModel, _generation), out var entry))
             {
                 return default;
             }
@@ -87,7 +88,7 @@ public sealed class PersonalBestLapStore
         lock (_sync)
         {
             var catalog = EnsureCatalog();
-            var key = Key(trackName, driverName, vehicleModel);
+            var key = Key(trackName, driverName, vehicleModel, _generation);
             if (catalog.Entries.TryGetValue(key, out var existing) &&
                 existing.BestLap.IsValid &&
                 existing.BestLap.LapTimeSeconds <= candidate.LapTimeSeconds)
@@ -108,7 +109,8 @@ public sealed class PersonalBestLapStore
                 candidate,
                 DateTimeOffset.UtcNow,
                 bestSectors,
-                optimal);
+                optimal,
+                _generation);
             WriteAtomic(JsonSerializer.Serialize(catalog, Options));
             return candidate;
         }
@@ -129,13 +131,13 @@ public sealed class PersonalBestLapStore
         lock (_sync)
         {
             var catalog = EnsureCatalog();
-            var key = Key(trackName, driverName, vehicleModel);
+            var key = Key(trackName, driverName, vehicleModel, _generation);
             catalog.Entries.TryGetValue(key, out var existing);
             var best = Better(existing?.OptimalLapTimeSeconds ?? 0, optimalLapTimeSeconds);
             catalog.Entries[key] = existing is null
                 ? new Entry(
                     trackName.Trim(), driverName.Trim(), vehicleModel.Trim(), default,
-                    DateTimeOffset.UtcNow, default, best)
+                    DateTimeOffset.UtcNow, default, best, _generation)
                 : existing with { OptimalLapTimeSeconds = best, UpdatedAtUtc = DateTimeOffset.UtcNow };
             WriteAtomic(JsonSerializer.Serialize(catalog, Options));
             return best;
@@ -153,7 +155,7 @@ public sealed class PersonalBestLapStore
                 var catalog = JsonSerializer.Deserialize<Catalog>(
                     File.ReadAllText(_path),
                     Options);
-                if (catalog is { Version: 3 or SchemaVersion })
+                if (catalog is { Version: 3 or 4 or SchemaVersion })
                 {
                     return new Catalog(
                         SchemaVersion,
@@ -223,10 +225,15 @@ public sealed class PersonalBestLapStore
     private static string Key(
         string trackName,
         string driverName,
-        string vehicleModel) =>
+        string vehicleModel,
+        string generation) =>
         $"{trackName.Trim().ToUpperInvariant()}\u001f" +
         $"{driverName.Trim().ToUpperInvariant()}\u001f" +
-        vehicleModel.Trim().ToUpperInvariant();
+        $"{vehicleModel.Trim().ToUpperInvariant()}\u001f" +
+        NormalizeGeneration(generation).ToUpperInvariant();
+
+    private static string NormalizeGeneration(string value) =>
+        string.IsNullOrWhiteSpace(value) ? "layout-v1" : value.Trim();
 
     private sealed record Entry(
         string TrackName,
@@ -235,7 +242,8 @@ public sealed class PersonalBestLapStore
         PersonalBestLap BestLap,
         DateTimeOffset UpdatedAtUtc,
         SectorReferenceSeed BestSectors = default,
-        double OptimalLapTimeSeconds = 0);
+        double OptimalLapTimeSeconds = 0,
+        string CompatibilityGeneration = "legacy");
 
     private sealed class Catalog
     {

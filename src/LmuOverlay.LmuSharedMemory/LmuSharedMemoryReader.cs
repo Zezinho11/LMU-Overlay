@@ -7,6 +7,7 @@ using System.Runtime.Versioning;
 using Microsoft.Win32.SafeHandles;
 using LmuOverlay.Contracts;
 using LmuOverlay.Domain;
+using LmuOverlay.Core;
 
 namespace LmuOverlay.LmuSharedMemory;
 
@@ -30,6 +31,14 @@ public sealed unsafe class LmuSharedMemoryReader :
 
     public LmuSharedMemoryReader()
     {
+        var compatibility = GameCompatibilityProbe.Detect();
+        if (compatibility.State == GameCompatibilityState.UnknownLayout)
+        {
+            _startupFailureState = LmuConnectionState.IncompatibleLayout;
+            _startupFailureDetail = compatibility.Detail;
+            return;
+        }
+
         try
         {
             _map = MemoryMappedFile.OpenExisting(

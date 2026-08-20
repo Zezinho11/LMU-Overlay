@@ -45,12 +45,15 @@ public static class SteamVrDiagnosticsWriter
                 telemetry.LastError,
             },
             Presentation = presentation,
+            Compatibility = GameCompatibilityProbe.Detect(),
+            VrRuntime = VrRuntimeProbe.Detect(),
+            UnknownVehicles = LmuOverlay.Widgets.VehicleCatalog.UnknownVehicles,
             Layout = new
             {
                 profile.SchemaVersion,
                 SurfaceCount = 8,
             },
-            Privacy = "Driver, player, track and raw telemetry identities are intentionally omitted.",
+            Privacy = "Driver, player, track and raw telemetry identities are intentionally omitted. Header hashes and build identifiers are included.",
         };
         try
         {

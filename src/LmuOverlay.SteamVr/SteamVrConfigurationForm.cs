@@ -33,6 +33,7 @@ public sealed class SteamVrConfigurationForm : Form
         Font = new Font("Segoe UI", 9f);
 
         ConfigureGrid();
+        var runtime = LmuOverlay.Core.VrRuntimeProbe.Detect();
         var header = new Label
         {
             Dock = DockStyle.Top,
@@ -40,8 +41,8 @@ public sealed class SteamVrConfigurationForm : Form
             Padding = new Padding(14, 10, 14, 4),
             ForeColor = Color.White,
             Text = L(
-                "OVERLAYS STEAMVR\r\nAjuste cada painel; o host aplica o arquivo salvo em tempo real.",
-                "STEAMVR OVERLAYS\r\nAdjust each panel; the host applies the saved file in real time."),
+                $"OVERLAYS STEAMVR · {runtime.Detail}\r\nAjuste cada painel; o host aplica o arquivo salvo em tempo real.",
+                $"STEAMVR OVERLAYS · {runtime.Detail}\r\nAdjust each panel; the host applies the saved file in real time."),
         };
         var buttons = new FlowLayoutPanel
         {
@@ -52,6 +53,7 @@ public sealed class SteamVrConfigurationForm : Form
             BackColor = Color.FromArgb(17, 24, 34),
         };
         buttons.Controls.Add(Button(OverlayText.Get(_language, OverlayTextKey.Save), (_, _) => SaveProfile()));
+        buttons.Controls.Add(Button(L("Exportar diagnóstico", "Export diagnostics"), (_, _) => ExportDiagnostics()));
         buttons.Controls.Add(Button(L("Compacto", "Compact"), (_, _) => LoadProfile(SteamVrProfile.Compact)));
         buttons.Controls.Add(Button(L("Padrão", "Default"), (_, _) => LoadProfile(SteamVrProfile.Default)));
         Controls.Add(_grid);
@@ -164,6 +166,30 @@ public sealed class SteamVrConfigurationForm : Form
             MessageBox.Show(this, exception.Message, L("Não foi possível salvar", "Unable to save"),
                 MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
+    }
+
+    private void ExportDiagnostics()
+    {
+        using var dialog = new SaveFileDialog
+        {
+            Title = L("Exportar diagnóstico SteamVR", "Export SteamVR diagnostics"),
+            Filter = "JSON (*.json)|*.json",
+            FileName = $"lmu-overlay-steamvr-diagnostics-{DateTime.Now:yyyyMMdd-HHmmss}.json",
+            AddExtension = true,
+            DefaultExt = "json",
+        };
+        if (dialog.ShowDialog(this) != DialogResult.OK) return;
+        var written = SteamVrDiagnosticsWriter.TryWrite(
+            dialog.FileName,
+            new LmuOverlay.Core.TelemetryRuntimeHealth(
+                0, 0, 0, 0, 0, 0, null, "Configuration-only report."),
+            new(false, 0, null, "Configuration-only report; start the host for live health."),
+            _store.Load());
+        MessageBox.Show(this,
+            written ? L("Diagnóstico exportado.", "Diagnostics exported.")
+                    : L("Não foi possível exportar o diagnóstico.", "Unable to export diagnostics."),
+            "RedFox Racing", MessageBoxButtons.OK,
+            written ? MessageBoxIcon.Information : MessageBoxIcon.Error);
     }
 
     private SteamVrWidgetPlacement Read(int rowIndex, SteamVrWidgetPlacement fallback)

@@ -44,3 +44,7 @@ Live Timing endpoint as the only game-data boundaries.
 EAC policy and detection behavior can change. A read-only external overlay reduces
 risk but does not constitute approval by Epic Games or Studio 397. Distribution
 must include a safe mode and a kill switch for integrations found incompatible.
+
+CI enforces these assumptions with `scripts/audit-eac-safety.ps1` and publishes
+the resulting JSON alongside release evidence. An unknown installed official
+shared-memory header is rejected before the named map is opened.

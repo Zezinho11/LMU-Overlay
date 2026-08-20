@@ -1,95 +1,24 @@
 using System.Text.Json;
+using LmuOverlay.Desktop;
 using LmuOverlay.Widgets;
 
 namespace LmuOverlay.SteamVr;
 
-public sealed record VrDesktopSettings
+public static class VrProfileSettingsExtensions
 {
-    public string Language { get; init; } = OverlayText.PortugueseBrazil;
-    public string Theme { get; init; } = "RedFox";
-    public string CustomAccentColor { get; init; } = "#42D3A6";
-    public string CustomBackgroundColor { get; init; } = "#0A0F1A";
-    public string CustomCardColor { get; init; } = "#121924";
-    public string CustomPrimaryTextColor { get; init; } = "#FFFFFF";
-    public string CustomSecondaryTextColor { get; init; } = "#CAD3DC";
-    public string CustomInformationColor { get; init; } = "#12D9E5";
-    public string CustomAttentionColor { get; init; } = "#FFBE40";
-    public string CustomCriticalColor { get; init; } = "#FF464B";
-    public string CustomPositiveColor { get; init; } = "#42D3A6";
-    public string DashboardTitle { get; init; } = "REDFOX RACING";
-    public bool DashboardShowSectors { get; init; } = true;
-    public bool DashboardShowTires { get; init; } = true;
-    public bool DashboardShowTelemetry { get; init; } = true;
-    public string DashboardModuleOrder { get; init; } = DashboardModuleLayout.DefaultOrder;
-    public double DashboardTextScale { get; init; } = 1;
-    public double TimingTextScale { get; init; } = 1;
-    public double InputsTextScale { get; init; } = 1;
-    public int LiveStandingsMaximumRows { get; init; } = 12;
-    public int RelativeCarsEachSide { get; init; } = 4;
-    public int RefreshRateHz { get; init; } = 120;
-    public double FuelReserveLaps { get; init; } = 1;
-    public double EnergyReservePercent { get; init; } = 2;
-    public int ManualRemainingLaps { get; init; }
-    public double ManualRemainingMinutes { get; init; }
-    public double ManualLapTimeSeconds { get; init; }
-    public double ManualFuelPerLapLiters { get; init; }
-    public double ManualFuelCapacityLiters { get; init; }
-    public int MaximumStintLaps { get; init; }
-    public double EstimatedPitLossSeconds { get; init; } = 30;
-    public int AvailableTireSets { get; init; }
-    public double TireWearLimitPercent { get; init; } = 70;
-    public double EstimatedTireChangeSeconds { get; init; } = 15;
-    public double BackgroundOpacity { get; init; } = 0.94;
-    public int PedalHistorySeconds { get; init; } = 5;
-    public bool ShowPriorityAlerts { get; init; } = true;
-    public bool ReduceMotion { get; init; } = true;
-    public bool EnableOfficialTimingHttp { get; init; } = true;
-    public bool EnableSteamVr { get; init; } = true;
-
-    public VrDesktopSettings Sanitize() => this with
-    {
-        Language = OverlayText.Normalize(Language),
-        Theme = Theme is "RedFox" or "Black" or "HighContrast" or "ColorVisionSafe" or "Custom"
-            ? Theme
-            : "RedFox",
-        CustomAccentColor = VrRenderStyle.NormalizeHex(CustomAccentColor, "#42D3A6"),
-        CustomBackgroundColor = VrRenderStyle.NormalizeHex(CustomBackgroundColor, "#0A0F1A"),
-        CustomCardColor = VrRenderStyle.NormalizeHex(CustomCardColor, "#121924"),
-        CustomPrimaryTextColor = VrRenderStyle.NormalizeHex(CustomPrimaryTextColor, "#FFFFFF"),
-        CustomSecondaryTextColor = VrRenderStyle.NormalizeHex(CustomSecondaryTextColor, "#CAD3DC"),
-        CustomInformationColor = VrRenderStyle.NormalizeHex(CustomInformationColor, "#12D9E5"),
-        CustomAttentionColor = VrRenderStyle.NormalizeHex(CustomAttentionColor, "#FFBE40"),
-        CustomCriticalColor = VrRenderStyle.NormalizeHex(CustomCriticalColor, "#FF464B"),
-        CustomPositiveColor = VrRenderStyle.NormalizeHex(CustomPositiveColor, "#42D3A6"),
-        DashboardTitle = string.IsNullOrWhiteSpace(DashboardTitle)
-            ? "REDFOX RACING"
-            : new string(DashboardTitle.Trim().Where(value => !char.IsControl(value)).Take(24).ToArray()),
-        DashboardModuleOrder = DashboardModuleLayout.Normalize(DashboardModuleOrder),
-        DashboardTextScale = Math.Clamp(DashboardTextScale <= 0 ? 1 : DashboardTextScale, 0.8, 1.25),
-        TimingTextScale = Math.Clamp(TimingTextScale <= 0 ? 1 : TimingTextScale, 0.8, 1.25),
-        InputsTextScale = Math.Clamp(InputsTextScale <= 0 ? 1 : InputsTextScale, 0.8, 1.25),
-        LiveStandingsMaximumRows = Math.Clamp(LiveStandingsMaximumRows <= 0 ? 12 : LiveStandingsMaximumRows, 6, 12),
-        RelativeCarsEachSide = Math.Clamp(RelativeCarsEachSide <= 0 ? 4 : RelativeCarsEachSide, 2, 5),
-        RefreshRateHz = Math.Clamp(RefreshRateHz <= 0 ? 120 : RefreshRateHz, 60, 120),
-        FuelReserveLaps = Math.Clamp(FuelReserveLaps, 0, 5),
-        EnergyReservePercent = Math.Clamp(EnergyReservePercent, 0, 25),
-        BackgroundOpacity = Math.Clamp(BackgroundOpacity <= 0 ? 0.94 : BackgroundOpacity, 0.35, 1),
-        PedalHistorySeconds = Math.Clamp(PedalHistorySeconds <= 0 ? 5 : PedalHistorySeconds, 3, 10),
-    };
-
-    public FuelStrategyOptions FuelOptions() => new(
-        FuelReserveLaps,
-        EnergyReservePercent / 100,
-        ManualRemainingLaps,
-        MaximumStintLaps,
-        EstimatedPitLossSeconds,
-        AvailableTireSets,
-        TireWearLimitPercent / 100,
-        EstimatedTireChangeSeconds,
-        ManualRemainingMinutes,
-        ManualLapTimeSeconds,
-        ManualFuelPerLapLiters,
-        ManualFuelCapacityLiters);
+    public static FuelStrategyOptions FuelOptions(this OverlayProfileSettings settings) => new(
+        settings.FuelReserveLaps,
+        settings.EnergyReservePercent / 100,
+        settings.ManualRemainingLaps,
+        settings.MaximumStintLaps,
+        settings.EstimatedPitLossSeconds,
+        settings.AvailableTireSets,
+        settings.TireWearLimitPercent / 100,
+        settings.EstimatedTireChangeSeconds,
+        settings.ManualRemainingMinutes,
+        settings.ManualLapTimeSeconds,
+        settings.ManualFuelPerLapLiters,
+        settings.ManualFuelCapacityLiters);
 }
 
 public sealed class DesktopProfileSettingsReader(string? path = null)
@@ -104,13 +33,13 @@ public sealed class DesktopProfileSettingsReader(string? path = null)
         "LMU Overlay",
         "layout.json");
 
-    public VrDesktopSettings Load()
+    public OverlayProfileSettings Load()
     {
         try
         {
             if (!File.Exists(Path))
             {
-                return new VrDesktopSettings();
+                return new OverlayProfileSettings();
             }
 
             using var document = JsonDocument.Parse(File.ReadAllText(Path));
@@ -137,17 +66,18 @@ public sealed class DesktopProfileSettingsReader(string? path = null)
         {
         }
 
-        return new VrDesktopSettings();
+        return new OverlayProfileSettings();
     }
 
-    private static VrDesktopSettings SettingsFromProfile(JsonElement profile)
+    private static OverlayProfileSettings SettingsFromProfile(JsonElement profile)
     {
         if (!Property(profile, "Settings", out var settings))
         {
-            return new VrDesktopSettings();
+            return new OverlayProfileSettings();
         }
 
-        return (settings.Deserialize<VrDesktopSettings>(Options) ?? new()).Sanitize();
+        return LayoutStore.SanitizeSettings(
+            settings.Deserialize<OverlayProfileSettings>(Options));
     }
 
     private static bool Property(JsonElement value, string name, out JsonElement result)

@@ -119,7 +119,9 @@ public static class LmuApiLayoutV1
     public const int TelemetryFrontTireCompoundNameOffset = 620;
     public const int TelemetryRearTireCompoundNameOffset = 638;
     public const int TelemetryTireCompoundNameLength = 18;
+    public const int TelemetryVisualSteeringWheelRangeOffset = 660;
     public const int TelemetryRearBrakeBiasOffset = 664;
+    public const int TelemetryPhysicalSteeringWheelRangeOffset = 692;
     public const int TelemetryDeltaBestOffset = 696;
     public const int TelemetryBatteryChargeOffset = 704;
     public const int TelemetryLapInvalidatedOffset = 745;

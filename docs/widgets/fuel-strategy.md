@@ -5,9 +5,11 @@ turns the current fuel value into an actionable race projection.
 
 ## Current fields
 
-- Current fuel in liters.
+- Current fuel in liters and the learned NRG-balanced maximum for the active
+  car/track combination (for example `28.1 / 88.0 L`). The 88 L in this
+  example is not a global constant.
 - Current Virtual Energy as a percentage, including LMGT3 usage.
-- Recency-weighted consumption over the last eight valid completed laps.
+- Rolling robust consumption over the last twelve valid completed laps.
 - Conservative fuel projection that adds a small variability buffer.
 - Rolling Virtual Energy consumption and estimated energy range in laps.
 - Estimated fuel range in laps.
@@ -38,6 +40,15 @@ The installed API and live telemetry expose it as a normalized fraction, so the
 widget renders it as a percentage. Energy refills are excluded from the rolling
 per-lap consumption in the same way as physical refueling.
 
+For LMGT3 and Hypercar planning, the tracker pairs fuel and Virtual Energy
+consumption from the same valid lap. `fuel used / NRG used` yields the
+NRG-balanced fuel allocation at 100% for that car, circuit and current BoP. A
+robust median of those paired samples is capped by the physical capacity
+published by telemetry. Fuel and NRG then remain separate constraints: the
+first one to reach its reserve determines stint length. Changing track,
+vehicle, game generation or session resets the learning so one car's value can
+never leak into another.
+
 ## Interaction
 
 Fuel Strategy is a separate box with the same edit-mode behavior as the other
@@ -50,10 +61,5 @@ The tracker consumes immutable snapshots produced from the official read-only
 LMU shared-memory API. It does not write to the game, inject code, install
 graphics hooks, or access LMU process memory.
 
-## Planned extensions
-
-- Configurable reserve and rolling-average window.
-- Manual race-lap override for timed sessions.
-- Multi-stop optimization, energy allocation, and driver-time projections.
-- Caution-lap consumption profiles.
-- Reused by the SteamVR renderer with the same strategy options and state.
+Desktop and SteamVR reuse this same tracker and strategy plan; renderers do not
+recalculate the numbers independently.

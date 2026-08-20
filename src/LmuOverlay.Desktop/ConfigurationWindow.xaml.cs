@@ -8,6 +8,7 @@ using WpfMessageBox = System.Windows.MessageBox;
 using WpfOrientation = System.Windows.Controls.Orientation;
 using WpfTextBox = System.Windows.Controls.TextBox;
 using LmuOverlay.Widgets;
+using LmuOverlay.Core;
 
 namespace LmuOverlay.Desktop;
 
@@ -21,6 +22,14 @@ public partial class ConfigurationWindow : Window
     {
         _overlay = overlay;
         InitializeComponent();
+        var compatibility = GameCompatibilityProbe.Detect();
+        var vr = VrRuntimeProbe.Detect();
+        var build = string.IsNullOrWhiteSpace(compatibility.InstalledBuildId)
+            ? "--"
+            : compatibility.InstalledBuildId;
+        CompatibilityStatus.Text =
+            $"LMU {build} · " +
+            $"{compatibility.State} · VR: {(vr.SteamVrIsActiveOpenXrRuntime ? "SteamVR/OpenXR" : vr.Detail)}";
         PresetSelector.ItemsSource = LayoutPresets.Names;
         PresetSelector.SelectedIndex = 0;
         RefreshProfiles();
@@ -90,6 +99,7 @@ public partial class ConfigurationWindow : Window
         DashboardTextScale.Value = profile.Settings.DashboardTextScale;
         TimingTextScale.Value = profile.Settings.TimingTextScale;
         InputsTextScale.Value = profile.Settings.InputsTextScale;
+        SteeringWheelImagePath.Text = profile.Settings.SteeringWheelImagePath;
         LiveStandingsMaximumRows.Value = profile.Settings.LiveStandingsMaximumRows;
         RelativeCarsEachSide.Value = profile.Settings.RelativeCarsEachSide;
         PedalHistory.Value = profile.Settings.PedalHistorySeconds;
@@ -295,6 +305,27 @@ public partial class ConfigurationWindow : Window
             () => _overlay.ExportDiagnostics(dialog.FileName),
             "Diagnóstico exportado sem nomes de pilotos ou telemetria bruta.");
     }
+
+    private void ChooseSteeringWheelImageClicked(object sender, RoutedEventArgs e)
+    {
+        var dialog = new OpenFileDialog
+        {
+            Title = "Escolher ícone do volante",
+            Filter = "Imagem PNG (*.png)|*.png",
+            CheckFileExists = true,
+        };
+        if (dialog.ShowDialog(this) != true)
+        {
+            return;
+        }
+
+        RunProfileAction(
+            () => SteeringWheelImagePath.Text = SteeringWheelAssetStore.Import(dialog.FileName),
+            "Imagem preparada em 512×512. Clique em Aplicar para utilizá-la no Desktop e no VR.");
+    }
+
+    private void ResetSteeringWheelImageClicked(object sender, RoutedEventArgs e) =>
+        SteeringWheelImagePath.Text = string.Empty;
 
     private void ApplyClicked(object sender, RoutedEventArgs e)
     {
@@ -505,6 +536,7 @@ public partial class ConfigurationWindow : Window
             DashboardTextScale = DashboardTextScale.Value,
             TimingTextScale = TimingTextScale.Value,
             InputsTextScale = InputsTextScale.Value,
+            SteeringWheelImagePath = SteeringWheelImagePath.Text,
             LiveStandingsMaximumRows = (int)Math.Round(LiveStandingsMaximumRows.Value),
             RelativeCarsEachSide = (int)Math.Round(RelativeCarsEachSide.Value),
             VisualDensity = density,

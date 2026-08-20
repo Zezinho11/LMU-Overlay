@@ -3,14 +3,6 @@ using Colors = System.Windows.Media.Colors;
 
 namespace LmuOverlay.Desktop;
 
-public enum OverlayDensity
-{
-    Auto,
-    Compact,
-    Normal,
-    Expanded,
-}
-
 public enum OverlayAlertSeverity
 {
     Information,
@@ -149,28 +141,7 @@ public static class OverlayVisualSystem
         color.B);
 
     public static string NormalizeHexColor(string? value, string fallback)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return fallback;
-        }
-
-        var candidate = value.Trim();
-        if (!candidate.StartsWith('#'))
-        {
-            candidate = $"#{candidate}";
-        }
-
-        try
-        {
-            _ = (Color)System.Windows.Media.ColorConverter.ConvertFromString(candidate)!;
-            return candidate.Length == 7 ? candidate.ToUpperInvariant() : fallback;
-        }
-        catch (FormatException)
-        {
-            return fallback;
-        }
-    }
+        => ProfileValueSanitizer.NormalizeHexColor(value, fallback);
 
     private static Color ParseColor(string value, Color fallback)
     {

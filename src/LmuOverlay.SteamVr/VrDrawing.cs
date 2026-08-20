@@ -157,4 +157,8 @@ internal sealed class VrCanvas : IDisposable
     }
 }
 
-public readonly record struct VrPedalSample(float Throttle, float Brake);
+public readonly record struct VrPedalSample(
+    float Throttle,
+    float Brake,
+    bool AbsActive = false,
+    bool TcActive = false);

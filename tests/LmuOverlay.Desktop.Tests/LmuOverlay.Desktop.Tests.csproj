@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
     <ProjectReference Include="..\..\src\LmuOverlay.Desktop\LmuOverlay.Desktop.csproj" />
+    <ProjectReference Include="..\..\src\LmuOverlay.Configuration\LmuOverlay.Configuration.csproj" />
   </ItemGroup>
   <PropertyGroup>
     <OutputType>Exe</OutputType>

@@ -1,6 +1,5 @@
 using System.IO;
 using System.Text.Json;
-using LmuOverlay.Widgets;
 
 namespace LmuOverlay.Widgets;
 
@@ -8,7 +7,7 @@ public sealed class SectorReferenceStore
 {
     // Versions 1-2 could contain swapped sectors or the cumulative S1+S2
     // scoring split stored as an individual S2. Rebuild from official timing.
-    private const int SchemaVersion = 3;
+    private const int SchemaVersion = 4;
     private static readonly JsonSerializerOptions Options = new()
     {
         PropertyNameCaseInsensitive = true,
@@ -17,14 +16,16 @@ public sealed class SectorReferenceStore
 
     private readonly object _sync = new();
     private readonly string _path;
+    private readonly string _generation;
     private Catalog? _catalog;
 
-    public SectorReferenceStore(string? path = null)
+    public SectorReferenceStore(string? path = null, string compatibilityGeneration = "layout-v1")
     {
         _path = path ?? Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "LMU Overlay",
             "sector-references.json");
+        _generation = NormalizeGeneration(compatibilityGeneration);
     }
 
     public SectorReferenceSeed Load(string trackName, string vehicleModel)
@@ -37,7 +38,7 @@ public sealed class SectorReferenceStore
 
         lock (_sync)
         {
-            var key = Key(trackName, vehicleModel);
+            var key = Key(trackName, vehicleModel, _generation);
             return EnsureCatalog().Entries.TryGetValue(key, out var entry)
                 ? Sanitize(entry.Reference)
                 : default;
@@ -64,7 +65,7 @@ public sealed class SectorReferenceStore
         lock (_sync)
         {
             var catalog = EnsureCatalog();
-            var key = Key(trackName, vehicleModel);
+            var key = Key(trackName, vehicleModel, _generation);
             if (catalog.Entries.TryGetValue(key, out var existing))
             {
                 clean = Merge(existing.Reference, clean);
@@ -73,7 +74,8 @@ public sealed class SectorReferenceStore
                 trackName.Trim(),
                 vehicleModel.Trim(),
                 clean,
-                DateTimeOffset.UtcNow);
+                DateTimeOffset.UtcNow,
+                _generation);
             WriteAtomic(JsonSerializer.Serialize(catalog, Options));
         }
     }
@@ -89,9 +91,11 @@ public sealed class SectorReferenceStore
                 var catalog = JsonSerializer.Deserialize<Catalog>(
                     File.ReadAllText(_path),
                     Options);
-                if (catalog is { Version: SchemaVersion })
+                if (catalog is { Version: 3 or SchemaVersion })
                 {
-                    return catalog;
+                    return catalog.Version == SchemaVersion
+                        ? catalog
+                        : new Catalog(SchemaVersion, catalog.Entries);
                 }
             }
         }
@@ -125,9 +129,13 @@ public sealed class SectorReferenceStore
         }
     }
 
-    private static string Key(string trackName, string vehicleModel) =>
+    private static string Key(string trackName, string vehicleModel, string generation) =>
         $"{trackName.Trim().ToUpperInvariant()}\u001f" +
-        vehicleModel.Trim().ToUpperInvariant();
+        $"{vehicleModel.Trim().ToUpperInvariant()}\u001f" +
+        NormalizeGeneration(generation).ToUpperInvariant();
+
+    private static string NormalizeGeneration(string value) =>
+        string.IsNullOrWhiteSpace(value) ? "layout-v1" : value.Trim();
 
     private static SectorReferenceSeed Merge(
         SectorReferenceSeed first,
@@ -156,7 +164,8 @@ public sealed class SectorReferenceStore
         string TrackName,
         string VehicleModel,
         SectorReferenceSeed Reference,
-        DateTimeOffset UpdatedAtUtc);
+        DateTimeOffset UpdatedAtUtc,
+        string CompatibilityGeneration = "legacy");
 
     private sealed class Catalog
     {

@@ -1,5 +1,4 @@
 using LmuOverlay.Domain;
-using LmuOverlay.Widgets;
 
 namespace LmuOverlay.Widgets;
 

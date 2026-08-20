@@ -1,16 +1,15 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
+    <ProjectReference Include="..\LmuOverlay.Application\LmuOverlay.Application.csproj" />
     <ProjectReference Include="..\LmuOverlay.DirectX\LmuOverlay.DirectX.csproj" />
     <ProjectReference Include="..\LmuOverlay.Core\LmuOverlay.Core.csproj" />
+    <ProjectReference Include="..\LmuOverlay.Configuration\LmuOverlay.Configuration.csproj" />
     <ProjectReference Include="..\LmuOverlay.Domain\LmuOverlay.Domain.csproj" />
     <ProjectReference Include="..\LmuOverlay.LmuSharedMemory\LmuOverlay.LmuSharedMemory.csproj" />
     <ProjectReference Include="..\LmuOverlay.Widgets\LmuOverlay.Widgets.csproj" />
+    <ProjectReference Include="..\LmuOverlay.Timing\LmuOverlay.Timing.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Remove="OfficialTimingOptimalProvider.cs" />
-    <Compile Remove="PersistentSectorReferenceTracker.cs" />
-    <Compile Remove="SectorReferenceStore.cs" />
-    <Compile Remove="PersonalBestLapStore.cs" />
   </ItemGroup>
   <ItemGroup>
     <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">

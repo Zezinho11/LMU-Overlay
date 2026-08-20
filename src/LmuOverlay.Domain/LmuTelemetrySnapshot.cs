@@ -107,6 +107,8 @@ public sealed record LmuPlayerTelemetry(
     LmuVector3 LocalAcceleration = default)
 {
     public double ElapsedTime { get; init; }
+    public double VisualSteeringWheelRangeDegrees { get; init; }
+    public double PhysicalSteeringWheelRangeDegrees { get; init; }
 }
 
 public readonly record struct LmuWheelTemperatures(

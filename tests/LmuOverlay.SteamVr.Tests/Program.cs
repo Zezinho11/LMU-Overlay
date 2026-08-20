@@ -1,4 +1,5 @@
 using LmuOverlay.Domain;
+using LmuOverlay.Desktop;
 using LmuOverlay.SteamVr;
 using LmuOverlay.Widgets;
 
@@ -65,8 +66,8 @@ var priorityFrame = VrWidgetTextureRenderer.PriorityAlert(
     EssentialWidgetStateFactory.CreateSessionFlags(unavailable),
     new FuelStrategyTracker().Update(unavailable),
     EssentialWidgetStateFactory.CreateRaceControl(unavailable),
-    VrRenderStyle.From(new VrDesktopSettings()),
-    new VrDesktopSettings());
+    VrRenderStyle.From(new OverlayProfileSettings()),
+    new OverlayProfileSettings());
 Require(standingsFrame.Pixels.Length == standingsFrame.Width * standingsFrame.Height * 4,
     "Standings surface returns a complete RGBA frame.");
 Require(relativeFrame.Pixels.Length == relativeFrame.Width * relativeFrame.Height * 4,
@@ -139,6 +140,7 @@ try
                 "RefreshRateHz": 120,
                 "LiveStandingsMaximumRows": 10,
                 "RelativeCarsEachSide": 5
+                ,"SteeringWheelImagePath": "C:\\\\LMU Overlay\\\\custom-wheel.png"
               }
             }
           }
@@ -149,6 +151,8 @@ try
         "SteamVR follows the active desktop visual profile.");
     Require(settings.RefreshRateHz == 120 && settings.RelativeCarsEachSide == 5,
         "SteamVR follows desktop update and timing-density settings.");
+    Require(settings.SteeringWheelImagePath.EndsWith("custom-wheel.png", StringComparison.Ordinal),
+        "SteamVR follows the Desktop steering-wheel image selection.");
     var customStyle = VrRenderStyle.From(settings);
     Require(customStyle.Card.R == 17 && customStyle.Card.G == 34 && customStyle.Card.B == 51 &&
             customStyle.Information.R == 34 && customStyle.Information.G == 204 &&
@@ -168,6 +172,16 @@ finally
 {
     if (File.Exists(desktopProfilePath)) File.Delete(desktopProfilePath);
 }
+
+var steamRuntime = new LmuOverlay.Core.VrRuntimeReport(
+    true, true, "openvr_api.dll", "steamvr_openxr.json", true, true, "SteamVR active");
+var openXrFallback = VrBackendSelector.Select("openxr", true, steamRuntime);
+Require(openXrFallback.FellBack && openXrFallback.Selected == VrBackendKind.SteamVr &&
+        openXrFallback.CanStart,
+    "Experimental OpenXR must fall back safely to the external SteamVR backend.");
+var strictOpenXr = VrBackendSelector.Select("openxr", false, steamRuntime);
+Require(!strictOpenXr.CanStart && strictOpenXr.Selected == VrBackendKind.OpenXrExperimental,
+    "Experimental OpenXR must fail closed instead of injecting an API layer.");
 
 var diagnosticsPath = System.IO.Path.Combine(
     System.IO.Path.GetTempPath(),

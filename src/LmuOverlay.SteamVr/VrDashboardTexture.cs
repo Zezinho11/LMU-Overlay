@@ -1,4 +1,5 @@
 using System.Drawing;
+using LmuOverlay.Desktop;
 using LmuOverlay.Widgets;
 
 namespace LmuOverlay.SteamVr;
@@ -9,7 +10,7 @@ public static class VrDashboardTexture
     public const int Height = 720;
 
     public static byte[] Render(DashboardWidgetState dashboard) =>
-        Render(dashboard, VrRenderStyle.From(new VrDesktopSettings()), null);
+        Render(dashboard, VrRenderStyle.From(new OverlayProfileSettings()), null);
 
     public static byte[] Render(
         DashboardWidgetState dashboard,
@@ -165,7 +166,8 @@ public static class VrDashboardTexture
         };
         foreach (var tire in tires)
         {
-            var color = TireColor(tire.Item2);
+            var color = TireColor(tire.Item2, TireTemperatureProfiles.Resolve(
+                d.VehicleClass, d.VehicleModel, d.TireCompound));
             c.FillRound(color, tire.Item4, tire.Item5, 32, 54, 11);
             c.Text(tire.Item1, 19 * s.DashboardTextScale, s.PrimaryText, new(tire.Item4 + 44, tire.Item5, 44, 28), true);
             c.Text(d.Available ? $"{tire.Item2:0}° · {(1 - tire.Item3):P0}" : "--° · --%",
@@ -184,8 +186,8 @@ public static class VrDashboardTexture
         Panel(c, 826, 404, 336, 270);
         c.Fill(s.Information, 826, 404, 336, 38);
         c.Text(OverlayText.Get(s.Language, OverlayTextKey.Telemetry), 18 * s.DashboardTextScale, s.Background, new(826, 404, 336, 38), true, StringAlignment.Center);
-        c.Text($"{OverlayText.Get(s.Language, OverlayTextKey.Throttle)} {d.Throttle:P0}", 17 * s.DashboardTextScale, s.Positive, new(846, 451, 110, 28), true);
-        c.Text($"{OverlayText.Get(s.Language, OverlayTextKey.Brake)} {d.Brake:P0}", 17 * s.DashboardTextScale, s.Critical, new(963, 451, 110, 28), true);
+        c.Text($"{OverlayText.Get(s.Language, OverlayTextKey.Throttle)} {d.Throttle:P0}", 17 * s.DashboardTextScale, d.TractionControlActive ? s.Attention : s.Positive, new(846, 451, 110, 28), true);
+        c.Text($"{OverlayText.Get(s.Language, OverlayTextKey.Brake)} {d.Brake:P0}", 17 * s.DashboardTextScale, d.AbsActive ? s.Attention : s.Critical, new(963, 451, 110, 28), true);
         c.Text($"GX {d.LateralAccelerationG:+0.0;-0.0;0.0}  GY {d.LongitudinalAccelerationG:+0.0;-0.0;0.0}",
             15 * s.DashboardTextScale, s.SecondaryText, new(846, 482, 290, 25), true);
         const float left = 846, top = 518, width = 290, height = 125;
@@ -196,13 +198,23 @@ public static class VrDashboardTexture
         }
         var samples = history is { Count: > 1 }
             ? history
-            : new[] { new VrPedalSample((float)d.Throttle, (float)d.Brake), new((float)d.Throttle, (float)d.Brake) };
+            : new[]
+            {
+                new VrPedalSample((float)d.Throttle, (float)d.Brake, d.AbsActive, d.TractionControlActive),
+                new VrPedalSample((float)d.Throttle, (float)d.Brake, d.AbsActive, d.TractionControlActive),
+            };
         for (var index = 1; index < samples.Count; index++)
         {
             var x1 = left + ((index - 1) * width / Math.Max(1, samples.Count - 1));
             var x2 = left + (index * width / Math.Max(1, samples.Count - 1));
-            c.Line(s.Positive, 4, new(x1, top + height * (1 - samples[index - 1].Throttle)), new(x2, top + height * (1 - samples[index].Throttle)));
-            c.Line(s.Critical, 4, new(x1, top + height * (1 - samples[index - 1].Brake)), new(x2, top + height * (1 - samples[index].Brake)));
+            c.Line(samples[index].TcActive ? s.Attention : s.Positive,
+                samples[index].TcActive ? 6 : 4,
+                new(x1, top + height * (1 - samples[index - 1].Throttle)),
+                new(x2, top + height * (1 - samples[index].Throttle)));
+            c.Line(samples[index].AbsActive ? s.Attention : s.Critical,
+                samples[index].AbsActive ? 6 : 4,
+                new(x1, top + height * (1 - samples[index - 1].Brake)),
+                new(x2, top + height * (1 - samples[index].Brake)));
         }
     }
 
@@ -217,11 +229,14 @@ public static class VrDashboardTexture
         : "--:--.---";
     private static string Sector(double seconds) => seconds > 0 && double.IsFinite(seconds) ? $"{seconds:0.000}" : "--.---";
     private static string Level(int value, int maximum) => maximum > 0 ? value.ToString() : "--";
-    private static Color TireColor(double temperature) => temperature switch
+    private static Color TireColor(double temperature, TireTemperatureProfile profile) =>
+        TireTemperatureClassifier.Classify(temperature, profile) switch
     {
-        < 65 => Color.RoyalBlue,
-        < 95 => Color.FromArgb(50, 220, 125),
-        < 110 => Color.Orange,
-        _ => Color.Red,
+        TireTemperatureBand.Cold => Color.RoyalBlue,
+        TireTemperatureBand.Warming => Color.Cyan,
+        TireTemperatureBand.Optimal => Color.FromArgb(50, 220, 125),
+        TireTemperatureBand.Hot => Color.Orange,
+        TireTemperatureBand.Critical => Color.Red,
+        _ => Color.DimGray,
     };
 }

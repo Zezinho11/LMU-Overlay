@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\LmuOverlay.Domain\LmuOverlay.Domain.csproj" />
+    <ProjectReference Include="..\LmuOverlay.Widgets\LmuOverlay.Widgets.csproj" />
+  </ItemGroup>
+</Project>

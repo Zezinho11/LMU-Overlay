@@ -6,6 +6,34 @@ Assert(VehicleCatalog.Resolve("BMW M4 GT3").Code == "BMW" &&
        VehicleCatalog.Resolve("Unknown Prototype").Code == "---",
     "The versioned vehicle catalog must resolve known manufacturers and fail explicitly.");
 
+var externalCatalogPath = Path.Combine(Path.GetTempPath(), $"vehicle-catalog-{Guid.NewGuid():N}.json");
+var tireProfilesPath = Path.Combine(Path.GetTempPath(), $"tire-profiles-{Guid.NewGuid():N}.json");
+try
+{
+    File.WriteAllText(externalCatalogPath,
+        "{\"schemaVersion\":1,\"entries\":[{\"tokens\":[\"RED FOX EVO\"]," +
+        "\"manufacturer\":\"RedFox\",\"code\":\"RFX\",\"color\":\"#123456\"}]}");
+    VehicleCatalog.UseExternalCatalog(externalCatalogPath);
+    Assert(VehicleCatalog.Resolve("Red Fox Evo 2026").Code == "RFX",
+        "A versioned external vehicle catalog must override unknown future cars.");
+
+    File.WriteAllText(tireProfilesPath,
+        "{\"version\":1,\"entries\":[{\"vehicleClass\":\"GT3\",\"vehicleModel\":\"*\"," +
+        "\"compound\":\"SOFT\",\"thresholds\":{\"coldToWarming\":50," +
+        "\"warmingToOptimal\":65,\"optimalToHot\":85,\"hotToCritical\":100}}]}");
+    TireTemperatureProfiles.UseExternalCatalog(tireProfilesPath);
+    var profile = TireTemperatureProfiles.Resolve("LMGT3", "Future GT3", "SOFT");
+    Assert(TireTemperatureClassifier.Classify(90, profile) == TireTemperatureBand.Hot,
+        "Tire temperature thresholds must be configurable by class and compound.");
+}
+finally
+{
+    VehicleCatalog.UseExternalCatalog(null);
+    TireTemperatureProfiles.UseExternalCatalog(null);
+    if (File.Exists(externalCatalogPath)) File.Delete(externalCatalogPath);
+    if (File.Exists(tireProfilesPath)) File.Delete(tireProfilesPath);
+}
+
 var player = new LmuPlayerTelemetry(
     VehicleId: 1,
     VehicleName: "Car",
@@ -362,6 +390,16 @@ Assert(strategy.EstimatedTimeToFinishSeconds == 15 * 121,
 Assert(strategy.Status == "MARGINAL",
     "A feasible one-stop strategy must assess the current stint, not the whole race tank.");
 Assert(refueled.Samples == 1, "Refueling must not be recorded as negative consumption.");
+var versionTracker = new FuelStrategyTracker();
+_ = versionTracker.Update(raceSnapshot);
+Assert(versionTracker.Update(nextLapSnapshot).Samples == 1,
+    "A stable physics generation must retain valid learning samples.");
+var versionReset = versionTracker.Update(nextLapSnapshot with
+{
+    GameVersion = nextLapSnapshot.GameVersion + 1,
+});
+Assert(versionReset.Learning && versionReset.Samples == 0,
+    "A game/physics version change must quarantine prior strategy learning.");
 var contaminatedTracker = new FuelStrategyTracker();
 var garageSnapshot = raceSnapshot with
 {
@@ -587,6 +625,19 @@ var fuelSavePlan = EnduranceStrategyPlanner.CalculateFuelSave(
     currentFuelLiters: 36);
 Assert(fuelSavePlan.Available && fuelSavePlan.SavingFraction is > 0 and <= 0.15,
     "The alternative box must provide a feasible bounded fuel-save target.");
+Assert(fuelSavePlan.Strategy.Stops <= finalSplash.Stops,
+    "Fuel Save must never show more stops than Full Push.");
+var sameStopFuelSaveBase = EnduranceStrategyPlanner.Calculate(finalSplashInput with
+{
+    RemainingLaps = 30,
+});
+var sameStopFuelSave = EnduranceStrategyPlanner.CalculateFuelSave(
+    finalSplashInput with { RemainingLaps = 30 },
+    sameStopFuelSaveBase,
+    currentFuelLiters: 36);
+Assert(sameStopFuelSave.Available &&
+       sameStopFuelSave.Strategy.Stops <= sameStopFuelSaveBase.Stops,
+    "Fuel Save must remain available as a go-long plan when it cannot remove a stop.");
 Assert(fuelSavePlan.PitPlan.Contains("TARGET", StringComparison.Ordinal) &&
        fuelSavePlan.TirePlan.Length > 0,
     "Fuel-save guidance must include both the per-lap target and its tire plan.");
@@ -633,13 +684,24 @@ Assert(rainFlags.WeatherCondition == WeatherConditionKind.HeavyRain,
     "High official rain intensity must produce the heavy-rain icon state.");
 
 var energyTracker = new FuelStrategyTracker();
+var fullAllocation = new FuelStrategyTracker().Update(raceSnapshot with
+{
+    Player = player with
+    {
+        FuelLiters = 88,
+        FuelCapacityLiters = 120,
+        VirtualEnergy = 1,
+    },
+});
+Assert(fullAllocation.EffectiveFuelCapacityLiters == 88,
+    "At 100% NRG, an observed 88 L allocation must override a 120 L physical tank.");
 _ = energyTracker.Update(raceSnapshot with
 {
-    Player = player with { FuelLiters = 40, VirtualEnergy = 1 },
+    Player = player with { FuelLiters = 31.25, VirtualEnergy = 1 },
 });
 var energyStrategy = energyTracker.Update(nextLapSnapshot with
 {
-    Player = player with { FuelLiters = 37.5, VirtualEnergy = 0.92 },
+    Player = player with { FuelLiters = 28.75, VirtualEnergy = 0.92 },
 });
 Assert(
     Math.Abs(energyStrategy.AverageVirtualEnergyFractionPerLap - 0.08) < 0.0001,
@@ -653,6 +715,32 @@ Assert(
 Assert(
     Math.Abs(energyStrategy.VirtualEnergyMarginFraction - 0.04) < 0.0001,
     "Virtual Energy margin must compare current energy with the stint need.");
+Assert(
+    Math.Abs(energyStrategy.EffectiveFuelCapacityLiters - 31.25) < 0.0001,
+    "A 100% NRG observation must publish the live balanced fuel allocation.");
+Assert(energyStrategy.EffectiveFuelCapacityLiters >= energyStrategy.FuelLiters,
+    "A learned maximum must never be lower than fuel currently in the car.");
+Assert(energyStrategy.PitPlan.Split('·')
+        .Where(item => item.Contains('+'))
+        .All(item => !item.Contains("+100.0L", StringComparison.Ordinal)),
+    "NRG-limited pit fills must not blindly fill the physical tank.");
+
+var asymmetricTires = EnduranceStrategyPlanner.Calculate(finalSplashInput with
+{
+    RemainingLaps = 15,
+    CurrentFuelRangeLaps = 5,
+    MaximumFuelStintLaps = 10,
+    FuelCapacityLiters = 30,
+    CurrentMaximumTireWearFraction = 0.6,
+    TireWearFractionPerLap = 0.01,
+    CurrentTireWear = new(0.10, 0.60, 0.10, 0.60),
+    TireWearPerLap = new(0.01, 0.01, 0.01, 0.01),
+});
+Assert(asymmetricTires.TireStops.Count > 0 &&
+       asymmetricTires.TireStops[0].Tires.SequenceEqual(new[] { "FR", "RR" }),
+    "The tire plan must name only the individual corners that cannot complete the next stint.");
+Assert(asymmetricTires.TirePlan.Contains("L5 FR+RR", StringComparison.Ordinal),
+    "The complete tire schedule must pair the pit lap with the tires to change.");
 
 var sectorTracker = new SectorReferenceTracker();
 var noSectorReference = default(DashboardSectorTimes);
@@ -996,6 +1084,14 @@ stableBand = TireTemperatureClassifier.ClassifyStable(
     TireTemperatureBand.Optimal);
 Assert(stableBand == TireTemperatureBand.Hot,
     "Tire colors must change after the hysteresis margin is crossed.");
+Assert(SteeringWheelRotation.ResolveRangeDegrees(900, 540) == 900,
+    "Physical steering range must take priority over the visual range.");
+Assert(SteeringWheelRotation.ResolveRangeDegrees(0, 540) == 540,
+    "Visual steering range must be used when physical range is unavailable.");
+Assert(SteeringWheelRotation.AngleDegrees(0.5, 900) == 225,
+    "Normalized steering must map to the real half-range angle.");
+Assert(SteeringWheelRotation.AngleDegrees(-2, 540) == -270,
+    "Steering rendering must clamp malformed input without exceeding full lock.");
 Console.WriteLine("Widget state checks passed.");
 return 0;
 

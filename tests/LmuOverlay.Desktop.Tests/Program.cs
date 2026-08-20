@@ -7,6 +7,18 @@ Directory.CreateDirectory(root);
 
 try
 {
+    var defaultWheel = Path.GetFullPath(Path.Combine(
+        AppContext.BaseDirectory,
+        "..", "..", "..", "..", "..",
+        "src", "LmuOverlay.DirectX", "Assets", "steering-wheel.png"));
+    var importedWheel = SteeringWheelAssetStore.Import(
+        defaultWheel,
+        Path.Combine(root, "wheel-assets"));
+    Assert(File.Exists(importedWheel),
+        "A valid PNG steering icon must be normalized and persisted.");
+    Assert(new FileInfo(Path.ChangeExtension(importedWheel, ".bgra")).Length == 512 * 512 * 4,
+        "Desktop must receive an exact 512x512 premultiplied GPU cache.");
+
     using (var timingHistory = JsonDocument.Parse(
         """{"42":[{"sectorTime1":1,"sectorTime2":2,"lapTime":3,"valid":false},{"sectorTime1":30,"sectorTime2":70,"lapTime":120,"valid":true},{"sectorTime1":29,"sectorTime2":71,"lapTime":119,"valid":true}]}"""))
     {
@@ -121,6 +133,11 @@ try
     Assert(Math.Abs(new PersonalBestLapStore(personalBestPath).LoadRecord(
             "Spa", "Driver One", "GT3").OptimalLapTimeSeconds - 114) < 0.0001,
         "Saved Optimal must survive restart and remain isolated by track, driver and car.");
+    Assert(new PersonalBestLapStore(personalBestPath, "physics-next").LoadRecord(
+            "Spa", "Driver One", "GT3") == default,
+        "A new telemetry/physics generation must not silently reuse older records.");
+    Assert(new SectorReferenceStore(sectorPath, "physics-next").Load("Spa", "GT3") == default,
+        "Sector references must be isolated by the compatibility generation.");
     var officialStanding = new LmuOverlay.Domain.LmuVehicleStanding(
         42, "Driver One", "Car", "GT3", "GT3", 1, 5, 1, 100,
         118, 119, 0, 0, 0, 0, 0, 0, true, false,

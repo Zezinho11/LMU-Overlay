@@ -10,11 +10,14 @@
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
   </PropertyGroup>
   <ItemGroup>
+    <ProjectReference Include="..\LmuOverlay.Application\LmuOverlay.Application.csproj" />
     <ProjectReference Include="..\LmuOverlay.Contracts\LmuOverlay.Contracts.csproj" />
+    <ProjectReference Include="..\LmuOverlay.Configuration\LmuOverlay.Configuration.csproj" />
     <ProjectReference Include="..\LmuOverlay.Core\LmuOverlay.Core.csproj" />
     <ProjectReference Include="..\LmuOverlay.Domain\LmuOverlay.Domain.csproj" />
     <ProjectReference Include="..\LmuOverlay.LmuSharedMemory\LmuOverlay.LmuSharedMemory.csproj" />
     <ProjectReference Include="..\LmuOverlay.Widgets\LmuOverlay.Widgets.csproj" />
+    <ProjectReference Include="..\LmuOverlay.Timing\LmuOverlay.Timing.csproj" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="..\LmuOverlay.DirectX\Assets\steering-wheel.png"

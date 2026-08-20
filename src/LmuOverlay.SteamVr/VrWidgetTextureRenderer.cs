@@ -1,5 +1,5 @@
 using System.Drawing;
-using System.Drawing.Drawing2D;
+using LmuOverlay.Desktop;
 using LmuOverlay.Widgets;
 
 namespace LmuOverlay.SteamVr;
@@ -8,10 +8,7 @@ public sealed record VrRenderedFrame(byte[] Pixels, uint Width, uint Height);
 
 public static class VrWidgetTextureRenderer
 {
-    private const string SteeringWheelResource =
-        "LmuOverlay.SteamVr.Assets.steering-wheel.png";
-    private static readonly Lazy<Bitmap?> SteeringWheelImage = new(LoadSteeringWheel);
-    private static VrRenderStyle DefaultStyle => VrRenderStyle.From(new VrDesktopSettings());
+    private static VrRenderStyle DefaultStyle => VrRenderStyle.From(new OverlayProfileSettings());
 
     public static VrRenderedFrame Dashboard(DashboardWidgetState state) =>
         Dashboard(state, DefaultStyle, null);
@@ -35,18 +32,26 @@ public static class VrWidgetTextureRenderer
         {
             Surface(canvas, 4, 4, 892, 372);
             Header(canvas, T(style, OverlayTextKey.DriverInputs).ToUpperInvariant(), state.Available ? "LIVE" : T(style, OverlayTextKey.Waiting), 900, style.InputsTextScale);
-            DrawSteeringWheel(canvas, state.Steering);
+            VrSteeringWheelRenderer.Draw(
+                canvas,
+                state.Steering,
+                state.SteeringWheelRangeDegrees,
+                style.SteeringWheelImagePath);
             var samples = history is { Count: > 1 }
                 ? history
-                : new[] { new VrPedalSample((float)state.Throttle, (float)state.Brake), new((float)state.Throttle, (float)state.Brake) };
+                : new[]
+                {
+                    new VrPedalSample((float)state.Throttle, (float)state.Brake, state.AbsActive, state.TractionControlActive),
+                    new VrPedalSample((float)state.Throttle, (float)state.Brake, state.AbsActive, state.TractionControlActive),
+                };
             DrawPedalGraph(canvas, samples, 270, 92, 590, 185);
             var f = style.InputsTextScale;
-            ValueCard(canvas, T(style, OverlayTextKey.Throttle), state.Available ? state.Throttle.ToString("P0") : "--", style.Positive, 270, 292, f);
+            ValueCard(canvas, T(style, OverlayTextKey.Throttle), state.Available ? state.Throttle.ToString("P0") : "--", state.TractionControlActive ? style.Attention : style.Positive, 270, 292, f);
             ValueCard(canvas, T(style, OverlayTextKey.Brake), state.Available ? state.Brake.ToString("P0") : "--", state.AbsActive ? style.Attention : style.Critical, 415, 292, f);
             ValueCard(canvas, T(style, OverlayTextKey.Clutch), state.Available ? state.Clutch.ToString("P0") : "--", style.Information, 560, 292, f);
             ValueCard(canvas, "STR", state.Available ? state.Steering.ToString("+0%;-0%;0%") : "--", style.PrimaryText, 705, 292, f);
             if (state.AbsActive) Badge(canvas, "ABS", style.Attention, 784, 25, 80, 38, f);
-            if (state.TractionControlActive) Badge(canvas, "TC", style.Positive, 694, 25, 80, 38, f);
+            if (state.TractionControlActive) Badge(canvas, "TC", style.Attention, 694, 25, 80, 38, f);
         });
 
     public static VrRenderedFrame PriorityAlert(
@@ -55,7 +60,7 @@ public static class VrWidgetTextureRenderer
         FuelStrategyWidgetState fuel,
         RaceControlWidgetState raceControl,
         VrRenderStyle style,
-        VrDesktopSettings settings) =>
+        OverlayProfileSettings settings) =>
         Draw(900, 150, style, canvas =>
         {
             if (!settings.ShowPriorityAlerts || !dashboard.Available) return;
@@ -196,7 +201,11 @@ public static class VrWidgetTextureRenderer
             var headers = new[] { T(style, OverlayTextKey.Resource), T(style, OverlayTextKey.Current), T(style, OverlayTextKey.UsagePerLap), T(style, OverlayTextKey.Range), T(style, OverlayTextKey.Time) };
             for (var index = 0; index < headers.Length; index++)
                 canvas.Text(headers[index], 16, style.SecondaryText, new(columns[index], 90, widths[index], 30), true, StringAlignment.Center);
-            FuelResourceRow(canvas, T(style, OverlayTextKey.Fuel), state.Available ? $"{state.FuelLiters:0.0} L" : "--",
+            FuelResourceRow(canvas, T(style, OverlayTextKey.Fuel), state.Available
+                    ? state.EffectiveFuelCapacityLiters > 0
+                        ? $"{state.FuelLiters:0.0}/{state.EffectiveFuelCapacityLiters:0.0} L"
+                        : $"{state.FuelLiters:0.0} L"
+                    : "--",
                 state.Learning ? "LEARNING" : $"{state.ProjectedConsumptionLitersPerLap:0.00} L",
                 state.EstimatedRangeLaps, state.EstimatedRangeTimeSeconds, 126, style);
             FuelResourceRow(canvas, T(style, OverlayTextKey.VirtualEnergy), state.Available ? $"{state.VirtualEnergyFraction:P0}" : "--",
@@ -319,58 +328,6 @@ public static class VrWidgetTextureRenderer
         c.Text(value, 18 * scale, c.Style.Background, new(x, y, width, height), true, StringAlignment.Center);
     }
 
-    private static void DrawSteeringWheel(VrCanvas c, double steering)
-    {
-        var graphics = c.Graphics;
-        // Match the Desktop DirectComposition presentation: a fixed backing
-        // disc and accent outline, with only the photographed wheel rotating.
-        using (var backing = new SolidBrush(c.Style.SecondaryText))
-        using (var outline = new Pen(c.Style.Information, 2.5f))
-        {
-            graphics.FillEllipse(backing, 40, 114, 196, 196);
-            graphics.DrawEllipse(outline, 39, 113, 198, 198);
-        }
-        var state = graphics.Save();
-        graphics.TranslateTransform(138, 212);
-        graphics.RotateTransform((float)Math.Clamp(steering, -1, 1) * 130);
-        if (SteeringWheelImage.Value is { } image)
-        {
-            graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
-            graphics.CompositingQuality = CompositingQuality.HighQuality;
-            graphics.DrawImage(image, new RectangleF(-100, -100, 200, 200));
-            graphics.Restore(state);
-            return;
-        }
-
-        // A vector fallback keeps Inputs usable if an embedded asset is damaged.
-        using var rim = new Pen(c.Style.PrimaryText, 18) { StartCap = LineCap.Round, EndCap = LineCap.Round };
-        using var spoke = new Pen(c.Style.SecondaryText, 12) { StartCap = LineCap.Round };
-        graphics.DrawEllipse(rim, -82, -82, 164, 164);
-        graphics.DrawLine(spoke, 0, 0, -68, -30);
-        graphics.DrawLine(spoke, 0, 0, 68, -30);
-        graphics.DrawLine(spoke, 0, 0, 0, 72);
-        using var hub = new SolidBrush(c.Style.Accent);
-        graphics.FillEllipse(hub, -24, -24, 48, 48);
-        graphics.Restore(state);
-    }
-
-    private static Bitmap? LoadSteeringWheel()
-    {
-        try
-        {
-            using var stream = typeof(VrWidgetTextureRenderer).Assembly
-                .GetManifestResourceStream(SteeringWheelResource);
-            if (stream is null) return null;
-            using var source = new Bitmap(stream);
-            return new Bitmap(source);
-        }
-        catch (Exception exception) when (
-            exception is ArgumentException or IOException or OutOfMemoryException)
-        {
-            return null;
-        }
-    }
-
     private static void DrawPedalGraph(VrCanvas c, IReadOnlyList<VrPedalSample> samples, float left, float top, float width, float height)
     {
         for (var grid = 0; grid <= 4; grid++)
@@ -382,8 +339,14 @@ public static class VrWidgetTextureRenderer
         {
             var x1 = left + ((index - 1) * width / Math.Max(1, samples.Count - 1));
             var x2 = left + (index * width / Math.Max(1, samples.Count - 1));
-            c.Line(c.Style.Positive, 5, new(x1, top + height * (1 - samples[index - 1].Throttle)), new(x2, top + height * (1 - samples[index].Throttle)));
-            c.Line(c.Style.Critical, 5, new(x1, top + height * (1 - samples[index - 1].Brake)), new(x2, top + height * (1 - samples[index].Brake)));
+            c.Line(samples[index].TcActive ? c.Style.Attention : c.Style.Positive,
+                samples[index].TcActive ? 7 : 5,
+                new(x1, top + height * (1 - samples[index - 1].Throttle)),
+                new(x2, top + height * (1 - samples[index].Throttle)));
+            c.Line(samples[index].AbsActive ? c.Style.Attention : c.Style.Critical,
+                samples[index].AbsActive ? 7 : 5,
+                new(x1, top + height * (1 - samples[index - 1].Brake)),
+                new(x2, top + height * (1 - samples[index].Brake)));
         }
     }
 

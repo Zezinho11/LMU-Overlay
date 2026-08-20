@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Numerics;
 using System.Runtime.InteropServices;
 using SharpGen.Runtime;
+using LmuOverlay.Widgets;
 using Vortice.Direct2D1;
 using Vortice.Direct3D;
 using Vortice.Direct3D11;
@@ -375,7 +376,8 @@ internal sealed class DirectCompositionDashboardHost : IDisposable
         DrawPanel(drawing, 533, 272, 225, 164);
         DrawText(drawing, T(LmuOverlay.Widgets.OverlayTextKey.Telemetry), 533, 276, 225, 23, 13, _cyan!, TextAlignment.Center);
         DrawPedals(drawing, dashboard);
-        DrawText(drawing, $"{T(LmuOverlay.Widgets.OverlayTextKey.Throttle)} {dashboard.Throttle:P0}", 548, 309, 90, 20, 13, _green!);
+        DrawText(drawing, $"{T(LmuOverlay.Widgets.OverlayTextKey.Throttle)} {dashboard.Throttle:P0}", 548, 309, 90, 20, 13,
+            dashboard.TractionControlActive ? _amber! : _green!);
         DrawText(drawing, $"{T(LmuOverlay.Widgets.OverlayTextKey.Brake)} {dashboard.Brake:P0}", 648, 309, 90, 20, 13, _red!);
         DrawText(drawing, $"GX {dashboard.LateralAccelerationG:+0.0;-0.0;0.0}", 548, 406, 90, 20, 12, _muted!);
         DrawText(drawing, $"GY {dashboard.LongitudinalAccelerationG:+0.0;-0.0;0.0}", 648, 406, 90, 20, 12, _muted!);
@@ -482,15 +484,24 @@ internal sealed class DirectCompositionDashboardHost : IDisposable
         };
         foreach (var tire in tires)
         {
-            var color = TireBrush(tire.Item2);
+            var color = TireBrush(tire.Item2, TireTemperatureProfiles.Resolve(
+                dashboard.VehicleClass, dashboard.VehicleModel, dashboard.TireCompound));
             FillRounded(drawing, tire.Item4, tire.Item5 + 1, 16, 34, 6, color);
             DrawText(drawing, $"{tire.Item1}  {tire.Item2:0}° · {tire.Item3:P0}", tire.Item4 + 22, tire.Item5, 90, 36, 14, _white!);
         }
         DrawText(drawing, $"COMPOUND {dashboard.TireCompound.ToUpperInvariant()}", 294, 414, 212, 18, 11, _amber!, TextAlignment.Center);
     }
 
-    private ID2D1SolidColorBrush TireBrush(double temperature) =>
-        temperature < 60 ? _blue! : temperature < 75 ? _cyan! : temperature < 100 ? _green! : temperature < 115 ? _amber! : _red!;
+    private ID2D1SolidColorBrush TireBrush(double temperature, TireTemperatureProfile profile) =>
+        TireTemperatureClassifier.Classify(temperature, profile) switch
+        {
+            TireTemperatureBand.Cold => _blue!,
+            TireTemperatureBand.Warming => _cyan!,
+            TireTemperatureBand.Optimal => _green!,
+            TireTemperatureBand.Hot => _amber!,
+            TireTemperatureBand.Critical => _red!,
+            _ => _muted!,
+        };
 
     private void DrawPedals(ID2D1DeviceContext drawing, LmuOverlay.Widgets.DashboardWidgetState dashboard)
     {
@@ -532,7 +543,11 @@ internal sealed class DirectCompositionDashboardHost : IDisposable
             var brakePoint = new Vector2(x, top + height - (sample.Brake * height));
             if (hasPrevious)
             {
-                drawing.DrawLine(previousThrottle, throttlePoint, _green!, 2);
+                drawing.DrawLine(
+                    previousThrottle,
+                    throttlePoint,
+                    sample.TcActive ? _amber! : _green!,
+                    sample.TcActive ? 3 : 2);
                 drawing.DrawLine(
                     previousBrake,
                     brakePoint,
@@ -559,7 +574,8 @@ internal sealed class DirectCompositionDashboardHost : IDisposable
             frame.CapturedTimestamp,
             (float)Math.Clamp(frame.Dashboard.Throttle, 0, 1),
             (float)Math.Clamp(frame.Dashboard.Brake, 0, 1),
-            frame.Dashboard.AbsActive);
+            frame.Dashboard.AbsActive,
+            frame.Dashboard.TractionControlActive);
         _pedalHead = (_pedalHead + 1) % _pedalHistory.Length;
         _pedalCount = Math.Min(_pedalHistory.Length, _pedalCount + 1);
     }
@@ -617,7 +633,8 @@ internal sealed class DirectCompositionDashboardHost : IDisposable
         long Timestamp,
         float Throttle,
         float Brake,
-        bool AbsActive);
+        bool AbsActive,
+        bool TcActive);
 
     private void ReleaseDrawingResources()
     {

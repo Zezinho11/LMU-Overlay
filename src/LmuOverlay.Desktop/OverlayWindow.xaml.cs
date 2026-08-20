@@ -6,6 +6,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
+using LmuOverlay.Application;
 using LmuOverlay.Core;
 using LmuOverlay.Domain;
 using LmuOverlay.Widgets;
@@ -78,10 +79,11 @@ public partial class OverlayWindow : Window
         Brush(52, 64, 77);
 
     private readonly LayoutStore _layoutStore;
+    private readonly EssentialOverlayFrameComposer _frameComposer = new();
     private readonly FuelStrategyTracker _fuelStrategyTracker = new();
     private readonly PersistentSectorReferenceTracker _sectorReferenceTracker;
     private readonly TimingWidgetTracker _timingWidgetTracker = new();
-    private readonly Queue<(double TimeSeconds, double Throttle, double Brake)> _pedalHistory = new();
+    private readonly Queue<(double TimeSeconds, double Throttle, double Brake, bool AbsActive, bool TcActive)> _pedalHistory = new();
     private readonly int[] _pedalGraphPixels = new int[PedalGraphWidth * PedalGraphHeight];
     private readonly System.Windows.Media.Imaging.WriteableBitmap _pedalGraphBitmap;
     private System.Windows.Shapes.Ellipse[] _shiftLights = [];
@@ -228,7 +230,8 @@ public partial class OverlayWindow : Window
                 _profile.Settings.DashboardShowSectors,
                 _profile.Settings.DashboardShowTires,
                 _profile.Settings.DashboardShowTelemetry,
-                _profile.Settings.DashboardModuleOrder);
+                _profile.Settings.DashboardModuleOrder,
+                _profile.Settings.SteeringWheelImagePath);
         }
     }
 
@@ -387,7 +390,8 @@ public partial class OverlayWindow : Window
                 "Session ended.")
             : snapshot;
         var connected = snapshot.State == LmuConnectionState.Connected && !sessionEnded;
-        var dashboard = EssentialWidgetStateFactory.CreateDashboard(dashboardSnapshot);
+        var essentialFrame = _frameComposer.Compose(dashboardSnapshot);
+        var dashboard = essentialFrame.Dashboard;
         var trackedSectors = _sectorReferenceTracker.Update(
             dashboardSnapshot,
             dashboard.SectorTimes);
@@ -405,7 +409,7 @@ public partial class OverlayWindow : Window
         if (!_nativeDashboardActive || IsEditMode)
         {
         SetText(ConnectionText, connected ? "CONECTADO" : snapshot.State.ToString().ToUpperInvariant());
-        var inputs = EssentialWidgetStateFactory.CreateInputs(dashboardSnapshot);
+        var inputs = essentialFrame.Inputs;
         SetText(TrackText, dashboard.Available ? dashboard.TrackName : "LMU");
         SetText(SpeedText, dashboard.Available
             ? $"{dashboard.SpeedKilometersPerHour:0} KM/H"
@@ -481,34 +485,42 @@ public partial class OverlayWindow : Window
             dashboard,
             snapshot.Player?.ElapsedTime ?? double.NaN);
         var tire = dashboard.TireTemperatures;
+        var tireProfile = TireTemperatureProfiles.Resolve(
+            dashboard.VehicleClass,
+            dashboard.VehicleModel,
+            dashboard.TireCompound);
         UpdateTireReading(
             0,
             FrontLeftTireIcon,
             FrontLeftTireText,
             tire.FrontLeftCelsius,
             dashboard.TireWear.FrontLeftFraction,
-            dashboard.Available);
+            dashboard.Available,
+            tireProfile);
         UpdateTireReading(
             1,
             FrontRightTireIcon,
             FrontRightTireText,
             tire.FrontRightCelsius,
             dashboard.TireWear.FrontRightFraction,
-            dashboard.Available);
+            dashboard.Available,
+            tireProfile);
         UpdateTireReading(
             2,
             RearLeftTireIcon,
             RearLeftTireText,
             tire.RearLeftCelsius,
             dashboard.TireWear.RearLeftFraction,
-            dashboard.Available);
+            dashboard.Available,
+            tireProfile);
         UpdateTireReading(
             3,
             RearRightTireIcon,
             RearRightTireText,
             tire.RearRightCelsius,
             dashboard.TireWear.RearRightFraction,
-            dashboard.Available);
+            dashboard.Available,
+            tireProfile);
         UpdateShiftLights(dashboard.Available ? dashboard.EngineRpmFraction : 0);
         SetText(TcLevelText, FormatControlLevel(
             dashboard.TractionControlLevel,
@@ -617,7 +629,8 @@ public partial class OverlayWindow : Window
         TextBlock text,
         double temperatureCelsius,
         double wearFraction,
-        bool available)
+        bool available,
+        TireTemperatureProfile profile)
     {
         SetText(text, available
             ? $"{temperatureCelsius:0}° · {wearFraction:P0}"
@@ -625,7 +638,8 @@ public partial class OverlayWindow : Window
         _tireBands[tireIndex] = available
             ? TireTemperatureClassifier.ClassifyStable(
                 temperatureCelsius,
-                _tireBands[tireIndex])
+                _tireBands[tireIndex],
+                configuredProfile: profile)
             : TireTemperatureBand.Unknown;
         SetBrush(icon, Border.BackgroundProperty, available
             ? _tireBands[tireIndex] switch
@@ -774,7 +788,9 @@ public partial class OverlayWindow : Window
         _pedalHistory.Enqueue((
             sourceTimeSeconds,
             dashboard.Throttle,
-            dashboard.Brake));
+            dashboard.Brake,
+            dashboard.AbsActive,
+            dashboard.TractionControlActive));
         var historySeconds = Math.Clamp(
             _profile.Settings.PedalHistorySeconds,
             3,
@@ -818,11 +834,13 @@ public partial class OverlayWindow : Window
             DrawPedalTrace(
                 throttle: true,
                 Pixel(OverlayVisualSystem.Mix(palette.Background, palette.Positive, 0.25)),
-                Pixel(palette.Positive));
+                Pixel(palette.Positive),
+                Pixel(palette.Attention));
             DrawPedalTrace(
                 throttle: false,
                 Pixel(OverlayVisualSystem.Mix(palette.Background, palette.Critical, 0.25)),
-                Pixel(palette.Critical));
+                Pixel(palette.Critical),
+                Pixel(palette.Attention));
         }
 
         _pedalGraphBitmap.WritePixels(
@@ -847,7 +865,11 @@ public partial class OverlayWindow : Window
         ((uint)color.G << 8) |
         color.B));
 
-    private void DrawPedalTrace(bool throttle, int fillColor, int lineColor)
+    private void DrawPedalTrace(
+        bool throttle,
+        int fillColor,
+        int lineColor,
+        int interventionColor)
     {
         var historySeconds = Math.Clamp(
             _profile.Settings.PedalHistorySeconds,
@@ -868,7 +890,13 @@ public partial class OverlayWindow : Window
             if (hasPrevious)
             {
                 DrawGraphFill(previousX, previousY, x, y, fillColor);
-                DrawGraphLine(previousX, previousY, x, y, lineColor);
+                var intervention = throttle ? sample.TcActive : sample.AbsActive;
+                DrawGraphLine(
+                    previousX,
+                    previousY,
+                    x,
+                    y,
+                    intervention ? interventionColor : lineColor);
             }
             else
             {
@@ -1783,7 +1811,9 @@ public partial class OverlayWindow : Window
             "GOOD" => Brush(palette.Positive),
             _ => Brush(palette.SecondaryText),
         };
-        FuelCurrentText.Text = $"{state.FuelLiters:0.0} L";
+        FuelCurrentText.Text = state.EffectiveFuelCapacityLiters > 0
+            ? $"{state.FuelLiters:0.0} / {state.EffectiveFuelCapacityLiters:0.0} L"
+            : $"{state.FuelLiters:0.0} L";
         EnergyCurrentText.Text = $"{state.VirtualEnergyFraction:P0}";
         FuelTableCurrentText.Text = $"{state.FuelLiters:0.0} L";
         FuelUsageText.Text = state.Learning

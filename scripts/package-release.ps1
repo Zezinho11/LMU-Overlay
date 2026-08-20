@@ -109,6 +109,10 @@ Copy-Item -LiteralPath (Join-Path $projectRoot "docs/eac/safety-model.md") `
     -Destination (Join-Path $packageDirectory "EAC-SAFETY.md")
 Copy-Item -LiteralPath (Join-Path $projectRoot "docs/steamvr/quick-start.md") `
     -Destination (Join-Path $packageDirectory "STEAMVR-QUICK-START.md")
+if (Test-Path -LiteralPath (Join-Path $artifacts "eac-safety-audit.json")) {
+    Copy-Item -LiteralPath (Join-Path $artifacts "eac-safety-audit.json") `
+        -Destination (Join-Path $packageDirectory "EAC-SAFETY-AUDIT.json")
+}
 
 Compress-Archive -LiteralPath $packageDirectory -DestinationPath $archivePath
 $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $archivePath).Hash.ToLowerInvariant()

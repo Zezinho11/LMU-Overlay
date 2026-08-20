@@ -38,6 +38,8 @@ public static class DiagnosticsReportWriter
         var budget = RuntimePerformanceBudget.Evaluate(
             health,
             process.WorkingSet64);
+        var compatibility = GameCompatibilityProbe.Detect();
+        var vrRuntime = VrRuntimeProbe.Detect();
         var report = new
         {
             FormatVersion = 1,
@@ -95,6 +97,9 @@ public static class DiagnosticsReportWriter
                 Inputs = presentation.Inputs,
                 Timing = presentation.Timing,
             },
+            Compatibility = compatibility,
+            VrRuntime = vrRuntime,
+            UnknownVehicles = LmuOverlay.Widgets.VehicleCatalog.UnknownVehicles,
             Layout = new
             {
                 ActiveProfile = activeProfile,
@@ -104,7 +109,7 @@ public static class DiagnosticsReportWriter
                 profile.Settings.GridSnapPixels,
                 WidgetCount = 7,
             },
-            Privacy = "Driver, player, track and raw telemetry identities are intentionally omitted.",
+            Privacy = "Driver, player, track and raw telemetry identities are intentionally omitted. Header hashes and build identifiers are included.",
         };
 
         var directory = Path.GetDirectoryName(path);

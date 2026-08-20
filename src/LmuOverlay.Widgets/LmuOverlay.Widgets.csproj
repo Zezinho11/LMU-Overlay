@@ -1,15 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
+    <ProjectReference Include="..\LmuOverlay.Configuration\LmuOverlay.Configuration.csproj" />
     <ProjectReference Include="..\LmuOverlay.Domain\LmuOverlay.Domain.csproj" />
+    <ProjectReference Include="..\LmuOverlay.Strategy\LmuOverlay.Strategy.csproj" />
+    <ProjectReference Include="..\LmuOverlay.Timing\LmuOverlay.Timing.csproj" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Data\vehicle-catalog.v1.json" />
-  </ItemGroup>
-  <ItemGroup>
-    <Compile Include="..\LmuOverlay.Desktop\OfficialTimingOptimalProvider.cs" Link="Timing\OfficialTimingOptimalProvider.cs" />
-    <Compile Include="..\LmuOverlay.Desktop\PersistentSectorReferenceTracker.cs" Link="Timing\PersistentSectorReferenceTracker.cs" />
-    <Compile Include="..\LmuOverlay.Desktop\SectorReferenceStore.cs" Link="Timing\SectorReferenceStore.cs" />
-    <Compile Include="..\LmuOverlay.Desktop\PersonalBestLapStore.cs" Link="Timing\PersonalBestLapStore.cs" />
   </ItemGroup>
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>

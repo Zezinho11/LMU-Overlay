@@ -72,6 +72,7 @@ internal sealed unsafe class DirectCompositionInputsHost : IDisposable
     private long _renderedSequence = -1;
     private bool _visible;
     private string _sessionKey = string.Empty;
+    private string _steeringWheelImagePath = string.Empty;
     private float _textScale = 1;
 
     public DirectCompositionInputsHost()
@@ -198,7 +199,7 @@ internal sealed unsafe class DirectCompositionInputsHost : IDisposable
         _cyan = drawing.CreateSolidColorBrush(Color(18, 217, 229));
         _panel = drawing.CreateSolidColorBrush(Color(5, 8, 10, 238));
         _border = drawing.CreateSolidColorBrush(Color(66, 211, 166));
-        _steeringWheel = LoadSteeringWheel(drawing);
+        _steeringWheel = LoadSteeringWheel(drawing, string.Empty);
     }
 
     private void ApplyStyle(NativeOverlayStyle style)
@@ -213,12 +214,43 @@ internal sealed unsafe class DirectCompositionInputsHost : IDisposable
         _panel.Opacity = (float)Math.Clamp(style.BackgroundOpacity, 0.2, 1);
         _border!.Color = Color(style.Accent);
         _textScale = (float)Math.Clamp(style.InputsTextScale, 0.8, 1.25);
+        var imagePath = style.SteeringWheelImagePath ?? string.Empty;
+        if (!string.Equals(_steeringWheelImagePath, imagePath, StringComparison.OrdinalIgnoreCase))
+        {
+            _steeringWheelImagePath = imagePath;
+            _steeringWheel?.Dispose();
+            _steeringWheel = LoadSteeringWheel(_drawing!, imagePath);
+        }
     }
 
-    private static ID2D1Bitmap1? LoadSteeringWheel(ID2D1DeviceContext drawing)
+    private static ID2D1Bitmap1? LoadSteeringWheel(
+        ID2D1DeviceContext drawing,
+        string customPath)
     {
         try
         {
+            var customCache = string.IsNullOrWhiteSpace(customPath)
+                ? string.Empty
+                : Path.ChangeExtension(customPath, ".bgra");
+            if (File.Exists(customCache))
+            {
+                var customPixels = File.ReadAllBytes(customCache);
+                if (customPixels.Length == SteeringWheelPixels * SteeringWheelPixels * 4)
+                {
+                    fixed (byte* source = customPixels)
+                    {
+                        return drawing.CreateBitmap(
+                            new SizeI(SteeringWheelPixels, SteeringWheelPixels),
+                            (IntPtr)source,
+                            SteeringWheelPixels * 4,
+                            new BitmapProperties1(
+                                new Vortice.DCommon.PixelFormat(
+                                    Format.B8G8R8A8_UNorm,
+                                    Vortice.DCommon.AlphaMode.Premultiplied)));
+                    }
+                }
+            }
+
             using var stream = typeof(DirectCompositionInputsHost).Assembly
                 .GetManifestResourceStream(SteeringWheelResource);
             if (stream is null || stream.Length !=
@@ -261,7 +293,8 @@ internal sealed unsafe class DirectCompositionInputsHost : IDisposable
             frame.CapturedTimestamp,
             (float)Math.Clamp(frame.Inputs.Throttle, 0, 1),
             (float)Math.Clamp(frame.Inputs.Brake, 0, 1),
-            frame.Inputs.AbsActive);
+            frame.Inputs.AbsActive,
+            frame.Inputs.TractionControlActive);
         _head = (_head + 1) % _history.Length;
         _count = Math.Min(_history.Length, _count + 1);
     }
@@ -280,13 +313,22 @@ internal sealed unsafe class DirectCompositionInputsHost : IDisposable
         FillRounded(drawing, 2, 2, 516, 216, 12, _panel!);
         DrawRounded(drawing, 2, 2, 516, 216, 12, _border!, 2);
         DrawText(drawing, T(LmuOverlay.Widgets.OverlayTextKey.DriverInputs).ToUpperInvariant(), 18, 12, 260, 28, 17, _white!);
-        DrawSteering(drawing, frame.Inputs.Steering);
+        DrawSteering(
+            drawing,
+            frame.Inputs.Steering,
+            frame.Inputs.SteeringWheelRangeDegrees);
         DrawGraph(drawing);
-        DrawText(drawing, $"{T(LmuOverlay.Widgets.OverlayTextKey.Throttle)} {frame.Inputs.Throttle:P0}", 172, 184, 82, 22, 13, _green!);
+        DrawText(drawing, $"{T(LmuOverlay.Widgets.OverlayTextKey.Throttle)} {frame.Inputs.Throttle:P0}", 172, 184, 82, 22, 13,
+            frame.Inputs.TractionControlActive ? _amber! : _green!);
         DrawText(drawing, $"{T(LmuOverlay.Widgets.OverlayTextKey.Brake)} {frame.Inputs.Brake:P0}", 258, 184, 82, 22, 13,
             frame.Inputs.AbsActive ? _amber! : _red!);
         DrawText(drawing, $"{T(LmuOverlay.Widgets.OverlayTextKey.Clutch)} {frame.Inputs.Clutch:P0}", 344, 184, 82, 22, 13, _cyan!);
         DrawText(drawing, $"STR {frame.Inputs.Steering:+0%;-0%;0%}", 430, 184, 72, 22, 12, _white!, TextAlignment.Trailing);
+        if (frame.Inputs.TractionControlActive)
+        {
+            FillRounded(drawing, 368, 13, 64, 25, 4, _amber!);
+            DrawText(drawing, "TC", 368, 14, 64, 22, 13, _panel!, TextAlignment.Center);
+        }
         if (frame.Inputs.AbsActive)
         {
             var blinkOn = (frame.CapturedTimestamp / Math.Max(1, Stopwatch.Frequency / 8)) % 2 == 0;
@@ -297,10 +339,15 @@ internal sealed unsafe class DirectCompositionInputsHost : IDisposable
         _swapChain!.Present(1, PresentFlags.None).CheckError();
     }
 
-    private void DrawSteering(ID2D1DeviceContext drawing, double steering)
+    private void DrawSteering(
+        ID2D1DeviceContext drawing,
+        double steering,
+        double rangeDegrees)
     {
         var center = new Vector2(88, 112);
-        var angle = (float)(Math.Clamp(steering, -1, 1) * Math.PI * 0.78);
+        var angle = (float)(LmuOverlay.Widgets.SteeringWheelRotation.AngleDegrees(
+            steering,
+            rangeDegrees) * Math.PI / 180);
         if (_steeringWheel is not null)
         {
             drawing.FillEllipse(new Ellipse(center, 56, 56), _muted!);
@@ -360,7 +407,9 @@ internal sealed unsafe class DirectCompositionInputsHost : IDisposable
             var brake = new Vector2(x, top + height - sample.Brake * height);
             if (hasPrevious)
             {
-                drawing.DrawLine(previousThrottle, throttle, _green!, 2);
+                drawing.DrawLine(previousThrottle, throttle,
+                    sample.TcActive ? _amber! : _green!,
+                    sample.TcActive ? 3 : 2);
                 drawing.DrawLine(previousBrake, brake, sample.AbsActive ? _amber! : _red!,
                     sample.AbsActive ? 3 : 2);
             }
@@ -406,7 +455,8 @@ internal sealed unsafe class DirectCompositionInputsHost : IDisposable
         long Timestamp,
         float Throttle,
         float Brake,
-        bool AbsActive);
+        bool AbsActive,
+        bool TcActive);
 
     private void ReleaseDrawingResources()
     {

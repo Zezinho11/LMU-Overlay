@@ -1,6 +1,7 @@
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
+using LmuOverlay.Desktop;
 using System.Runtime.InteropServices;
 using LmuOverlay.Domain;
 using LmuOverlay.Widgets;
@@ -14,10 +15,10 @@ namespace LmuOverlay.SteamVr;
 /// </summary>
 public static class VrVisualBaselineWriter
 {
-    public static IReadOnlyList<string> Write(string outputDirectory, VrDesktopSettings? settings = null)
+    public static IReadOnlyList<string> Write(string outputDirectory, OverlayProfileSettings? settings = null)
     {
         Directory.CreateDirectory(outputDirectory);
-        settings = (settings ?? new VrDesktopSettings()).Sanitize();
+        settings = LayoutStore.SanitizeSettings(settings);
         var style = VrRenderStyle.From(settings);
         var fixture = CreateFixture();
         var history = Enumerable.Range(0, 150)

@@ -3,6 +3,12 @@
 The SteamVR host is a separate executable. It uses Valve's documented OpenVR
 overlay interface and never injects into LMU or hooks the game's renderer.
 
+At startup it reports the active OpenXR runtime and LMU/header compatibility.
+For LMU's native OpenXR mode, select SteamVR as the OpenXR runtime. The optional
+`--vr-backend openxr` switch is an isolated capability probe; it falls back to
+SteamVR because the project will not inject an OpenXR API layer into LMU. Add
+`--no-vr-fallback` to make that experimental request fail closed instead.
+
 1. Start SteamVR and confirm that the headset is detected.
 2. Start LMU and enter a session if live telemetry is desired.
 3. Run `LmuOverlay.SteamVr.exe` from the release folder.

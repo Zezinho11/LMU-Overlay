@@ -43,8 +43,9 @@ public partial class App
     private LiveStandingsWidgetState? _nativeLiveStandingsState;
     private RelativeWidgetState? _nativeRelativeState;
     private readonly TimingWidgetTracker _nativeTimingTracker = new();
-    private readonly SectorReferenceStore _sectorReferenceStore = new();
-    private readonly PersonalBestLapStore _personalBestLapStore = new();
+    private SectorReferenceStore _sectorReferenceStore = null!;
+    private PersonalBestLapStore _personalBestLapStore = null!;
+    private GameCompatibilityReport _compatibility = null!;
     private PersistentSectorReferenceTracker? _nativeSectorReferenceTracker;
     private OfficialTimingOptimalProvider? _officialTimingOptimal;
     private bool _safeMode;
@@ -63,6 +64,10 @@ public partial class App
             StartVisualBaselineCapture(e.Args.Skip(1).FirstOrDefault());
             return;
         }
+
+        _compatibility = GameCompatibilityProbe.Detect();
+        _sectorReferenceStore = new(compatibilityGeneration: _compatibility.CompatibilityGeneration);
+        _personalBestLapStore = new(compatibilityGeneration: _compatibility.CompatibilityGeneration);
 
         _nativeSectorReferenceTracker = new(
             _sectorReferenceStore,
@@ -115,8 +120,8 @@ public partial class App
             $"{Guid.NewGuid():N}.json");
         _overlay = new OverlayWindow(
             new LayoutStore(temporaryProfile),
-            new SectorReferenceStore(temporaryProfile + ".sectors"),
-            new PersonalBestLapStore(temporaryProfile + ".personal-bests"))
+            new SectorReferenceStore(temporaryProfile + ".sectors", "visual-fixture"),
+            new PersonalBestLapStore(temporaryProfile + ".personal-bests", "visual-fixture"))
         {
             ShowActivated = false,
         };

@@ -8,6 +8,7 @@ TestResults/
 artifacts/
 publish/
 .packages/
+.dotnet/
 *.pdb
 *.log
 .DS_Store

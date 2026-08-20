@@ -147,6 +147,31 @@ Require(committedReplay.Frames.Count == 3 &&
         committedReplay.Frames[^1].Snapshot.TelemetrySequence == 103,
     "Committed sequential replay fixture must remain readable.");
 
+var compatibilityRoot = Path.Combine(Path.GetTempPath(), $"lmu-compat-{Guid.NewGuid():N}");
+try
+{
+    Directory.CreateDirectory(Path.Combine(compatibilityRoot, "common", "Le Mans Ultimate",
+        "Support", "SharedMemoryInterface"));
+    File.WriteAllText(Path.Combine(compatibilityRoot, "appmanifest_2399420.acf"),
+        "\"AppState\" { \"installdir\" \"Le Mans Ultimate\" \"buildid\" \"100\" " +
+        "\"TargetBuildID\" \"101\" }");
+    File.WriteAllText(Path.Combine(compatibilityRoot, "common", "Le Mans Ultimate",
+        "Support", "SharedMemoryInterface", "SharedMemoryInterface.hpp"), "fixture-layout");
+    var compatibility = GameCompatibilityProbe.Detect(compatibilityRoot);
+    Require(compatibility.State == GameCompatibilityState.UnknownLayout &&
+            compatibility.UpdatePending && compatibility.InstalledBuildId == "100" &&
+            compatibility.TargetBuildId == "101",
+        "Compatibility probe must fail closed for unknown headers and report pending builds.");
+    Require(compatibility.Headers.Count == 1 &&
+            compatibility.CompatibilityGeneration.StartsWith("100:", StringComparison.Ordinal) &&
+            compatibility.CompatibilityGeneration.Length > 64,
+        "Compatibility probe must fingerprint official support headers without copying them.");
+}
+finally
+{
+    if (Directory.Exists(compatibilityRoot)) Directory.Delete(compatibilityRoot, true);
+}
+
 Console.WriteLine("Core checks passed.");
 return 0;
 

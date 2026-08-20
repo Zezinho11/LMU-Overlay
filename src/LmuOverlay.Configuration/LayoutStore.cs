@@ -471,7 +471,7 @@ public sealed class LayoutStore
         first.Y < second.Y + second.Height &&
         first.Y + first.Height > second.Y;
 
-    private static OverlayProfileSettings SanitizeSettings(
+    public static OverlayProfileSettings SanitizeSettings(
         OverlayProfileSettings? settings)
     {
         settings ??= new();
@@ -488,31 +488,31 @@ public sealed class LayoutStore
         {
             Language = LmuOverlay.Widgets.OverlayText.Normalize(settings.Language),
             Theme = theme,
-            CustomAccentColor = OverlayVisualSystem.NormalizeHexColor(
+            CustomAccentColor = ProfileValueSanitizer.NormalizeHexColor(
                 settings.CustomAccentColor,
                 "#42D3A6"),
-            CustomBackgroundColor = OverlayVisualSystem.NormalizeHexColor(
+            CustomBackgroundColor = ProfileValueSanitizer.NormalizeHexColor(
                 settings.CustomBackgroundColor,
                 "#0A0F1A"),
-            CustomCardColor = OverlayVisualSystem.NormalizeHexColor(
+            CustomCardColor = ProfileValueSanitizer.NormalizeHexColor(
                 settings.CustomCardColor,
                 "#121924"),
-            CustomPrimaryTextColor = OverlayVisualSystem.NormalizeHexColor(
+            CustomPrimaryTextColor = ProfileValueSanitizer.NormalizeHexColor(
                 settings.CustomPrimaryTextColor,
                 "#FFFFFF"),
-            CustomSecondaryTextColor = OverlayVisualSystem.NormalizeHexColor(
+            CustomSecondaryTextColor = ProfileValueSanitizer.NormalizeHexColor(
                 settings.CustomSecondaryTextColor,
                 "#CAD3DC"),
-            CustomInformationColor = OverlayVisualSystem.NormalizeHexColor(
+            CustomInformationColor = ProfileValueSanitizer.NormalizeHexColor(
                 settings.CustomInformationColor,
                 "#12D9E5"),
-            CustomAttentionColor = OverlayVisualSystem.NormalizeHexColor(
+            CustomAttentionColor = ProfileValueSanitizer.NormalizeHexColor(
                 settings.CustomAttentionColor,
                 "#FFBE40"),
-            CustomCriticalColor = OverlayVisualSystem.NormalizeHexColor(
+            CustomCriticalColor = ProfileValueSanitizer.NormalizeHexColor(
                 settings.CustomCriticalColor,
                 "#FF464B"),
-            CustomPositiveColor = OverlayVisualSystem.NormalizeHexColor(
+            CustomPositiveColor = ProfileValueSanitizer.NormalizeHexColor(
                 settings.CustomPositiveColor,
                 "#42D3A6"),
             DashboardTitle = SanitizeDashboardTitle(settings.DashboardTitle),
@@ -530,6 +530,8 @@ public sealed class LayoutStore
                 settings.InputsTextScale <= 0 ? 1 : settings.InputsTextScale,
                 0.8,
                 1.25),
+            SteeringWheelImagePath = SanitizeSteeringWheelImagePath(
+                settings.SteeringWheelImagePath),
             LiveStandingsMaximumRows = Math.Clamp(
                 settings.LiveStandingsMaximumRows <= 0 ? 12 : settings.LiveStandingsMaximumRows,
                 6,
@@ -568,6 +570,19 @@ public sealed class LayoutStore
                 3,
                 10),
         };
+    }
+
+    private static string SanitizeSteeringWheelImagePath(string? value)
+    {
+        var path = value?.Trim() ?? string.Empty;
+        if (path.Length == 0)
+        {
+            return string.Empty;
+        }
+        return path.Length <= 1024 &&
+               string.Equals(Path.GetExtension(path), ".png", StringComparison.OrdinalIgnoreCase)
+            ? path
+            : string.Empty;
     }
 
     private static string SanitizeDashboardTitle(string? value)

@@ -29,6 +29,12 @@
                    FontWeight="Bold"
                    FontSize="10"
                    Margin="0,14,0,5" />
+        <TextBlock x:Name="CompatibilityStatus"
+                   Grid.Row="1"
+                   HorizontalAlignment="Right"
+                   Foreground="#FF94A3B8"
+                   FontSize="10"
+                   Margin="0,14,0,5" />
         <Grid Grid.Row="2" Margin="0,0,0,20">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
@@ -202,6 +208,7 @@
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
                 <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
@@ -441,6 +448,25 @@
                         <ComboBoxItem Content="Telemetria" Tag="Telemetry" />
                     </ComboBox>
                 </StackPanel>
+                <Grid Grid.Row="13" Grid.Column="0" Grid.ColumnSpan="4" Margin="0,12,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="ÍCONE DO VOLANTE"
+                               Foreground="#FF9BA8B5" FontSize="10" FontWeight="Bold"
+                               VerticalAlignment="Center" Margin="0,0,14,0" />
+                    <TextBox x:Name="SteeringWheelImagePath" Grid.Column="1"
+                             Height="28" IsReadOnly="True" VerticalContentAlignment="Center"
+                             ToolTip="PNG transparente, 256–2048 px, até 5 MB. Vazio usa o volante RedFox padrão." />
+                    <Button Grid.Column="2" Content="Escolher PNG"
+                            Click="ChooseSteeringWheelImageClicked"
+                            Padding="12,6" Margin="8,0,6,0" />
+                    <Button Grid.Column="3" Content="Usar padrão"
+                            Click="ResetSteeringWheelImageClicked" Padding="12,6" />
+                </Grid>
             </Grid>
         </Border>
         <DockPanel Grid.Row="5" Margin="0,20,0,0">

@@ -4,7 +4,8 @@ The Fuel / Virtual Energy widget learns recent fuel use, Virtual Energy use,
 lap pace and maximum tire wear once per completed valid lap. It then evaluates
 complete strategies against the remaining race or session horizon.
 
-The estimate includes current fuel range, full-tank range, a configurable stint
+The estimate includes current fuel range, the car/track NRG-balanced fuel
+allocation, a configurable stint
 limit, reserve fuel, stationary/pit-lane loss, tire-change time, measured tire
 wear and the configured tire allocation. Practice and qualifying still receive
 a complete strategy simulation so they can be used to prepare for the event;
@@ -26,16 +27,21 @@ The first strategy box is the deterministic `FULL PUSH` baseline:
   sample is available.
 
 The second box is an independent `FUEL SAVE` alternative. It searches for a
-lower per-lap fuel target, capped at 15% saving, that either removes a stop or
-extends the current stint. It reports the target consumption, pit sequence and
-the tire plan for that alternative. It does not merely rename a weather or
-flag scenario.
+lower per-lap fuel/energy target, capped at 15% saving. Removing a stop is the
+highest-value result, but is not required: a valid go-long plan may retain the
+same stop count while moving its pit laps and reducing later fills. It may
+never contain more stops than Full Push. The box reports whether it removes a
+stop or keeps the same count, plus target consumption, complete pit sequence
+and the corresponding tire plan.
 
-Tire recommendations use measured wear progression rather than a single life
-percentage. At least three valid wear samples are required before projecting a
-change, and 85% tire life remaining is not itself a reason to replace a set.
-The configured wear threshold, available allocation and the ability to
-double-stint remain constraints.
+Tire recommendations use four independent rolling wear models (FL/FR/RL/RR)
+rather than a single maximum or life percentage. At least three valid samples
+per corner are required before projecting a change. Every planned pit lap is
+listed with `KEEP` or the exact tires to service, such as `L29 FR+RR`, across
+the complete session horizon. This lets asymmetric tracks produce selective
+two-tire changes and lets the prediction adapt as new valid laps replace older
+samples. The configured wear threshold, available allocation and double/triple
+stint feasibility remain constraints.
 
 ## Live contingency scenarios
 

@@ -20,6 +20,9 @@ jobs:
           dotnet-version: 10.0.302
       - run: dotnet restore
       - run: dotnet build --no-restore --configuration Release
+      - name: EAC safety architecture gate
+        shell: pwsh
+        run: ./scripts/audit-eac-safety.ps1
       - run: dotnet run --no-build --configuration Release --project tests/LmuOverlay.Core.Tests
       - run: dotnet run --no-build --configuration Release --project tests/LmuOverlay.Desktop.Tests
       - run: dotnet run --no-build --configuration Release --project tests/LmuOverlay.Domain.Tests
@@ -29,3 +32,7 @@ jobs:
       - run: dotnet run --no-build --configuration Release --project tests/LmuOverlay.PresentationParity.Tests
       - name: Short telemetry soak gate
         run: dotnet run --no-build --configuration Release --project tools/LmuOverlay.SoakTest -- --duration-seconds 5
+      - uses: actions/upload-artifact@v4
+        with:
+          name: eac-safety-audit
+          path: artifacts/eac-safety-audit.json

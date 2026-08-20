@@ -8,6 +8,7 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\LmuOverlay.Domain\LmuOverlay.Domain.csproj" />
+    <ProjectReference Include="..\..\src\LmuOverlay.Configuration\LmuOverlay.Configuration.csproj" />
     <ProjectReference Include="..\..\src\LmuOverlay.SteamVr\LmuOverlay.SteamVr.csproj" />
     <ProjectReference Include="..\..\src\LmuOverlay.Widgets\LmuOverlay.Widgets.csproj" />
   </ItemGroup>

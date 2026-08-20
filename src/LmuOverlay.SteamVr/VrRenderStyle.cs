@@ -1,4 +1,5 @@
 using System.Drawing;
+using LmuOverlay.Desktop;
 
 namespace LmuOverlay.SteamVr;
 
@@ -20,11 +21,12 @@ public sealed record VrRenderStyle(
     bool DashboardShowSectors,
     bool DashboardShowTires,
     bool DashboardShowTelemetry,
-    string DashboardModuleOrder)
+    string DashboardModuleOrder,
+    string SteeringWheelImagePath)
 {
-    public static VrRenderStyle From(VrDesktopSettings settings)
+    public static VrRenderStyle From(OverlayProfileSettings settings)
     {
-        settings = settings.Sanitize();
+        settings = LayoutStore.SanitizeSettings(settings);
         var opacity = settings.Theme == "HighContrast"
             ? 1
             : settings.BackgroundOpacity;
@@ -79,7 +81,8 @@ public sealed record VrRenderStyle(
             settings.DashboardShowSectors,
             settings.DashboardShowTires,
             settings.DashboardShowTelemetry,
-            settings.DashboardModuleOrder);
+            settings.DashboardModuleOrder,
+            settings.SteeringWheelImagePath);
     }
 
     public static string NormalizeHex(string? value, string fallback)
@@ -97,7 +100,7 @@ public sealed record VrRenderStyle(
         return candidate.ToUpperInvariant();
     }
 
-    private static VrPalette Custom(VrDesktopSettings settings)
+    private static VrPalette Custom(OverlayProfileSettings settings)
     {
         var background = Parse(settings.CustomBackgroundColor, Color.FromArgb(10, 15, 26));
         var primary = Parse(settings.CustomPrimaryTextColor, Color.White);

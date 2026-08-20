@@ -1,12 +1,16 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/LmuOverlay.Application/LmuOverlay.Application.csproj" />
     <Project Path="src/LmuOverlay.Contracts/LmuOverlay.Contracts.csproj" />
+    <Project Path="src/LmuOverlay.Configuration/LmuOverlay.Configuration.csproj" />
     <Project Path="src/LmuOverlay.Core/LmuOverlay.Core.csproj" />
     <Project Path="src/LmuOverlay.Desktop/LmuOverlay.Desktop.csproj" />
     <Project Path="src/LmuOverlay.DirectX/LmuOverlay.DirectX.csproj" />
     <Project Path="src/LmuOverlay.Domain/LmuOverlay.Domain.csproj" />
     <Project Path="src/LmuOverlay.LmuSharedMemory/LmuOverlay.LmuSharedMemory.csproj" />
     <Project Path="src/LmuOverlay.SteamVr/LmuOverlay.SteamVr.csproj" />
+    <Project Path="src/LmuOverlay.Strategy/LmuOverlay.Strategy.csproj" />
+    <Project Path="src/LmuOverlay.Timing/LmuOverlay.Timing.csproj" />
     <Project Path="src/LmuOverlay.Widgets/LmuOverlay.Widgets.csproj" />
   </Folder>
   <Folder Name="/tests/">
@@ -16,6 +20,7 @@
     <Project Path="tests/LmuOverlay.LmuSharedMemory.Tests/LmuOverlay.LmuSharedMemory.Tests.csproj" />
     <Project Path="tests/LmuOverlay.PresentationParity.Tests/LmuOverlay.PresentationParity.Tests.csproj" />
     <Project Path="tests/LmuOverlay.SteamVr.Tests/LmuOverlay.SteamVr.Tests.csproj" />
+    <Project Path="tests/LmuOverlay.Strategy.Tests/LmuOverlay.Strategy.Tests.csproj" />
     <Project Path="tests/LmuOverlay.Widgets.Tests/LmuOverlay.Widgets.Tests.csproj" />
   </Folder>
   <Folder Name="/tools/">

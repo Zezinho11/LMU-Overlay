@@ -21,7 +21,8 @@ public sealed record NativeOverlayStyle(
     bool DashboardShowSectors,
     bool DashboardShowTires,
     bool DashboardShowTelemetry,
-    string DashboardModuleOrder)
+    string DashboardModuleOrder,
+    string SteeringWheelImagePath)
 {
     public static NativeOverlayStyle RedFox { get; } = new(
         new(10, 15, 26),
@@ -42,5 +43,6 @@ public sealed record NativeOverlayStyle(
         true,
         true,
         true,
-        "Sectors,Tires,Telemetry");
+        "Sectors,Tires,Telemetry",
+        string.Empty);
 }

@@ -3,6 +3,7 @@
   <ItemGroup>
     <ProjectReference Include="..\LmuOverlay.Contracts\LmuOverlay.Contracts.csproj" />
     <ProjectReference Include="..\LmuOverlay.Domain\LmuOverlay.Domain.csproj" />
+    <ProjectReference Include="..\LmuOverlay.Core\LmuOverlay.Core.csproj" />
   </ItemGroup>
 
   <PropertyGroup>

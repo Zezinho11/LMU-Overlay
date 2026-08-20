@@ -2,248 +2,7 @@ using LmuOverlay.Domain;
 
 namespace LmuOverlay.Widgets;
 
-public readonly record struct DashboardWidgetState(
-    bool Available,
-    double SpeedKilometersPerHour,
-    string Gear,
-    double EngineRpm,
-    double EngineRpmFraction,
-    double FuelLiters,
-    int Position,
-    int LapNumber,
-    string TrackName,
-    double DeltaBestSeconds,
-    double CurrentLapTimeSeconds,
-    double LastLapTimeSeconds,
-    double BestLapTimeSeconds,
-    double EngineWaterTemperatureCelsius,
-    double EngineOilTemperatureCelsius,
-    double RearBrakeBiasFraction,
-    bool SpeedLimiterActive,
-    bool AbsActive,
-    bool TractionControlActive,
-    int TractionControlLevel,
-    int TractionControlMaximum,
-    int TractionControlSlipLevel,
-    int TractionControlSlipMaximum,
-    int TractionControlCutLevel,
-    int TractionControlCutMaximum,
-    int AbsLevel,
-    int AbsMaximum,
-    LmuWheelTemperatures TireTemperatures,
-    LmuWheelWear TireWear,
-    double Throttle = 0,
-    double Brake = 0,
-    double LongitudinalAccelerationG = 0,
-    double LateralAccelerationG = 0,
-    double AmbientTemperatureCelsius = 0,
-    double TrackTemperatureCelsius = 0,
-    double RainIntensity = 0,
-    double SessionRemainingSeconds = 0,
-    string SessionName = "",
-    int OutstandingPenalties = 0,
-    string TireCompound = "",
-    DashboardSectorTimes SectorTimes = default,
-    double VirtualEnergyFraction = 0)
-{
-    public double OptimalLapTimeSeconds { get; init; }
-}
-
-public readonly record struct DashboardSectorTimes(
-    double CurrentSector1Seconds,
-    double CurrentSector2Seconds,
-    double CurrentSector3Seconds,
-    double LastSector1Seconds,
-    double LastSector2Seconds,
-    double LastSector3Seconds,
-    double BestSector1Seconds,
-    double BestSector2Seconds,
-    double BestSector3Seconds,
-    SectorReferenceOrigin Sector1ReferenceOrigin = SectorReferenceOrigin.None,
-    SectorReferenceOrigin Sector2ReferenceOrigin = SectorReferenceOrigin.None,
-    SectorReferenceOrigin Sector3ReferenceOrigin = SectorReferenceOrigin.None,
-    int RecentSectorIndex = -1,
-    double RecentSectorTimeSeconds = 0,
-    double RecentSectorReferenceSeconds = 0,
-    long RecentSectorExpiresAtTimestamp = 0)
-{
-    public double OptimalLapTimeSeconds =>
-        IsValid(BestSector1Seconds) &&
-        IsValid(BestSector2Seconds) &&
-        IsValid(BestSector3Seconds)
-            ? BestSector1Seconds + BestSector2Seconds + BestSector3Seconds
-            : 0;
-
-    private static bool IsValid(double seconds) =>
-        seconds > 0 && double.IsFinite(seconds);
-}
-
-public enum SectorReferenceOrigin
-{
-    None,
-    OutLap,
-    Session,
-    Saved,
-}
-
-public readonly record struct SectorReferenceSeed(
-    double Sector1Seconds,
-    double Sector2Seconds,
-    double Sector3Seconds)
-{
-    public double Optimal =>
-        Sector1Seconds > 0 && Sector2Seconds > 0 && Sector3Seconds > 0
-            ? Sector1Seconds + Sector2Seconds + Sector3Seconds
-            : 0;
-
-    public double this[int index] => index switch
-    {
-        0 => Sector1Seconds,
-        1 => Sector2Seconds,
-        2 => Sector3Seconds,
-        _ => throw new ArgumentOutOfRangeException(nameof(index)),
-    };
-}
-
-public readonly record struct PersonalBestLap(
-    double LapTimeSeconds,
-    double Sector1Seconds,
-    double Sector2Seconds,
-    double Sector3Seconds)
-{
-    public bool IsValid =>
-        IsPlausible(LapTimeSeconds) &&
-        IsPlausible(Sector1Seconds) &&
-        IsPlausible(Sector2Seconds) &&
-        IsPlausible(Sector3Seconds) &&
-        Math.Abs(
-            LapTimeSeconds -
-            (Sector1Seconds + Sector2Seconds + Sector3Seconds)) < 0.05;
-
-    public SectorReferenceSeed Sectors => new(
-        Sector1Seconds,
-        Sector2Seconds,
-        Sector3Seconds);
-
-    private static bool IsPlausible(double seconds) =>
-        double.IsFinite(seconds) && seconds is > 1 and < 1_800;
-}
-
-public readonly record struct InputsWidgetState(
-    bool Available,
-    double Throttle,
-    double Brake,
-    double Clutch,
-    double Steering,
-    bool AbsActive,
-    bool TractionControlActive);
-
-public sealed record LiveStandingsWidgetState(
-    string PlayerClass,
-    IReadOnlyList<LiveStandingsClassState> Classes,
-    string SessionName = "",
-    double SessionRemainingSeconds = 0,
-    bool IsQualifying = false);
-
-public sealed record LiveStandingsClassState(
-    string ClassName,
-    bool IsPlayerClass,
-    IReadOnlyList<LiveStandingsRowState> Rows);
-
-public sealed record LiveStandingsRowState(
-    int ClassPosition,
-    string DriverName,
-    string DriverAbbreviation,
-    string VehicleName,
-    string VehicleModel,
-    string CarNumber,
-    int CompletedLaps,
-    double GapToLeaderSeconds,
-    double IntervalSeconds,
-    int IntervalLaps,
-    double LastLapTimeSeconds,
-    double BestLapTimeSeconds,
-    bool IsPlayer,
-    bool IsInPitLane,
-    bool IsQualifying = false,
-    double VirtualEnergyFraction = -1,
-    string TireCompound = "",
-    int TireCompoundIndex = 0);
-
-public sealed record RelativeWidgetState(
-    IReadOnlyList<RelativeRowState> Rows,
-    string SessionName = "",
-    double SessionRemainingSeconds = 0);
-
-public sealed record RelativeRowState(
-    int OverallPosition,
-    string DriverName,
-    string DriverDisplayName,
-    string VehicleClass,
-    string ClassAbbreviation,
-    string CarNumber,
-    double RelativeGapSeconds,
-    int RelativeLaps,
-    bool IsPlayer,
-    bool IsInPitLane)
-{
-    public RelativeGapSource GapSource { get; init; } = RelativeGapSource.DistanceEstimate;
-    public double GapConfidence { get; init; } = 0.6;
-}
-
-public enum RelativeGapSource
-{
-    Unavailable,
-    Player,
-    OfficialAhead,
-    OfficialBehind,
-    DistanceEstimate,
-}
-
-public sealed record SessionFlagsWidgetState(
-    bool Available,
-    string SessionName,
-    string PhaseName,
-    string FlagName,
-    string TrackGripName,
-    int TrackGripLevel,
-    WeatherConditionKind WeatherCondition,
-    string WeatherName,
-    double RainIntensity,
-    double Cloudiness,
-    double AveragePathWetness,
-    double RemainingSeconds,
-    int CurrentLap,
-    int MaximumLaps,
-    double AmbientTemperatureCelsius,
-    double TrackTemperatureCelsius);
-
-public sealed record RaceControlWidgetState(
-    bool Available,
-    int OutstandingPenalties,
-    string PenaltyStatus,
-    string PitStatus,
-    string LapStatus,
-    string FlagStatus,
-    string DamageStatus,
-    string ImpactStatus,
-    string SystemsStatus,
-    bool RequiresAttention,
-    bool HasCriticalDamage);
-
-public enum WeatherConditionKind
-{
-    Unknown,
-    Clear,
-    PartlyCloudy,
-    Cloudy,
-    Overcast,
-    LightRain,
-    Rain,
-    HeavyRain,
-}
-
-public static class EssentialWidgetStateFactory
+public static partial class EssentialWidgetStateFactory
 {
     private const int LiveStandingsContentHeight = 342;
     private const int LiveStandingsClassHeaderHeight = 18;
@@ -326,6 +85,10 @@ public static class EssentialWidgetStateFactory
             VirtualEnergyFraction = Math.Clamp(player.VirtualEnergy, 0, 1),
             SectorTimes = sectorTimes,
             OptimalLapTimeSeconds = sectorTimes.OptimalLapTimeSeconds,
+            VehicleClass = playerStanding?.VehicleClass ?? string.Empty,
+            VehicleModel = string.IsNullOrWhiteSpace(player.VehicleModel)
+                ? player.VehicleName
+                : player.VehicleModel,
         };
     }
 
@@ -333,7 +96,7 @@ public static class EssentialWidgetStateFactory
     {
         if (snapshot.Player is not { } player)
         {
-            return new(false, 0, 0, 0, 0, false, false);
+            return new(false, 0, 0, 0, 0, false, false, 0);
         }
 
         return new(
@@ -343,7 +106,10 @@ public static class EssentialWidgetStateFactory
             ClampInput(player.Clutch),
             Math.Clamp(player.Steering, -1, 1),
             player.AbsActive,
-            player.TractionControlActive);
+            player.TractionControlActive,
+            SteeringWheelRotation.ResolveRangeDegrees(
+                player.PhysicalSteeringWheelRangeDegrees,
+                player.VisualSteeringWheelRangeDegrees));
     }
 
     public static RaceControlWidgetState CreateRaceControl(
