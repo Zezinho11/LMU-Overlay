@@ -1,5 +1,4 @@
 using System.Text.Json;
-using LmuOverlay.Desktop;
 using LmuOverlay.Widgets;
 
 namespace LmuOverlay.SteamVr;

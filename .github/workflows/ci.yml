@@ -23,6 +23,7 @@ jobs:
       - name: EAC safety architecture gate
         shell: pwsh
         run: ./scripts/audit-eac-safety.ps1
+      - run: dotnet run --no-build --configuration Release --project tests/LmuOverlay.Architecture.Tests
       - run: dotnet run --no-build --configuration Release --project tests/LmuOverlay.Core.Tests
       - run: dotnet run --no-build --configuration Release --project tests/LmuOverlay.Desktop.Tests
       - run: dotnet run --no-build --configuration Release --project tests/LmuOverlay.Domain.Tests

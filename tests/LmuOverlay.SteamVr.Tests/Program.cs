@@ -1,5 +1,4 @@
 using LmuOverlay.Domain;
-using LmuOverlay.Desktop;
 using LmuOverlay.SteamVr;
 using LmuOverlay.Widgets;
 

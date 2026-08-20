@@ -1,5 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
+    <ProjectReference Include="..\LmuOverlay.Configuration\LmuOverlay.Configuration.csproj" />
     <ProjectReference Include="..\LmuOverlay.Core\LmuOverlay.Core.csproj" />
     <ProjectReference Include="..\LmuOverlay.Widgets\LmuOverlay.Widgets.csproj" />
   </ItemGroup>

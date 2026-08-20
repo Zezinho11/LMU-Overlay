@@ -1,4 +1,4 @@
-namespace LmuOverlay.Widgets;
+namespace LmuOverlay.Configuration;
 
 public enum DashboardModule
 {

@@ -1,4 +1,4 @@
-namespace LmuOverlay.Desktop;
+namespace LmuOverlay.Configuration;
 
 public sealed record LayoutProfile(
     int SchemaVersion,
@@ -53,7 +53,7 @@ public sealed record OverlayProfileSettings
     public bool DashboardShowSectors { get; init; } = true;
     public bool DashboardShowTires { get; init; } = true;
     public bool DashboardShowTelemetry { get; init; } = true;
-    public string DashboardModuleOrder { get; init; } = LmuOverlay.Widgets.DashboardModuleLayout.DefaultOrder;
+    public string DashboardModuleOrder { get; init; } = DashboardModuleLayout.DefaultOrder;
     public double DashboardTextScale { get; init; } = 1;
     public double TimingTextScale { get; init; } = 1;
     public double InputsTextScale { get; init; } = 1;

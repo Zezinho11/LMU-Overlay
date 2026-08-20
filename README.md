@@ -25,6 +25,8 @@ The codebase is divided into independent Domain, shared-memory, Configuration,
 Timing, Strategy, Widgets, Application, DirectX, Desktop and SteamVR assemblies.
 Desktop and VR consume the same presentation-neutral state instead of carrying
 separate racing logic. See [module boundaries](docs/architecture/module-boundaries.md).
+An architecture test prevents circular/platform dependencies and the return of
+large composition-root or facade files.
 
 ## Current capabilities
 

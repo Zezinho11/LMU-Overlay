@@ -14,6 +14,7 @@
     <Project Path="src/LmuOverlay.Widgets/LmuOverlay.Widgets.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/LmuOverlay.Architecture.Tests/LmuOverlay.Architecture.Tests.csproj" />
     <Project Path="tests/LmuOverlay.Core.Tests/LmuOverlay.Core.Tests.csproj" />
     <Project Path="tests/LmuOverlay.Desktop.Tests/LmuOverlay.Desktop.Tests.csproj" />
     <Project Path="tests/LmuOverlay.Domain.Tests/LmuOverlay.Domain.Tests.csproj" />

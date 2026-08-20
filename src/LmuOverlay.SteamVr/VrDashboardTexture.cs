@@ -1,5 +1,4 @@
 using System.Drawing;
-using LmuOverlay.Desktop;
 using LmuOverlay.Widgets;
 
 namespace LmuOverlay.SteamVr;

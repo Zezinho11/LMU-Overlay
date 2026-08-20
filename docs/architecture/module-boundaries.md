@@ -49,6 +49,29 @@ are adapters at the edge; neither is a source of racing rules.
 - Platform renderers may differ in drawing APIs, but parity tests protect the
   supported feature set and shared state contracts.
 
+## Internal decomposition
+
+Large host classes are split into cohesive partial adapters while retaining one
+runtime instance and one state owner:
+
+- Desktop separates frame composition, dashboard, pedal graph, standings,
+  relative, session/strategy, themes, native surfaces and layout interaction.
+- DirectComposition separates device/surface lifecycle, resources, drawing and
+  Win32 interop for Dashboard and Inputs; Timing owns its reusable surface in a
+  dedicated file.
+- SteamVR keeps `Program.cs` as a three-line composition root and separates
+  host helpers plus renderers for Dashboard/Inputs, Timing and Strategy/Session.
+- LMU parsing is divided into entry points, session, standings, metadata,
+  player, wheel/damage and primitive readers.
+- Configuration separates operations, persistence, naming, migrations and
+  settings sanitization under the `LmuOverlay.Configuration` namespace.
+- Timing separates update, capture, valid-lap publication, references and reset;
+  strategy separates state contracts, update orchestration and lifecycle.
+
+`LmuOverlay.Architecture.Tests` enforces the dependency direction, platform-free
+stable modules, small composition roots/facades and a 450-line source-file
+budget. CI runs this gate before behavioral suites.
+
 ## Extension points
 
 Add new telemetry fields to `Domain`, parse them in `LmuSharedMemory`, then

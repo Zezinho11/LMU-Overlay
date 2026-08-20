@@ -1,4 +1,4 @@
-namespace LmuOverlay.Desktop;
+namespace LmuOverlay.Configuration;
 
 public static class LayoutPresets
 {

@@ -1,7 +1,6 @@
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
-using LmuOverlay.Desktop;
 using System.Runtime.InteropServices;
 using LmuOverlay.Domain;
 using LmuOverlay.Widgets;
