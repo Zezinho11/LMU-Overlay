@@ -8,7 +8,7 @@ public static partial class VrWidgetTextureRenderer
     public static VrRenderedFrame Fuel(FuelStrategyWidgetState state) => Fuel(state, DefaultStyle);
 
     public static VrRenderedFrame Fuel(FuelStrategyWidgetState state, VrRenderStyle style) =>
-        Draw(1000, 780, style, canvas =>
+        Draw(1000, 820, style, canvas =>
         {
             Header(canvas, T(style, OverlayTextKey.FuelAndEnergy).ToUpperInvariant(), OverlayText.TranslateExact(style.Language, state.Status), 1000, 1);
             var columns = new[] { 20f, 260f, 480f, 700f, 860f };
@@ -37,15 +37,16 @@ public static partial class VrWidgetTextureRenderer
                 25, style.Attention, new(680, 310, 270, 40), true);
             StrategyBox(canvas, "FULL PUSH", state.PlanSummary, state.PitPlan,
                 $"{state.TirePlan} · FINAL +{state.FinalFuelToAddLiters:0.0}L / NRG {state.FinalVirtualEnergyTargetFraction:P0}", 390, style.Positive);
-            StrategyBox(canvas, "FUEL SAVE", state.FuelSavePlan,
+            StrategyBoxFourLines(canvas, "FUEL SAVE", state.FuelSavePlan,
+                state.FuelSaveLapPlan,
                 state.FuelSaveVirtualEnergyTargetPerLap > 0
                     ? $"{state.FuelSavePitPlan} · NRG {state.FuelSaveVirtualEnergyTargetPerLap:P1}/LAP"
                     : state.FuelSavePitPlan,
                 state.FuelSaveTirePlan, 540, style.Information);
-            canvas.Fill(style.Card, 20, 690, 960, 66);
+            canvas.Fill(style.Card, 20, 710, 960, 66);
             canvas.Text($"PACE {Lap(state.AveragePaceSeconds)} · TREND {state.PaceTrendSecondsPerLap:+0.00;-0.00;0.00}/LAP · " +
                         $"STOPS {state.EstimatedPitStops} · FINISH {state.FinishProbability:P0} · CONFIDENCE {state.Confidence}",
-                18, style.SecondaryText, new(36, 700, 928, 44), true, StringAlignment.Center);
+                18, style.SecondaryText, new(36, 720, 928, 44), true, StringAlignment.Center);
         });
 
     public static VrRenderedFrame Session(SessionFlagsWidgetState state) => Session(state, DefaultStyle);

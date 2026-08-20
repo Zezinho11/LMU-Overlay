@@ -11,7 +11,7 @@ Require(window.Count == 3 && window.Median == 3,
     "Rolling windows must evict old values and retain a robust median.");
 
 var learning = new StrategyLearningModel();
-learning.Reset(88, 1, new(0.10, 0.20, 0.10, 0.20));
+learning.Reset(88, 1, new(0.90, 0.80, 0.90, 0.80));
 var liveCapacity = learning.EstimateFuelCapacity(120, 0);
 Require(liveCapacity.Publish && liveCapacity.Liters == 88,
     "A 100% NRG observation must override the larger physical tank.");
@@ -26,10 +26,10 @@ for (var lap = 1; lap <= 3; lap++)
         lapTimeSeconds: 120 + lap,
         validPace: true,
         currentTireWear: new(
-            0.10 + lap * 0.01,
-            0.20 + lap * 0.02,
-            0.10 + lap * 0.01,
-            0.20 + lap * 0.02),
+            0.90 - lap * 0.01,
+            0.80 - lap * 0.02,
+            0.90 - lap * 0.01,
+            0.80 - lap * 0.02),
         validTireWear: true);
 }
 

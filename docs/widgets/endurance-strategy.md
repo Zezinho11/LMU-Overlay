@@ -32,7 +32,9 @@ highest-value result, but is not required: a valid go-long plan may retain the
 same stop count while moving its pit laps and reducing later fills. It may
 never contain more stops than Full Push. The box reports whether it removes a
 stop or keeps the same count, plus target consumption, complete pit sequence
-and the corresponding tire plan.
+and the corresponding tire plan. It also converts the target into LMU-style
+per-stint instructions: equivalent laps of range to save, how many laps in that
+stint require lift-and-coast, and the consumption target on those save laps.
 
 Tire recommendations use four independent rolling wear models (FL/FR/RL/RR)
 rather than a single maximum or life percentage. At least three valid samples
@@ -40,8 +42,10 @@ per corner are required before projecting a change. Every planned pit lap is
 listed with `KEEP` or the exact tires to service, such as `L29 FR+RR`, across
 the complete session horizon. This lets asymmetric tracks produce selective
 two-tire changes and lets the prediction adapt as new valid laps replace older
-samples. The configured wear threshold, available allocation and double/triple
-stint feasibility remain constraints.
+samples. LMU publishes remaining tire life (near 100% on a new set), so the
+learner measures the valid lap-to-lap decrease while the planner internally
+converts it to consumed wear. The configured wear threshold, available
+allocation and double/triple stint feasibility remain constraints.
 
 ## Live contingency scenarios
 

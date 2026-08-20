@@ -215,7 +215,7 @@ public sealed partial class FuelStrategyTracker
             MaximumVirtualEnergyStintLaps = virtualEnergyAverage > 0
                 ? Math.Max(1, (int)Math.Floor((1 - energyReserve) / virtualEnergyAverage))
                 : int.MaxValue,
-            CurrentTireWear = player.TireWear,
+            CurrentTireWear = TireLifeToConsumedWear(player.TireWear),
             TireWearPerLap = wheelWearPerLap,
         };
         var strategy = EnduranceStrategyPlanner.Calculate(strategyInput);
@@ -342,6 +342,7 @@ public sealed partial class FuelStrategyTracker
             FuelSavePlan = fuelSave.Summary,
             FuelSavePitPlan = fuelSave.PitPlan,
             FuelSaveTirePlan = fuelSave.TirePlan,
+            FuelSaveLapPlan = fuelSave.SaveLapPlan,
             FuelSaveTargetLitersPerLap = fuelSave.TargetConsumptionLitersPerLap,
             FuelSaveFraction = fuelSave.SavingFraction,
             FuelSaveReducesStopCount = fuelSave.ReducesStopCount,

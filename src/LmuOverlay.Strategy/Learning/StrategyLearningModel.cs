@@ -97,17 +97,18 @@ public sealed class StrategyLearningModel
         {
             AddTireSample(
                 _frontLeftWear,
-                currentTireWear.FrontLeftFraction - _previousTireWear.FrontLeftFraction);
+                _previousTireWear.FrontLeftFraction - currentTireWear.FrontLeftFraction);
             AddTireSample(
                 _frontRightWear,
-                currentTireWear.FrontRightFraction - _previousTireWear.FrontRightFraction);
+                _previousTireWear.FrontRightFraction - currentTireWear.FrontRightFraction);
             AddTireSample(
                 _rearLeftWear,
-                currentTireWear.RearLeftFraction - _previousTireWear.RearLeftFraction);
+                _previousTireWear.RearLeftFraction - currentTireWear.RearLeftFraction);
             AddTireSample(
                 _rearRightWear,
-                currentTireWear.RearRightFraction - _previousTireWear.RearRightFraction);
-            var maximumDelta = Maximum(currentTireWear) - Maximum(_previousTireWear);
+                _previousTireWear.RearRightFraction - currentTireWear.RearRightFraction);
+            var maximumDelta = MaximumConsumed(currentTireWear) -
+                MaximumConsumed(_previousTireWear);
             if (maximumDelta is > 0.00001 and < 0.25)
             {
                 _maximumTireWear.Add(maximumDelta);
@@ -152,7 +153,11 @@ public sealed class StrategyLearningModel
     private static double WheelRate(RobustSampleWindow window) =>
         window.Count >= 3 ? window.Conservative : 0;
 
-    private static double Maximum(LmuWheelWear wear) => Math.Max(
-        Math.Max(wear.FrontLeftFraction, wear.FrontRightFraction),
-        Math.Max(wear.RearLeftFraction, wear.RearRightFraction));
+    private static double MaximumConsumed(LmuWheelWear remainingLife) => Math.Max(
+        Math.Max(
+            1 - remainingLife.FrontLeftFraction,
+            1 - remainingLife.FrontRightFraction),
+        Math.Max(
+            1 - remainingLife.RearLeftFraction,
+            1 - remainingLife.RearRightFraction));
 }

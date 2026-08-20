@@ -92,6 +92,25 @@ public static partial class VrWidgetTextureRenderer
         c.Text(Trim(third, 82), 17, c.Style.SecondaryText, new(42, y + 92, 916, 24), true);
     }
 
+    private static void StrategyBoxFourLines(
+        VrCanvas c,
+        string title,
+        string first,
+        string second,
+        string third,
+        string fourth,
+        float y,
+        Color accent)
+    {
+        c.Fill(c.Style.Card, 20, y, 960, 150);
+        c.Fill(accent, 20, y, 8, 150);
+        c.Text(title, 18, accent, new(42, y + 6, 300, 24), true);
+        c.Text(Trim(first, 74), 19, c.Style.PrimaryText, new(42, y + 30, 916, 27), true);
+        c.Text(Trim(second, 82), 16, c.Style.SecondaryText, new(42, y + 58, 916, 22), true);
+        c.Text(Trim(third, 82), 16, c.Style.SecondaryText, new(42, y + 84, 916, 22), true);
+        c.Text(Trim(fourth, 82), 16, c.Style.SecondaryText, new(42, y + 110, 916, 28), true);
+    }
+
     private static void WeatherIcon(VrCanvas c, WeatherConditionKind weather, float x, float y, VrRenderStyle style)
     {
         var rainy = weather is WeatherConditionKind.LightRain or WeatherConditionKind.Rain or WeatherConditionKind.HeavyRain;

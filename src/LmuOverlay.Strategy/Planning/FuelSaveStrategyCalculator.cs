@@ -32,7 +32,13 @@ public static class FuelSaveStrategyCalculator
                 var reducedStops = CalculateForConsumption(input, currentFuelLiters, attemptedTarget);
                 if (reducedStops.Available && reducedStops.Stops <= targetStops)
                 {
-                    return Result(reducedStops, attemptedTarget, attemptedSaving, true);
+                    return Result(
+                        reducedStops,
+                        input.ConsumptionLitersPerLap,
+                        attemptedTarget,
+                        attemptedSaving,
+                        maximumSavingFraction,
+                        true);
                 }
             }
         }
@@ -71,8 +77,10 @@ public static class FuelSaveStrategyCalculator
             {
                 return Result(
                     alternative,
+                    input.ConsumptionLitersPerLap,
                     attemptedTarget,
                     attemptedSaving,
+                    maximumSavingFraction,
                     alternative.Stops < fullPush.Stops);
             }
         }
@@ -117,18 +125,99 @@ public static class FuelSaveStrategyCalculator
 
     private static FuelSaveStrategyPlan Result(
         EnduranceStrategyPlan strategy,
+        double pushConsumption,
         double targetConsumption,
         double saving,
-        bool reducesStops) => new(
-        true,
-        targetConsumption,
-        saving,
-        reducesStops,
-        strategy,
-        $"FUEL SAVE {saving:P1} · {strategy.Stints} STINTS · {strategy.Stops} STOPS · " +
-        (reducesStops ? "FEWER STOPS" : "SAME STOPS"),
-        $"TARGET {targetConsumption:0.00} L/LAP · {strategy.PitPlan}",
-        strategy.TirePlan);
+        double maximumSavingFraction,
+        bool reducesStops)
+    {
+        var instructions = BuildStintInstructions(
+            strategy.StintLaps,
+            pushConsumption,
+            saving,
+            maximumSavingFraction);
+        return new(
+            true,
+            targetConsumption,
+            saving,
+            reducesStops,
+            strategy,
+            $"FUEL SAVE {saving:P1} · {strategy.Stints} STINTS · {strategy.Stops} STOPS · " +
+            (reducesStops ? "FEWER STOPS" : "SAME STOPS"),
+            $"TARGET {targetConsumption:0.00} L/LAP · {strategy.PitPlan}",
+            strategy.TirePlan)
+        {
+            StintInstructions = instructions,
+            SaveLapPlan = FormatSaveLapPlan(instructions),
+        };
+    }
+
+    private static IReadOnlyList<FuelSaveStintInstruction> BuildStintInstructions(
+        IReadOnlyList<int> stintLaps,
+        double pushConsumption,
+        double saving,
+        double maximumSavingFraction)
+    {
+        var maximumPerSaveLap = Math.Clamp(maximumSavingFraction, 0.01, 0.5);
+        return stintLaps.Select((laps, index) =>
+        {
+            var equivalentLaps = Math.Max(0, laps * saving);
+            var saveLaps = equivalentLaps > 0
+                ? Math.Clamp(
+                    (int)Math.Ceiling(equivalentLaps / maximumPerSaveLap - 0.000001),
+                    1,
+                    laps)
+                : 0;
+            var perSaveLapFraction = saveLaps > 0
+                ? Math.Clamp(equivalentLaps / saveLaps, 0, maximumPerSaveLap)
+                : 0;
+            return new FuelSaveStintInstruction(
+                index + 1,
+                laps,
+                saveLaps,
+                equivalentLaps,
+                pushConsumption * (1 - perSaveLapFraction));
+        }).ToArray();
+    }
+
+    private static string FormatSaveLapPlan(
+        IReadOnlyList<FuelSaveStintInstruction> instructions)
+    {
+        if (instructions.Count == 0)
+        {
+            return "SAVE TARGET · NO STINT DATA";
+        }
+
+        var groups = new List<(int First, int Last, FuelSaveStintInstruction Item)>();
+        foreach (var item in instructions)
+        {
+            if (groups.Count > 0 && SameInstruction(groups[^1].Item, item))
+            {
+                groups[^1] = (groups[^1].First, item.StintNumber, groups[^1].Item);
+            }
+            else
+            {
+                groups.Add((item.StintNumber, item.StintNumber, item));
+            }
+        }
+
+        return "SAVE TARGET · " + string.Join(" · ", groups.Select(group =>
+        {
+            var stint = group.First == group.Last
+                ? $"S{group.First}"
+                : $"S{group.First}-{group.Last}";
+            return $"{stint} +{group.Item.EquivalentLapsSaved:0.0}LAP " +
+                $"({group.Item.SaveLaps}/{group.Item.StintLaps})";
+        }));
+    }
+
+    private static bool SameInstruction(
+        FuelSaveStintInstruction first,
+        FuelSaveStintInstruction second) =>
+        first.StintLaps == second.StintLaps &&
+        first.SaveLaps == second.SaveLaps &&
+        Math.Abs(first.EquivalentLapsSaved - second.EquivalentLapsSaved) < 0.05 &&
+        Math.Abs(first.SaveLapTargetLiters - second.SaveLapTargetLiters) < 0.01;
 
     private static FuelSaveStrategyPlan Unavailable(
         EnduranceStrategyInput input,

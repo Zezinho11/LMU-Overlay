@@ -26,8 +26,9 @@ public static class ResponsiveWidgetLayout
         "InputsWidget" => new(520, 220, 260, 110),
         "LiveStandingsWidget" or "RelativeWidget" => new(500, 410, 280, 230),
         "SessionFlagsWidget" => new(500, 190, 250, 95),
-        "FuelStrategyWidget" => new(500, 400, 250, 200),
+        "FuelStrategyWidget" => new(500, 418, 250, 209),
         "RaceControlWidget" => new(430, 190, 240, 106),
+        "PriorityAlert" => new(460, 58, 240, 30),
         _ => new(1, 1, 120, 60),
     };
 

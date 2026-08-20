@@ -99,6 +99,7 @@
                 <RowDefinition Height="*" />
                 <RowDefinition Height="*" />
                 <RowDefinition Height="*" />
+                <RowDefinition Height="*" />
             </Grid.RowDefinitions>
             <TextBlock Grid.Row="0" Grid.Column="0" Text="VISIBILIDADE"
                        Foreground="#FF788795" FontWeight="Bold" FontSize="10" />
@@ -197,6 +198,19 @@
                     VerticalAlignment="Center" />
             <TextBlock Grid.Row="7" Grid.Column="4" VerticalAlignment="Center"
                        Text="{Binding ElementName=RaceControlScale, Path=Value, StringFormat={}{0:0.00}x}" />
+
+            <CheckBox x:Name="PriorityAlerts" Grid.Row="8" Grid.Column="0"
+                      Content="Alerta superior" VerticalAlignment="Center" />
+            <Slider x:Name="PriorityAlertOpacity" Grid.Row="8" Grid.Column="1"
+                    Minimum="0.2" Maximum="1" TickFrequency="0.05"
+                    VerticalAlignment="Center" />
+            <TextBlock Grid.Row="8" Grid.Column="2" VerticalAlignment="Center"
+                       Text="{Binding ElementName=PriorityAlertOpacity, Path=Value, StringFormat={}{0:P0}}" />
+            <Slider x:Name="PriorityAlertScale" Grid.Row="8" Grid.Column="3"
+                    Minimum="0.5" Maximum="2" TickFrequency="0.05"
+                    VerticalAlignment="Center" />
+            <TextBlock Grid.Row="8" Grid.Column="4" VerticalAlignment="Center"
+                       Text="{Binding ElementName=PriorityAlertScale, Path=Value, StringFormat={}{0:0.00}x}" />
         </Grid>
         <Border Grid.Row="4" Margin="0,18,0,0" Padding="12"
                 Background="#FF111923" BorderBrush="#FF263645" BorderThickness="1">
@@ -344,7 +358,6 @@
                     <TextBlock Text="{Binding ElementName=PedalHistory, Path=Value, StringFormat={}{0:0} s}" />
                 </StackPanel>
                 <StackPanel Grid.Row="6" Grid.Column="3" Margin="0,10,0,0">
-                    <CheckBox x:Name="PriorityAlerts" Content="Alertas prioritários" Margin="0,2" />
                     <CheckBox x:Name="ReduceMotion" Content="Reduzir movimento" Margin="0,5,0,0" />
                 </StackPanel>
                 <StackPanel Grid.Row="7" Grid.Column="0" Margin="0,10,12,0">

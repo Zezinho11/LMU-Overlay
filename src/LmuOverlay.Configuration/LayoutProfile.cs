@@ -9,10 +9,13 @@ public sealed record LayoutProfile(
     WidgetPlacement SessionFlags,
     WidgetPlacement FuelStrategy)
 {
-    public const int CurrentSchemaVersion = 23;
+    public const int CurrentSchemaVersion = 24;
 
     public WidgetPlacement RaceControl { get; init; } =
         new(0.35, 0.25, 0.26, 0.18, 1, 0.96, true);
+
+    public WidgetPlacement PriorityAlert { get; init; } =
+        new(0.38, 0.022, 0.24, 0.08, 1, 0.96, true);
 
     public OverlayProfileSettings Settings { get; init; } = new();
 

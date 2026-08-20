@@ -232,6 +232,11 @@ public partial class ConfigurationWindow
                 RaceControlOpacity,
                 RaceControlScale,
                 profile.RaceControl),
+            PriorityAlert = Read(
+                PriorityAlerts,
+                PriorityAlertOpacity,
+                PriorityAlertScale,
+                profile.PriorityAlert),
             Settings = ReadSettings(profile.Settings),
         });
     }

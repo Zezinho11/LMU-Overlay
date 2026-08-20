@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.8.5 hotfix - 2026-08-20
+
+- Corrected LMU remaining-tyre-life learning and restored per-corner tyre
+  strategy schedules based on measured wear.
+- Added per-stint fuel-save instructions, including the equivalent saved laps,
+  to both Desktop and SteamVR strategy views.
+- Synchronized the Inputs steering-wheel graphic with LMU's visual steering
+  range, including large steering angles.
+- Made the top priority alert independently visible, movable, resizable and
+  scalable from the overlay configuration.
+
 ## 0.8.0 - 2026-08-19
 
 - Fixed custom colors being saved without affecting several overlay surfaces;

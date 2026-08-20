@@ -119,9 +119,19 @@ public sealed partial class FuelStrategyTracker
                 : $"{front}/{rear}";
     }
 
-    private static double MaximumTireWear(LmuWheelWear wear) => Math.Max(
-        Math.Max(wear.FrontLeftFraction, wear.FrontRightFraction),
-        Math.Max(wear.RearLeftFraction, wear.RearRightFraction));
+    private static LmuWheelWear TireLifeToConsumedWear(LmuWheelWear remainingLife) => new(
+        Math.Clamp(1 - remainingLife.FrontLeftFraction, 0, 1),
+        Math.Clamp(1 - remainingLife.FrontRightFraction, 0, 1),
+        Math.Clamp(1 - remainingLife.RearLeftFraction, 0, 1),
+        Math.Clamp(1 - remainingLife.RearRightFraction, 0, 1));
+
+    private static double MaximumTireWear(LmuWheelWear remainingLife)
+    {
+        var consumed = TireLifeToConsumedWear(remainingLife);
+        return Math.Max(
+            Math.Max(consumed.FrontLeftFraction, consumed.FrontRightFraction),
+            Math.Max(consumed.RearLeftFraction, consumed.RearRightFraction));
+    }
 
     private static double NormalizeVirtualEnergy(double value) =>
         double.IsFinite(value) ? Math.Clamp(value, 0, 1) : 0;

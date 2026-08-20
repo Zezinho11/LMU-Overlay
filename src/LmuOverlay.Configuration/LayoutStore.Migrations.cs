@@ -112,6 +112,7 @@ public sealed partial class LayoutStore
             SessionFlags = sessionFlags,
             FuelStrategy = fuelStrategy,
             RaceControl = SanitizePlacement(profile.RaceControl),
+            PriorityAlert = SanitizePlacement(profile.PriorityAlert),
             Settings = settings,
         };
     }

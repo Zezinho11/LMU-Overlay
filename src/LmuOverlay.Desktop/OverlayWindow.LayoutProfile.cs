@@ -44,6 +44,7 @@ public partial class OverlayWindow
         SessionFlagsResizeThumb.Visibility = enabled ? Visibility.Visible : Visibility.Collapsed;
         FuelStrategyResizeThumb.Visibility = enabled ? Visibility.Visible : Visibility.Collapsed;
         RaceControlResizeThumb.Visibility = enabled ? Visibility.Visible : Visibility.Collapsed;
+        PriorityAlertResizeThumb.Visibility = enabled ? Visibility.Visible : Visibility.Collapsed;
         EditHint.Visibility = enabled ? Visibility.Visible : Visibility.Collapsed;
         var borderBrush = enabled
             ? System.Windows.Media.Brushes.Orange
@@ -56,6 +57,8 @@ public partial class OverlayWindow
         SessionFlagsWidget.BorderBrush = borderBrush;
         FuelStrategyWidget.BorderBrush = borderBrush;
         RaceControlWidget.BorderBrush = borderBrush;
+        PriorityAlert.BorderBrush = borderBrush;
+        PriorityAlert.IsHitTestVisible = enabled;
         _profile = _profile with
         {
             Settings = _profile.Settings with { Locked = !enabled },
@@ -104,10 +107,23 @@ public partial class OverlayWindow
         ApplyPlacement(SessionFlagsWidget, _profile.SessionFlags);
         ApplyPlacement(FuelStrategyWidget, _profile.FuelStrategy);
         ApplyPlacement(RaceControlWidget, _profile.RaceControl);
-        PriorityAlert.Width = Math.Min(460, Math.Max(240, LayoutWidth - 24));
-        Canvas.SetLeft(PriorityAlert, Math.Max(12, (LayoutWidth - PriorityAlert.Width) / 2));
+        ApplyPriorityAlertPlacement();
         ApplyTheme();
         OverlayLocalization.Apply(this, _profile.Settings.Language);
+    }
+
+    private void ApplyPriorityAlertPlacement()
+    {
+        var bounds = ResponsiveWidgetLayout.Calculate(
+            LayoutWidth,
+            LayoutHeight,
+            _profile.PriorityAlert,
+            ResponsiveWidgetLayout.For(PriorityAlert.Name));
+        PriorityAlert.Width = bounds.Width;
+        PriorityAlert.Height = bounds.Height;
+        PriorityAlert.Opacity = _profile.PriorityAlert.Opacity;
+        Canvas.SetLeft(PriorityAlert, bounds.X);
+        Canvas.SetTop(PriorityAlert, bounds.Y);
     }
 
     private void ApplyPlacement(

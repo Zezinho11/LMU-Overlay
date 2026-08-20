@@ -24,6 +24,7 @@ public partial class OverlayWindow
         "SessionFlagsWidget" => _profile.SessionFlags,
         "FuelStrategyWidget" => _profile.FuelStrategy,
         "RaceControlWidget" => _profile.RaceControl,
+        "PriorityAlert" => _profile.PriorityAlert,
         _ => _profile.Diagnostic,
     };
 
@@ -36,6 +37,7 @@ public partial class OverlayWindow
         SessionFlagsWidget,
         FuelStrategyWidget,
         RaceControlWidget,
+        PriorityAlert,
     ];
 
     private double LayoutWidth => double.IsNaN(OverlayCanvas.Width)
@@ -172,6 +174,9 @@ public partial class OverlayWindow
             RaceControl = CapturePlacement(
                 RaceControlWidget,
                 _profile.RaceControl),
+            PriorityAlert = CapturePlacement(
+                PriorityAlert,
+                _profile.PriorityAlert),
         };
         _layoutStore.Save(_profile);
     }

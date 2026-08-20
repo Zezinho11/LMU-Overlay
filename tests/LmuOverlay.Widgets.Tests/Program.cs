@@ -390,6 +390,52 @@ Assert(strategy.EstimatedTimeToFinishSeconds == 15 * 121,
 Assert(strategy.Status == "MARGINAL",
     "A feasible one-stop strategy must assess the current stint, not the whole race tank.");
 Assert(refueled.Samples == 1, "Refueling must not be recorded as negative consumption.");
+
+var tireLearningTracker = new FuelStrategyTracker();
+var tireLearningStart = raceSnapshot with
+{
+    Player = player with
+    {
+        FuelLiters = 50,
+        TireWear = new(0.99, 0.99, 0.99, 0.99),
+    },
+};
+var tireOptions = new FuelStrategyOptions(
+    ManualRemainingLaps: 50,
+    MaximumStintLaps: 10);
+_ = tireLearningTracker.Update(tireLearningStart, tireOptions);
+FuelStrategyWidgetState tireProjection = default!;
+for (var lap = 1; lap <= 3; lap++)
+{
+    tireProjection = tireLearningTracker.Update(tireLearningStart with
+    {
+        CapturedAt = tireLearningStart.CapturedAt.AddMinutes(lap * 2),
+        Player = tireLearningStart.Player! with
+        {
+            LapNumber = 4 + lap,
+            FuelLiters = 50 - lap * 2.5,
+            TireWear = new(
+                0.99 - lap * 0.01,
+                0.99 - lap * 0.012,
+                0.99 - lap * 0.01,
+                0.99 - lap * 0.012),
+        },
+        Standings = new[]
+        {
+            standings[0],
+            standings[1] with
+            {
+                CompletedLaps = 4 + lap,
+                LastLapTimeSeconds = 121,
+            },
+            standings[2],
+        },
+    }, tireOptions);
+}
+Assert(tireProjection.AverageTireWearFractionPerLap > 0 &&
+       !tireProjection.TirePlan.Contains("LEARNING", StringComparison.Ordinal),
+    "Three falling LMU tire-life samples must unlock the complete tire schedule.");
+
 var versionTracker = new FuelStrategyTracker();
 _ = versionTracker.Update(raceSnapshot);
 Assert(versionTracker.Update(nextLapSnapshot).Samples == 1,
@@ -641,6 +687,11 @@ Assert(sameStopFuelSave.Available &&
 Assert(fuelSavePlan.PitPlan.Contains("TARGET", StringComparison.Ordinal) &&
        fuelSavePlan.TirePlan.Length > 0,
     "Fuel-save guidance must include both the per-lap target and its tire plan.");
+Assert(fuelSavePlan.StintInstructions.Count == fuelSavePlan.Strategy.Stints &&
+       fuelSavePlan.StintInstructions.All(item =>
+           item.SaveLaps > 0 && item.SaveLaps <= item.StintLaps) &&
+       fuelSavePlan.SaveLapPlan.Contains("SAVE TARGET", StringComparison.Ordinal),
+    "Fuel Save must state how many laps to save in every planned stint.");
 
 var healthyTires = EnduranceStrategyPlanner.Calculate(finalSplashInput with
 {
@@ -1088,6 +1139,8 @@ Assert(SteeringWheelRotation.ResolveRangeDegrees(900, 540) == 900,
     "Physical steering range must take priority over the visual range.");
 Assert(SteeringWheelRotation.ResolveRangeDegrees(0, 540) == 540,
     "Visual steering range must be used when physical range is unavailable.");
+Assert(SteeringWheelRotation.ResolveDisplayRangeDegrees(540, 900) == 540,
+    "The Inputs overlay must follow LMU's visual wheel range instead of diverging at large angles.");
 Assert(SteeringWheelRotation.AngleDegrees(0.5, 900) == 225,
     "Normalized steering must map to the real half-range angle.");
 Assert(SteeringWheelRotation.AngleDegrees(-2, 540) == -270,

@@ -193,6 +193,7 @@ public partial class OverlayWindow
               $"NRG {state.FinalVirtualEnergyTargetFraction:P0} · FINISH {state.FinishProbability:P0}"
             : $"NO FINAL FILL REQUIRED · FINISH {state.FinishProbability:P0}";
         FlagScenarioText.Text = state.FuelSavePlan;
+        FuelSaveLapPlanText.Text = state.FuelSaveLapPlan;
         WeatherScenarioText.Text = state.FuelSaveVirtualEnergyTargetPerLap > 0
             ? $"{state.FuelSavePitPlan} · NRG TARGET {state.FuelSaveVirtualEnergyTargetPerLap:P1}/LAP"
             : state.FuelSavePitPlan;
@@ -242,30 +243,33 @@ public partial class OverlayWindow
         FuelStrategyWidgetState fuel,
         RaceControlWidgetState raceControl)
     {
-        if (!_profile.Settings.ShowPriorityAlerts || !dashboard.Available)
+        if (!_profile.Settings.ShowPriorityAlerts || !_profile.PriorityAlert.Visible)
         {
             PriorityAlert.Visibility = Visibility.Collapsed;
             return;
         }
 
-        var hottestTire = new[]
-        {
-            dashboard.TireTemperatures.FrontLeftCelsius,
-            dashboard.TireTemperatures.FrontRightCelsius,
-            dashboard.TireTemperatures.RearLeftCelsius,
-            dashboard.TireTemperatures.RearRightCelsius,
-        }.Max();
-        var maximumWear = new[]
-        {
-            dashboard.TireWear.FrontLeftFraction,
-            dashboard.TireWear.FrontRightFraction,
-            dashboard.TireWear.RearLeftFraction,
-            dashboard.TireWear.RearRightFraction,
-        }.Max();
-
         string T(OverlayTextKey key) => OverlayText.Get(_profile.Settings.Language, key);
-        (OverlayAlertSeverity Severity, string Icon, string Text, string Detail)? alert =
-            raceControl.HasCriticalDamage
+        (OverlayAlertSeverity Severity, string Icon, string Text, string Detail)? alert = null;
+        if (dashboard.Available)
+        {
+            var hottestTire = new[]
+            {
+                dashboard.TireTemperatures.FrontLeftCelsius,
+                dashboard.TireTemperatures.FrontRightCelsius,
+                dashboard.TireTemperatures.RearLeftCelsius,
+                dashboard.TireTemperatures.RearRightCelsius,
+            }.Max();
+            var maximumWear = 1 - new[]
+            {
+                dashboard.TireWear.FrontLeftFraction,
+                dashboard.TireWear.FrontRightFraction,
+                dashboard.TireWear.RearLeftFraction,
+                dashboard.TireWear.RearRightFraction,
+            }.Min();
+            maximumWear = Math.Clamp(maximumWear, 0, 1);
+
+            alert = raceControl.HasCriticalDamage
                 ? (OverlayAlertSeverity.Critical, "!", T(OverlayTextKey.CriticalDamage), raceControl.DamageStatus)
                 : raceControl.OutstandingPenalties > 0
                     ? (OverlayAlertSeverity.Critical, "!", T(OverlayTextKey.Penalty), raceControl.PenaltyStatus)
@@ -284,6 +288,16 @@ public partial class OverlayWindow
                                             : dashboard.SpeedLimiterActive
                                                 ? (OverlayAlertSeverity.Information, "P", T(OverlayTextKey.PitLimiter), T(OverlayTextKey.Active))
                                                 : null;
+        }
+
+        if (alert is null && IsEditMode)
+        {
+            alert = (
+                OverlayAlertSeverity.Information,
+                "i",
+                T(OverlayTextKey.PriorityAlert),
+                "FULL PUSH · TYRES · ENERGY");
+        }
 
         if (alert is null)
         {

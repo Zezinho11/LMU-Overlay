@@ -66,13 +66,14 @@ public static partial class VrWidgetTextureRenderer
                 dashboard.TireTemperatures.RearLeftCelsius,
                 dashboard.TireTemperatures.RearRightCelsius,
             }.Max();
-            var maximumWear = new[]
+            var maximumWear = 1 - new[]
             {
                 dashboard.TireWear.FrontLeftFraction,
                 dashboard.TireWear.FrontRightFraction,
                 dashboard.TireWear.RearLeftFraction,
                 dashboard.TireWear.RearRightFraction,
-            }.Max();
+            }.Min();
+            maximumWear = Math.Clamp(maximumWear, 0, 1);
             (Color Color, string Icon, string Title, string Detail)? alert =
                 raceControl.HasCriticalDamage
                     ? (style.Critical, "!", T(style, OverlayTextKey.CriticalDamage), raceControl.DamageStatus)

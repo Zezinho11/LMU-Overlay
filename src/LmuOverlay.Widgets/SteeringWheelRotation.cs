@@ -13,6 +13,15 @@ public static class SteeringWheelRotation
         return Plausible(visual) ? visual : DefaultRangeDegrees;
     }
 
+    public static double ResolveDisplayRangeDegrees(double visual, double physical)
+    {
+        if (Plausible(visual))
+        {
+            return visual;
+        }
+        return Plausible(physical) ? physical : DefaultRangeDegrees;
+    }
+
     public static double AngleDegrees(double steering, double rangeDegrees) =>
         Math.Clamp(steering, -1, 1) *
         ResolveRangeDegrees(rangeDegrees, 0) /

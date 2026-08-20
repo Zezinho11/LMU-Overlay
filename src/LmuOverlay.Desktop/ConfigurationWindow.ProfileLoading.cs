@@ -37,6 +37,11 @@ public partial class ConfigurationWindow
             RaceControlOpacity,
             RaceControlScale,
             profile.RaceControl);
+        Set(
+            PriorityAlerts,
+            PriorityAlertOpacity,
+            PriorityAlertScale,
+            profile.PriorityAlert);
         foreach (var item in ThemeSelector.Items.OfType<ComboBoxItem>())
         {
             if (string.Equals(item.Tag?.ToString(), profile.Settings.Theme, StringComparison.Ordinal))
@@ -80,7 +85,8 @@ public partial class ConfigurationWindow
         LiveStandingsMaximumRows.Value = profile.Settings.LiveStandingsMaximumRows;
         RelativeCarsEachSide.Value = profile.Settings.RelativeCarsEachSide;
         PedalHistory.Value = profile.Settings.PedalHistorySeconds;
-        PriorityAlerts.IsChecked = profile.Settings.ShowPriorityAlerts;
+        PriorityAlerts.IsChecked = profile.Settings.ShowPriorityAlerts &&
+            profile.PriorityAlert.Visible;
         ReduceMotion.IsChecked = profile.Settings.ReduceMotion;
         EnableOfficialTimingHttp.IsChecked = profile.Settings.EnableOfficialTimingHttp;
         EnableNativeRendering.IsChecked = profile.Settings.EnableNativeRendering;

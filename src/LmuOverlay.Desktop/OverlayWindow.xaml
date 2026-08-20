@@ -725,7 +725,7 @@
                 MouseLeftButtonUp="WidgetMouseLeftButtonUp">
             <Grid>
                 <Viewbox Stretch="Uniform">
-                    <Grid Width="500" Height="400" Background="#F20A0F1A">
+                    <Grid Width="500" Height="418" Background="#F20A0F1A">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="34" />
                             <RowDefinition Height="54" />
@@ -734,7 +734,7 @@
                             <RowDefinition Height="38" />
                             <RowDefinition Height="52" />
                             <RowDefinition Height="80" />
-                            <RowDefinition Height="60" />
+                            <RowDefinition Height="78" />
                             <RowDefinition Height="18" />
                         </Grid.RowDefinitions>
                         <Border Grid.Row="0" Background="#FF1B2441">
@@ -901,17 +901,21 @@
                                 Background="#FF0D1422" BorderBrush="#FF34415A" BorderThickness="1">
                             <Grid>
                                 <Grid.RowDefinitions>
-                                    <RowDefinition /><RowDefinition /><RowDefinition />
+                                    <RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition />
                                 </Grid.RowDefinitions>
                                 <TextBlock x:Name="FlagScenarioText"
                                            Text="FLAGS · LEARNING"
                                            Foreground="#FF42D3A6" FontFamily="Bahnschrift"
                                            FontSize="9" FontWeight="Bold" />
-                                <TextBlock x:Name="WeatherScenarioText" Grid.Row="1"
-                                           Text="WEATHER · LEARNING"
+                                <TextBlock x:Name="FuelSaveLapPlanText" Grid.Row="1"
+                                           Text="SAVE TARGET · LEARNING"
+                                           Foreground="#FF42D3A6" FontFamily="Bahnschrift"
+                                           FontSize="9" FontWeight="Bold" />
+                                <TextBlock x:Name="WeatherScenarioText" Grid.Row="2"
+                                           Text="PIT · LEARNING"
                                            Foreground="#FF8BC5FF" FontFamily="Bahnschrift"
                                            FontSize="9" FontWeight="Bold" />
-                                <TextBlock x:Name="TrafficScenarioText" Grid.Row="2"
+                                <TextBlock x:Name="TrafficScenarioText" Grid.Row="3"
                                            Text="TRAFFIC · LEARNING"
                                            Foreground="#FF42D3A6" FontFamily="Bahnschrift"
                                            FontSize="9" FontWeight="Bold" />
@@ -1015,12 +1019,14 @@
                 Canvas.Top="24"
                 Panel.ZIndex="100"
                 Visibility="Collapsed"
-                IsHitTestVisible="False"
                 CornerRadius="5"
                 BorderThickness="2"
                 Padding="14,7"
                 Background="#F2182535"
-                BorderBrush="#FF12D9E5">
+                BorderBrush="#FF12D9E5"
+                MouseLeftButtonDown="WidgetMouseLeftButtonDown"
+                MouseMove="WidgetMouseMove"
+                MouseLeftButtonUp="WidgetMouseLeftButtonUp">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="42" />
@@ -1042,6 +1048,15 @@
                 <TextBlock Grid.Column="2" Text="REDFOX"
                            FontFamily="Bahnschrift" FontWeight="Bold" FontSize="9"
                            Foreground="#FFE1E6EB" VerticalAlignment="Center" />
+                <primitives:Thumb x:Name="PriorityAlertResizeThumb"
+                                  Grid.ColumnSpan="3"
+                                  Tag="PriorityAlert"
+                                  Width="18" Height="18" Panel.ZIndex="10"
+                                  HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                  Cursor="SizeNWSE" Background="#FFFFCA6A"
+                                  Visibility="Collapsed"
+                                  DragDelta="ResizeThumbDragDelta"
+                                  DragCompleted="ResizeThumbDragCompleted" />
             </Grid>
         </Border>
     </Canvas>

@@ -19,8 +19,8 @@ public static partial class EssentialWidgetStateFactory
             Math.Clamp(player.Steering, -1, 1),
             player.AbsActive,
             player.TractionControlActive,
-            SteeringWheelRotation.ResolveRangeDegrees(
-                player.PhysicalSteeringWheelRangeDegrees,
-                player.VisualSteeringWheelRangeDegrees));
+            SteeringWheelRotation.ResolveDisplayRangeDegrees(
+                player.VisualSteeringWheelRangeDegrees,
+                player.PhysicalSteeringWheelRangeDegrees));
     }
 }

@@ -67,7 +67,19 @@ public sealed record FuelSaveStrategyPlan(
     EnduranceStrategyPlan Strategy,
     string Summary,
     string PitPlan,
-    string TirePlan);
+    string TirePlan)
+{
+    public IReadOnlyList<FuelSaveStintInstruction> StintInstructions { get; init; } =
+        Array.Empty<FuelSaveStintInstruction>();
+    public string SaveLapPlan { get; init; } = string.Empty;
+}
+
+public sealed record FuelSaveStintInstruction(
+    int StintNumber,
+    int StintLaps,
+    int SaveLaps,
+    double EquivalentLapsSaved,
+    double SaveLapTargetLiters);
 
 public static class FullPushStrategyCalculator
 {

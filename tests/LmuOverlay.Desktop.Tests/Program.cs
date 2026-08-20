@@ -176,6 +176,7 @@ try
     requested = requested with
     {
         RaceControl = new WidgetPlacement(2, -1, 0.01, 4, 5, 0.1, true),
+        PriorityAlert = new WidgetPlacement(-1, 2, 0.01, 3, 4, 0.1, false),
         Settings = new OverlayProfileSettings
         {
             Theme = "Unsupported",
@@ -198,6 +199,9 @@ try
         "Race Control placement must be sanitized.");
     Assert(loaded.RaceControl.Scale == 2,
         "Race Control scale must be clamped.");
+    Assert(loaded.PriorityAlert.X == 0 && loaded.PriorityAlert.Y == 0.95 &&
+           loaded.PriorityAlert.Scale == 2 && !loaded.PriorityAlert.Visible,
+        "The top priority alert placement and enabled state must be sanitized and persisted.");
     Assert(loaded.Settings.Theme == "RedFox", "Unknown themes must fail to RedFox.");
     Assert(loaded.Settings.RefreshRateHz == 100, "Valid high refresh rate must be preserved.");
     Assert(loaded.Settings.GridSnapPixels == 50, "Grid snapping must be clamped.");
@@ -327,6 +331,7 @@ try
             ("SessionFlagsWidget", LayoutProfile.Default.SessionFlags),
             ("FuelStrategyWidget", LayoutProfile.Default.FuelStrategy),
             ("RaceControlWidget", LayoutProfile.Default.RaceControl),
+            ("PriorityAlert", LayoutProfile.Default.PriorityAlert),
         })
         {
             var spec = ResponsiveWidgetLayout.For(name);
