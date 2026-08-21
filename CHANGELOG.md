@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.8.9 - 2026-08-21
+
+- Added an optional authenticated LAN dashboard for phones, with responsive
+  telemetry, SSE delivery and a compatibility polling fallback for older
+  mobile browsers.
+- Enabled placement and resizing across the complete Windows virtual desktop,
+  preserving widget geometry when locking the overlay or changing monitors.
+- Added selectable PNG steering-wheel artwork and direct read-only Windows
+  controller input while retaining LMU telemetry as a safe fallback.
+- Refined per-vehicle shift-light timing and removed duplicate RPM-window
+  normalization across Desktop, SteamVR and the phone dashboard.
+- Reworked full-push and fuel-save plans around per-stint saved-lap targets,
+  measured fuel/Virtual Energy capacity and per-corner tyre-life schedules.
+- Hardened valid-only personal lap, sector and Optimal persistence without
+  erasing existing driver records during schema migration.
+- Restored manufacturer identification in Live Standings and kept timing,
+  strategy and visual behavior aligned between Desktop and SteamVR.
+- Moved persistence and derived strategy work away from the latency-critical
+  telemetry path and expanded automated layout, compatibility and parity tests.
+
 ## 0.8.5 hotfix - 2026-08-20
 
 - Corrected LMU remaining-tyre-life learning and restored per-corner tyre

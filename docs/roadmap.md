@@ -23,7 +23,8 @@ The prioritized hardening work and its research basis are recorded in the
 - [x] Capture clean out-lap S2/S3 references and persist clean personal sector
   bests per track and vehicle model for first-flying-lap deltas.
 - [x] Persist complete personal-best laps per track, driver and vehicle model,
-  keeping all displayed PB sectors tied to the same record lap.
+  while recording each faster valid sector independently and deriving Optimal
+  from the three sector records.
 - [x] Add a bounded, versioned and privacy-safe normalized telemetry recorder,
   deterministic replay source and sequential regression fixtures.
 

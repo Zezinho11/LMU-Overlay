@@ -47,6 +47,7 @@ public sealed record FuelStrategyWidgetState(
     public string FuelSavePitPlan { get; init; } = string.Empty;
     public string FuelSaveTirePlan { get; init; } = string.Empty;
     public string FuelSaveLapPlan { get; init; } = string.Empty;
+    public int FuelSaveCurrentStintTargetLaps { get; init; }
     public double FuelSaveTargetLitersPerLap { get; init; }
     public double FuelSaveFraction { get; init; }
     public bool FuelSaveReducesStopCount { get; init; }

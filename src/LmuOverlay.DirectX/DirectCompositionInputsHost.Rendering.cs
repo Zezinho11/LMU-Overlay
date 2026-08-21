@@ -75,7 +75,10 @@ internal sealed unsafe partial class DirectCompositionInputsHost
             DrawText(drawing, "ABS", 438, 14, 64, 22, 13, _panel!, TextAlignment.Center);
         }
         drawing.EndDraw().CheckError();
-        _swapChain!.Present(1, PresentFlags.None).CheckError();
+        // The compositor performs final display synchronization. Avoid a
+        // second per-window VSync wait so the newest sample replaces an old
+        // one instead of building visible bursts.
+        _swapChain!.Present(0, PresentFlags.None).CheckError();
     }
 
     private void DrawSteering(
@@ -134,12 +137,14 @@ internal sealed unsafe partial class DirectCompositionInputsHost
         var newest = _history[newestIndex].Timestamp;
         var oldest = newest - Stopwatch.Frequency * 4;
         var hasPrevious = false;
+        var stride = Math.Max(1, (int)Math.Ceiling(_count / width));
         Vector2 previousThrottle = default;
         Vector2 previousBrake = default;
         for (var offset = _count - 1; offset >= 0; offset--)
         {
             var sample = _history[(_head - 1 - offset + _history.Length) % _history.Length];
             if (sample.Timestamp < oldest) continue;
+            if (offset != 0 && offset != _count - 1 && offset % stride != 0) continue;
             var x = left + (float)((sample.Timestamp - oldest) /
                 (double)(Stopwatch.Frequency * 4)) * width;
             var throttle = new Vector2(x, top + height - sample.Throttle * height);

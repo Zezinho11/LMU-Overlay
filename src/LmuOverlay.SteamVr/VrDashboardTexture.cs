@@ -71,7 +71,7 @@ public static class VrDashboardTexture
             new(350, 28, 500, 50), true, StringAlignment.Center);
         c.Text(state.SessionName, 17 * scale, style.SecondaryText,
             new(860, 42, 290, 34), true, StringAlignment.Far);
-        var active = (int)Math.Ceiling(Math.Clamp((state.EngineRpmFraction - 0.65) / 0.35, 0, 1) * 12);
+        var active = (int)Math.Ceiling(Math.Clamp(state.EngineRpmFraction, 0, 1) * 12);
         for (var index = 0; index < 12; index++)
         {
             var color = index >= active

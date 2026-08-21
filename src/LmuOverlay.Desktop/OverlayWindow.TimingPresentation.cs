@@ -130,7 +130,7 @@ public partial class OverlayWindow
             11);
         var manufacturerBadge = new Border
         {
-            Background = CarIconBrush(row.VehicleModel),
+            Background = CarIconBrush(row.VehicleModel, row.VehicleName),
             Width = 42,
             Height = 19,
             CornerRadius = new CornerRadius(2),
@@ -138,7 +138,7 @@ public partial class OverlayWindow
             VerticalAlignment = VerticalAlignment.Center,
             Child = new TextBlock
             {
-                Text = ManufacturerAbbreviation(row.VehicleModel),
+                Text = ManufacturerAbbreviation(row.VehicleModel, row.VehicleName),
                 Foreground = Brush(palette.PrimaryText),
                 FontFamily = new System.Windows.Media.FontFamily("Bahnschrift"),
                 FontWeight = FontWeights.Bold,
@@ -230,10 +230,10 @@ public partial class OverlayWindow
         var badge = grid.Children.OfType<Border>().FirstOrDefault();
         if (badge is not null)
         {
-            badge.Background = CarIconBrush(row.VehicleModel);
+            badge.Background = CarIconBrush(row.VehicleModel, row.VehicleName);
             if (badge.Child is TextBlock badgeText)
             {
-                badgeText.Text = ManufacturerAbbreviation(row.VehicleModel);
+                badgeText.Text = ManufacturerAbbreviation(row.VehicleModel, row.VehicleName);
             }
         }
     }
@@ -339,18 +339,22 @@ public partial class OverlayWindow
         };
     }
 
-    private static System.Windows.Media.Brush CarIconBrush(string vehicleName)
+    private static System.Windows.Media.Brush CarIconBrush(
+        string vehicleModel,
+        string vehicleName)
     {
         var color = (System.Windows.Media.Color)System.Windows.Media.ColorConverter
-            .ConvertFromString(VehicleCatalog.Resolve(vehicleName).Color)!;
+            .ConvertFromString(VehicleCatalog.Resolve(vehicleModel, vehicleName).Color)!;
         var brush = new System.Windows.Media.SolidColorBrush(color);
         brush.Freeze();
         return brush;
     }
 
-    private static string ManufacturerAbbreviation(string vehicleName)
+    private static string ManufacturerAbbreviation(
+        string vehicleModel,
+        string vehicleName)
     {
-        return VehicleCatalog.Resolve(vehicleName).Code;
+        return VehicleCatalog.Resolve(vehicleModel, vehicleName).Code;
     }
 
 }

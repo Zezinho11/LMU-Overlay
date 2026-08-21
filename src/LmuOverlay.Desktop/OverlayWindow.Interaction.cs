@@ -123,10 +123,14 @@ public partial class OverlayWindow
         }
 
         var spec = ResponsiveWidgetLayout.For(widget.Name);
-        var displayScale = Math.Clamp(
-            Math.Min(ActualWidth / 1920, ActualHeight / 1080),
-            0.55,
-            1.5);
+        var displayScale = LocalDisplayScale(PlacementFor(widget));
+        if (displayScale <= 0)
+        {
+            displayScale = Math.Clamp(
+                Math.Min(ActualWidth / 1920, ActualHeight / 1080),
+                0.55,
+                1.5);
+        }
         var minimumWidth = Math.Min(ActualWidth, spec.MinimumWidth * displayScale);
         var minimumHeight = Math.Min(ActualHeight, spec.MinimumHeight * displayScale);
         var maximumWidth = Math.Max(minimumWidth, ActualWidth - Canvas.GetLeft(widget));

@@ -32,12 +32,17 @@ public static class FuelSaveStrategyCalculator
                 var reducedStops = CalculateForConsumption(input, currentFuelLiters, attemptedTarget);
                 if (reducedStops.Available && reducedStops.Stops <= targetStops)
                 {
+                    if (!CanExpressWithLmuTargets(input, reducedStops))
+                    {
+                        continue;
+                    }
+
                     return Result(
+                        input,
                         reducedStops,
                         input.ConsumptionLitersPerLap,
                         attemptedTarget,
                         attemptedSaving,
-                        maximumSavingFraction,
                         true);
                 }
             }
@@ -75,12 +80,17 @@ public static class FuelSaveStrategyCalculator
             var alternative = CalculateForConsumption(input, currentFuelLiters, attemptedTarget);
             if (alternative.Available && alternative.Stops <= fullPush.Stops)
             {
+                if (!CanExpressWithLmuTargets(input, alternative))
+                {
+                    continue;
+                }
+
                 return Result(
+                    input,
                     alternative,
                     input.ConsumptionLitersPerLap,
                     attemptedTarget,
                     attemptedSaving,
-                    maximumSavingFraction,
                     alternative.Stops < fullPush.Stops);
             }
         }
@@ -124,27 +134,26 @@ public static class FuelSaveStrategyCalculator
     }
 
     private static FuelSaveStrategyPlan Result(
+        EnduranceStrategyInput input,
         EnduranceStrategyPlan strategy,
         double pushConsumption,
         double targetConsumption,
         double saving,
-        double maximumSavingFraction,
         bool reducesStops)
     {
         var instructions = BuildStintInstructions(
+            input,
             strategy.StintLaps,
-            pushConsumption,
-            saving,
-            maximumSavingFraction);
+            pushConsumption);
         return new(
             true,
             targetConsumption,
             saving,
             reducesStops,
             strategy,
-            $"FUEL SAVE {saving:P1} · {strategy.Stints} STINTS · {strategy.Stops} STOPS · " +
+            $"FUEL SAVE · {strategy.Stints} STINTS · {strategy.Stops} STOPS · " +
             (reducesStops ? "FEWER STOPS" : "SAME STOPS"),
-            $"TARGET {targetConsumption:0.00} L/LAP · {strategy.PitPlan}",
+            strategy.PitPlan,
             strategy.TirePlan)
         {
             StintInstructions = instructions,
@@ -153,31 +162,24 @@ public static class FuelSaveStrategyCalculator
     }
 
     private static IReadOnlyList<FuelSaveStintInstruction> BuildStintInstructions(
+        EnduranceStrategyInput input,
         IReadOnlyList<int> stintLaps,
-        double pushConsumption,
-        double saving,
-        double maximumSavingFraction)
+        double pushConsumption)
     {
-        var maximumPerSaveLap = Math.Clamp(maximumSavingFraction, 0.01, 0.5);
+        var currentRange = CurrentPushRange(input);
+        var futureRange = FuturePushRange(input);
         return stintLaps.Select((laps, index) =>
         {
-            var equivalentLaps = Math.Max(0, laps * saving);
-            var saveLaps = equivalentLaps > 0
-                ? Math.Clamp(
-                    (int)Math.Ceiling(equivalentLaps / maximumPerSaveLap - 0.000001),
-                    1,
-                    laps)
-                : 0;
-            var perSaveLapFraction = saveLaps > 0
-                ? Math.Clamp(equivalentLaps / saveLaps, 0, maximumPerSaveLap)
-                : 0;
+            var pushRange = index == 0 ? currentRange : futureRange;
+            var saveTarget = Math.Clamp(laps - pushRange, 0, 3);
             return new FuelSaveStintInstruction(
                 index + 1,
                 laps,
-                saveLaps,
-                equivalentLaps,
-                pushConsumption * (1 - perSaveLapFraction));
-        }).ToArray();
+                saveTarget,
+                saveTarget > 0
+                    ? pushConsumption * pushRange / (pushRange + saveTarget)
+                    : pushConsumption);
+        }).Where(item => item.SaveTargetLaps > 0).ToArray();
     }
 
     private static string FormatSaveLapPlan(
@@ -206,18 +208,57 @@ public static class FuelSaveStrategyCalculator
             var stint = group.First == group.Last
                 ? $"S{group.First}"
                 : $"S{group.First}-{group.Last}";
-            return $"{stint} +{group.Item.EquivalentLapsSaved:0.0}LAP " +
-                $"({group.Item.SaveLaps}/{group.Item.StintLaps})";
+            var suffix = group.Item.SaveTargetLaps == 1 ? "LAP" : "LAPS";
+            return $"{stint} +{group.Item.SaveTargetLaps} {suffix}";
         }));
     }
 
     private static bool SameInstruction(
         FuelSaveStintInstruction first,
         FuelSaveStintInstruction second) =>
-        first.StintLaps == second.StintLaps &&
-        first.SaveLaps == second.SaveLaps &&
-        Math.Abs(first.EquivalentLapsSaved - second.EquivalentLapsSaved) < 0.05 &&
-        Math.Abs(first.SaveLapTargetLiters - second.SaveLapTargetLiters) < 0.01;
+        first.SaveTargetLaps == second.SaveTargetLaps;
+
+    private static bool CanExpressWithLmuTargets(
+        EnduranceStrategyInput input,
+        EnduranceStrategyPlan strategy)
+    {
+        var currentRange = CurrentPushRange(input);
+        var futureRange = FuturePushRange(input);
+        var hasTarget = false;
+        for (var index = 0; index < strategy.StintLaps.Count; index++)
+        {
+            var pushRange = index == 0 ? currentRange : futureRange;
+            var extension = strategy.StintLaps[index] - pushRange;
+            if (extension > 3)
+            {
+                return false;
+            }
+            hasTarget |= extension > 0;
+        }
+        return hasTarget;
+    }
+
+    private static int CurrentPushRange(EnduranceStrategyInput input)
+    {
+        var energy = input.CurrentVirtualEnergyRangeLaps is > 0 and < int.MaxValue
+            ? input.CurrentVirtualEnergyRangeLaps
+            : int.MaxValue;
+        var configured = input.ConfiguredMaximumStintLaps > 0
+            ? input.ConfiguredMaximumStintLaps
+            : int.MaxValue;
+        return Math.Max(1, Math.Min(Math.Min(input.CurrentFuelRangeLaps, energy), configured));
+    }
+
+    private static int FuturePushRange(EnduranceStrategyInput input)
+    {
+        var energy = input.MaximumVirtualEnergyStintLaps is > 0 and < int.MaxValue
+            ? input.MaximumVirtualEnergyStintLaps
+            : int.MaxValue;
+        var configured = input.ConfiguredMaximumStintLaps > 0
+            ? input.ConfiguredMaximumStintLaps
+            : int.MaxValue;
+        return Math.Max(1, Math.Min(Math.Min(input.MaximumFuelStintLaps, energy), configured));
+    }
 
     private static FuelSaveStrategyPlan Unavailable(
         EnduranceStrategyInput input,

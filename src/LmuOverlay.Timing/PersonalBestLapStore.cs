@@ -116,6 +116,43 @@ public sealed class PersonalBestLapStore
         }
     }
 
+    public SectorReferenceSeed SaveSectorsIfFaster(
+        string trackName,
+        string driverName,
+        string vehicleModel,
+        SectorReferenceSeed candidate)
+    {
+        var clean = Sanitize(candidate);
+        if (!ValidKeyPart(trackName) || !ValidKeyPart(driverName) ||
+            !ValidKeyPart(vehicleModel) || clean == default)
+        {
+            return LoadRecord(trackName, driverName, vehicleModel).BestSectors;
+        }
+
+        lock (_sync)
+        {
+            var catalog = EnsureCatalog();
+            var key = Key(trackName, driverName, vehicleModel, _generation);
+            catalog.Entries.TryGetValue(key, out var existing);
+            var bestSectors = existing is null
+                ? clean
+                : Merge(existing.BestSectors, clean);
+            var optimal = bestSectors.Optimal;
+            catalog.Entries[key] = existing is null
+                ? new Entry(
+                    trackName.Trim(), driverName.Trim(), vehicleModel.Trim(), default,
+                    DateTimeOffset.UtcNow, bestSectors, optimal, _generation)
+                : existing with
+                {
+                    BestSectors = bestSectors,
+                    OptimalLapTimeSeconds = optimal,
+                    UpdatedAtUtc = DateTimeOffset.UtcNow,
+                };
+            WriteAtomic(JsonSerializer.Serialize(catalog, Options));
+            return bestSectors;
+        }
+    }
+
     public double SaveOptimalIfFaster(
         string trackName,
         string driverName,

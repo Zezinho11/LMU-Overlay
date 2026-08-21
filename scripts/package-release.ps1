@@ -45,14 +45,16 @@ $nugetConfig = Join-Path $projectRoot "NuGet.Config"
 
 & $DotnetExecutable restore $desktopProject `
     --runtime $Runtime `
-    --configfile $nugetConfig
+    --configfile $nugetConfig `
+    -p:NuGetAudit=false
 if ($LASTEXITCODE -ne 0) {
     throw "dotnet restore failed with exit code $LASTEXITCODE."
 }
 
 & $DotnetExecutable restore $steamVrProject `
     --runtime $Runtime `
-    --configfile $nugetConfig
+    --configfile $nugetConfig `
+    -p:NuGetAudit=false
 if ($LASTEXITCODE -ne 0) {
     throw "SteamVR dotnet restore failed with exit code $LASTEXITCODE."
 }

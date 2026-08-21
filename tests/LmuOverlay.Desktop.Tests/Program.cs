@@ -1,5 +1,6 @@
 using LmuOverlay.Desktop;
 using LmuOverlay.Widgets;
+using System.Net;
 using System.Text.Json;
 
 var root = Path.Combine(Path.GetTempPath(), "lmu-overlay-tests", Guid.NewGuid().ToString("N"));
@@ -82,6 +83,69 @@ try
     Assert(store.ActiveProfileName == LayoutStore.DefaultProfileName, "Default profile must be active.");
     Assert(store.ProfileNames.Count == 1, "A fresh store must contain one profile.");
 
+    var sourceDisplay = new System.Windows.Rect(1920, 0, 1920, 1080);
+    var virtualDesktop = new System.Windows.Rect(0, 0, 5760, 1080);
+    var sourcePlacement = new WidgetPlacement(0.1, 0.2, 0.25, 0.3, 1, 1, true);
+    var rebasedPlacement = OverlayWindow.Rebase(
+        sourcePlacement,
+        sourceDisplay,
+        virtualDesktop);
+    Assert(Math.Abs(
+               (virtualDesktop.Left + rebasedPlacement.X * virtualDesktop.Width) -
+               (sourceDisplay.Left + sourcePlacement.X * sourceDisplay.Width)) < 0.001 &&
+           Math.Abs(rebasedPlacement.Width * virtualDesktop.Width -
+                    sourcePlacement.Width * sourceDisplay.Width) < 0.001,
+        "Enabling multimonitor placement must preserve the widget's pixel position and size.");
+    var localScaleBounds = ResponsiveWidgetLayout.Calculate(
+        5760,
+        2160,
+        new WidgetPlacement(0.7, 0.2, 0.05, 0.1, 1, 1, true),
+        ResponsiveWidgetLayout.For("InputsWidget"),
+        localDisplayScale: 1);
+    Assert(Math.Abs(localScaleBounds.Width - 288) < 0.001,
+        "Multimonitor sizing must use the destination monitor scale, not the full desktop span.");
+
+    await using (var remoteDashboard = new RemoteDashboardServer(0, "mobiletest12"))
+    using (var http = new HttpClient { Timeout = TimeSpan.FromSeconds(2) })
+    {
+        var page = await http.GetStringAsync(
+            $"http://127.0.0.1:{remoteDashboard.Port}/?token=mobiletest12");
+        Assert(page.Contains("REDFOX RACING", StringComparison.Ordinal),
+            "The phone dashboard must serve its responsive UI on the LAN endpoint.");
+        Assert(page.Contains("XMLHttpRequest", StringComparison.Ordinal) &&
+               page.Contains("INICIANDO", StringComparison.Ordinal) &&
+               !page.Contains("=>", StringComparison.Ordinal) &&
+               !page.Contains("??", StringComparison.Ordinal),
+            "The phone connection bootstrap must remain compatible with older mobile browsers.");
+        using (var eventsRequest = new HttpRequestMessage(
+                   HttpMethod.Get,
+                   $"http://127.0.0.1:{remoteDashboard.Port}/events?token=mobiletest12"))
+        using (var eventsResponse = await http.SendAsync(
+                   eventsRequest,
+                   HttpCompletionOption.ResponseHeadersRead))
+        {
+            Assert(eventsResponse.IsSuccessStatusCode &&
+                   eventsResponse.Content.Headers.ContentType?.MediaType ==
+                   "text/event-stream",
+                "The phone dashboard must establish its continuous telemetry stream.");
+            await using var events = await eventsResponse.Content.ReadAsStreamAsync();
+            using var reader = new StreamReader(events, leaveOpen: false);
+            var firstEventLine = await reader.ReadLineAsync();
+            Assert(firstEventLine?.StartsWith("id: ", StringComparison.Ordinal) == true,
+                "The telemetry stream must deliver an initial frame immediately.");
+        }
+        var stateResponse = await http.GetAsync(
+            $"http://127.0.0.1:{remoteDashboard.Port}/state?token=mobiletest12");
+        Assert(stateResponse.IsSuccessStatusCode &&
+               stateResponse.Content.Headers.ContentType?.MediaType == "application/json" &&
+               await stateResponse.Content.ReadAsStringAsync() == "{}",
+            "The phone dashboard must provide a polling fallback for browsers that cannot keep SSE open.");
+        var forbidden = await http.GetAsync(
+            $"http://127.0.0.1:{remoteDashboard.Port}/");
+        Assert(forbidden.StatusCode == HttpStatusCode.Forbidden,
+            "The phone dashboard must reject clients without the profile token.");
+    }
+
     var sectorPath = Path.Combine(root, "sector-references.json");
     var sectorStore = new SectorReferenceStore(sectorPath);
     Assert(sectorStore.Load("Spa", "GT3") == default,
@@ -110,6 +174,12 @@ try
     Assert(personalBestStore.SaveIfFaster(
         "Spa", "Driver One", "GT3", slowerLap) == firstPersonalBest,
         "A slower lap must not overwrite the personal best.");
+    var independentSectorRecords = personalBestStore.SaveSectorsIfFaster(
+        "Spa", "Driver One", "GT3", new(29.5, 41, 49));
+    Assert(independentSectorRecords == new LmuOverlay.Widgets.SectorReferenceSeed(29.5, 40, 49) &&
+           Math.Abs(personalBestStore.LoadRecord(
+               "Spa", "Driver One", "GT3").OptimalLapTimeSeconds - 118.5) < 0.0001,
+        "Each valid sector must beat only its own saved record and Optimal must be their sum.");
     var fasterLap = new LmuOverlay.Widgets.PersonalBestLap(118, 29, 39, 50);
     Assert(personalBestStore.SaveIfFaster(
         "Spa", "Driver One", "GT3", fasterLap) == fasterLap,
@@ -190,16 +260,16 @@ try
     var loaded = store.Load();
 
     Assert(loaded.Diagnostic.X == 0, "X must be clamped.");
-    Assert(loaded.Diagnostic.Y == 0.95, "Y must be clamped.");
-    Assert(loaded.Diagnostic.Width == 0.08, "Width must respect its minimum.");
+    Assert(loaded.Diagnostic.Y == 0.999, "Y must be clamped.");
+    Assert(loaded.Diagnostic.Width == 0.02, "Width must respect its multimonitor minimum.");
     Assert(loaded.Diagnostic.Height == 1, "Height must be clamped.");
     Assert(loaded.Diagnostic.Scale == 2, "Scale must be clamped.");
     Assert(loaded.Diagnostic.Opacity == 0.2, "Opacity must be clamped.");
-    Assert(loaded.RaceControl.X == 0.95 && loaded.RaceControl.Y == 0,
+    Assert(loaded.RaceControl.X == 0.999 && loaded.RaceControl.Y == 0,
         "Race Control placement must be sanitized.");
     Assert(loaded.RaceControl.Scale == 2,
         "Race Control scale must be clamped.");
-    Assert(loaded.PriorityAlert.X == 0 && loaded.PriorityAlert.Y == 0.95 &&
+    Assert(loaded.PriorityAlert.X == 0 && loaded.PriorityAlert.Y == 0.999 &&
            loaded.PriorityAlert.Scale == 2 && !loaded.PriorityAlert.Visible,
         "The top priority alert placement and enabled state must be sanitized and persisted.");
     Assert(loaded.Settings.Theme == "RedFox", "Unknown themes must fail to RedFox.");

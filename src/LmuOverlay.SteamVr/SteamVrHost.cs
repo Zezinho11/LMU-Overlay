@@ -143,6 +143,9 @@ public static partial class SteamVrHost
                 {
                     profile = profileStore.Load();
                     var settings = desktopSettingsReader.Load();
+                    WindowsSteeringInputReader? steeringReader = null;
+                    var steeringDeviceId = int.MinValue;
+                    var shiftLightTiming = new ShiftLightTimingTracker();
                     ConfigureAll(openVr, profile);
                     var lastConfigurationRead = Stopwatch.GetTimestamp();
                     var lastTimingUpdate = 0L;
@@ -203,8 +206,29 @@ public static partial class SteamVrHost
                                 LmuConnectionState.Disconnected,
                                 "Session ended.")
                             : snapshot;
-                        var essentialFrame = frameComposer.Compose(live);
-                        var dashboard = essentialFrame.Dashboard;
+                        double? directSteering = null;
+                        if (settings.UseDirectSteeringInput)
+                        {
+                            if (steeringReader is null ||
+                                steeringDeviceId != settings.SteeringInputDeviceId)
+                            {
+                                steeringDeviceId = settings.SteeringInputDeviceId;
+                                steeringReader = new(settings.SteeringInputDeviceId);
+                            }
+                            var steeringSample = steeringReader.Read();
+                            if (steeringSample.Available)
+                            {
+                                directSteering = steeringSample.NormalizedPosition;
+                            }
+                        }
+                        var essentialFrame = frameComposer.Compose(
+                            live,
+                            settings.SteeringWheelRangeDegrees,
+                            directSteering);
+                        var dashboard = essentialFrame.Dashboard with
+                        {
+                            EngineRpmFraction = shiftLightTiming.Update(live.Player),
+                        };
                         var trackedSectors = sectors.Update(live, dashboard.SectorTimes);
                         var liveOptimal = officialOptimal.GetOptimal(snapshot);
                         var persistedOptimal = sectors.ObserveOptimal(live, liveOptimal);

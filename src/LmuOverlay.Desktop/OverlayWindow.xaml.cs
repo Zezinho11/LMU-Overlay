@@ -83,6 +83,7 @@ public partial class OverlayWindow : Window
     private readonly FuelStrategyTracker _fuelStrategyTracker = new();
     private readonly PersistentSectorReferenceTracker _sectorReferenceTracker;
     private readonly TimingWidgetTracker _timingWidgetTracker = new();
+    private readonly ShiftLightTimingTracker _shiftLightTiming = new();
     private readonly Queue<(double TimeSeconds, double Throttle, double Brake, bool AbsActive, bool TcActive)> _pedalHistory = new();
     private readonly int[] _pedalGraphPixels = new int[PedalGraphWidth * PedalGraphHeight];
     private readonly System.Windows.Media.Imaging.WriteableBitmap _pedalGraphBitmap;
@@ -94,6 +95,7 @@ public partial class OverlayWindow : Window
     private bool _dragging;
     private FrameworkElement? _activeWidget;
     private Rect _lastGameBounds;
+    private Rect _lastLayoutBounds;
     private LmuTelemetrySnapshot _lastSnapshot = LmuTelemetrySnapshot.Unavailable(
         LmuConnectionState.Disconnected,
         "No telemetry captured yet.");
@@ -162,21 +164,25 @@ public partial class OverlayWindow : Window
         Rect gameBounds,
         LmuTelemetrySnapshot snapshot,
         bool updateSlowWidgets = true,
-        double officialOptimalLapSeconds = 0)
+        double officialOptimalLapSeconds = 0,
+        double? directSteeringPosition = null)
     {
         _lastSnapshot = snapshot;
-        var boundsChanged = gameBounds != _lastGameBounds;
+        var layoutBounds = GetPlacementBounds(gameBounds);
+        var boundsChanged = layoutBounds != _lastLayoutBounds;
         _lastGameBounds = gameBounds;
+        _lastLayoutBounds = layoutBounds;
         if (boundsChanged)
         {
-            Left = gameBounds.Left;
-            Top = gameBounds.Top;
-            Width = gameBounds.Width;
-            Height = gameBounds.Height;
-            if (!IsEditMode)
-            {
-                ApplyProfile();
-            }
+            Left = layoutBounds.Left;
+            Top = layoutBounds.Top;
+            Width = layoutBounds.Width;
+            Height = layoutBounds.Height;
+            // Switch the canvas coordinate space immediately. Waiting for the
+            // next WPF arrange pass made rebased widgets disappear in edit mode.
+            OverlayCanvas.Width = layoutBounds.Width;
+            OverlayCanvas.Height = layoutBounds.Height;
+            ApplyProfile();
         }
 
         var sessionEnded = snapshot.Session?.GamePhase == LmuGamePhase.SessionOver;
@@ -186,8 +192,14 @@ public partial class OverlayWindow : Window
                 "Session ended.")
             : snapshot;
         var connected = snapshot.State == LmuConnectionState.Connected && !sessionEnded;
-        var essentialFrame = _frameComposer.Compose(dashboardSnapshot);
-        var dashboard = essentialFrame.Dashboard;
+        var essentialFrame = _frameComposer.Compose(
+            dashboardSnapshot,
+            _profile.Settings.SteeringWheelRangeDegrees,
+            directSteeringPosition);
+        var dashboard = essentialFrame.Dashboard with
+        {
+            EngineRpmFraction = _shiftLightTiming.Update(dashboardSnapshot.Player),
+        };
         var trackedSectors = _sectorReferenceTracker.Update(
             dashboardSnapshot,
             dashboard.SectorTimes);

@@ -77,8 +77,7 @@ public sealed record FuelSaveStrategyPlan(
 public sealed record FuelSaveStintInstruction(
     int StintNumber,
     int StintLaps,
-    int SaveLaps,
-    double EquivalentLapsSaved,
+    int SaveTargetLaps,
     double SaveLapTargetLiters);
 
 public static class FullPushStrategyCalculator
@@ -198,9 +197,7 @@ public static class FullPushStrategyCalculator
         var currentWear = TireStrategyCalculator.CurrentWear(input);
         var cumulativeLaps = input.CompletedLaps;
         var changedTireCount = 0;
-        var tireAgeLaps = wearPerLap > 0
-            ? Math.Max(0, input.CurrentMaximumTireWearFraction / wearPerLap)
-            : 0;
+        var tireServiceSeconds = 0d;
         var degradationLoss = 0d;
         var pitLaps = new List<int>();
         var fuelAtStops = new List<double>();
@@ -220,32 +217,38 @@ public static class FullPushStrategyCalculator
             for (var lap = 0; lap < stintLaps; lap++)
             {
                 degradationLoss += Math.Max(0, input.PaceDegradationSecondsPerLap) *
-                    tireAgeLaps;
-                tireAgeLaps++;
+                    TireStrategyCalculator.EquivalentAgeLaps(
+                        currentWear,
+                        wheelWearPerLap);
+                currentWear = TireStrategyCalculator.AddWear(
+                    currentWear,
+                    wheelWearPerLap,
+                    1);
             }
-
-            currentWear = TireStrategyCalculator.AddWear(
-                currentWear,
-                wheelWearPerLap,
-                stintLaps);
             cumulativeLaps += stintLaps;
             if (stintIndex < stints.Count - 1)
             {
                 pitLaps.Add(cumulativeLaps);
                 var nextStintIndex = stintIndex + 1;
                 var nextStint = stints[nextStintIndex];
-                var tires = TireStrategyCalculator.RequiredForNextStint(
+                var followingStint = nextStintIndex + 1 < stints.Count
+                    ? stints[nextStintIndex + 1]
+                    : 0;
+                var tires = TireStrategyCalculator.ServiceForUpcomingStints(
                     currentWear,
                     wheelWearPerLap,
                     nextStint,
-                    wearLimit);
+                    followingStint,
+                    wearLimit,
+                    tireStops.LastOrDefault(item => item.Tires.Count > 0)?.Tires);
                 tireStops.Add(new(cumulativeLaps, tires));
                 if (tires.Count > 0)
                 {
                     tireChanges.Add(cumulativeLaps);
                     changedTireCount += tires.Count;
+                    tireServiceSeconds += Math.Max(0, input.TireChangeSeconds) *
+                        tires.Count / 4d;
                     currentWear = TireStrategyCalculator.ResetChanged(currentWear, tires);
-                    tireAgeLaps = 0;
                 }
                 var isFinalFill = nextStintIndex == stints.Count - 1;
                 var reserve = isFinalFill
@@ -277,7 +280,7 @@ public static class FullPushStrategyCalculator
         var stops = Math.Max(0, stints.Count - 1);
         var estimated = input.RemainingLaps * input.ReferencePaceSeconds +
             stops * Math.Max(0, input.PitLossSeconds) +
-            tireChanges.Count * Math.Max(0, input.TireChangeSeconds) +
+            tireServiceSeconds +
             degradationLoss;
         return new(
             stints.ToArray(),

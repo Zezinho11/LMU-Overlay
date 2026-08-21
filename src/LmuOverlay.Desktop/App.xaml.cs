@@ -37,8 +37,11 @@ public partial class App
     private long _nativeInputsSequence;
     private NativeInputsConfiguration? _nativeInputsConfiguration;
     private readonly FuelStrategyTracker _nativeFuelStrategyTracker = new();
-    private long _lastNativeFuelStrategyAt;
-    private double _nativeFuelSaveFraction;
+    private long _lastNativeAnalyticsQueuedAt;
+    private NativeDashboardAnalyticsRequest? _nativeAnalyticsPending;
+    private NativeDashboardAnalytics? _nativeDashboardAnalytics;
+    private int _nativeAnalyticsWorkerActive;
+    private Task? _nativeAnalyticsTask;
     private long _nativeTimingSequence;
     private LiveStandingsWidgetState? _nativeLiveStandingsState;
     private RelativeWidgetState? _nativeRelativeState;
@@ -49,6 +52,12 @@ public partial class App
     private PersistentSectorReferenceTracker? _nativeSectorReferenceTracker;
     private OfficialTimingOptimalProvider? _officialTimingOptimal;
     private bool _safeMode;
+    private WindowsSteeringInputReader? _steeringInputReader;
+    private int _steeringInputDeviceId = int.MinValue;
+    private long _directSteeringBits;
+    private int _directSteeringAvailable;
+    private RemoteDashboardServer? _remoteDashboard;
+    private readonly ShiftLightTimingTracker _nativeShiftLightTiming = new();
     private string _nativeSessionKey = string.Empty;
     private string _nativeSessionTrack = string.Empty;
     private int _nativeSessionCode = int.MinValue;

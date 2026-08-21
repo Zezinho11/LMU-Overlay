@@ -25,6 +25,16 @@ Require(OverlayText.Normalize("unsupported") == OverlayText.PortugueseBrazil,
     "Unknown language values must migrate safely to Brazilian Portuguese.");
 Require(LayoutStore.SanitizeSettings(new OverlayProfileSettings { Language = "en-US" }).Language == OverlayText.EnglishUnitedStates,
     "SteamVR must preserve the same supported language used by Desktop.");
+var remoteSettings = LayoutStore.SanitizeSettings(new OverlayProfileSettings
+{
+    RemoteDashboardPort = 80,
+    RemoteDashboardToken = "bad!",
+    SteeringInputDeviceId = 99,
+});
+Require(remoteSettings.RemoteDashboardPort == 1024 &&
+        remoteSettings.RemoteDashboardToken.Length >= 8 &&
+        remoteSettings.SteeringInputDeviceId == 15,
+    "Remote dashboard and physical steering settings must be sanitized safely.");
 
 var disconnectedFrame = new EssentialOverlayFrameComposer().Compose(
     LmuTelemetrySnapshot.Unavailable(LmuConnectionState.Disconnected, "parity test"));

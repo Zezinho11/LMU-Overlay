@@ -119,7 +119,10 @@ internal sealed partial class DirectCompositionTimingHost : IDisposable
                     row.IsPlayer ? surface.Player : alternating++ % 2 == 0 ? surface.RowOne : surface.RowTwo);
                 DrawText(drawing, row.ClassPosition.ToString(), 0, y, 36, rowHeight, 11,
                     row.ClassPosition == 1 ? surface.Gold : surface.White, TextAlignment.Center);
-                var (brand, brandBrush) = Manufacturer(surface, row.VehicleModel);
+                var (brand, brandBrush) = Manufacturer(
+                    surface,
+                    row.VehicleModel,
+                    row.VehicleName);
                 FillRounded(drawing, 40, y + 3, 42, Math.Max(12, rowHeight - 6), 2, brandBrush);
                 DrawText(drawing, brand, 40, y + 2, 42, Math.Max(13, rowHeight - 4), 9, surface.White, TextAlignment.Center);
                 DrawText(drawing, row.CarNumber, 86, y, 40, rowHeight, 9, surface.White, TextAlignment.Center);
@@ -280,9 +283,12 @@ internal sealed partial class DirectCompositionTimingHost : IDisposable
         row.IsInPitLane ? "PIT" : row.IsPlayer ? "0.0" :
         double.IsFinite(row.RelativeGapSeconds) ? row.RelativeGapSeconds.ToString("+0.0;-0.0;0.0") : "--.-";
 
-    private static (string Code, ID2D1Brush Brush) Manufacturer(TimingSurface s, string value)
+    private static (string Code, ID2D1Brush Brush) Manufacturer(
+        TimingSurface s,
+        string vehicleModel,
+        string vehicleName)
     {
-        var identity = VehicleCatalog.Resolve(value);
+        var identity = VehicleCatalog.Resolve(vehicleModel, vehicleName);
         var brush = identity.Code switch
         {
             "FER" or "TOY" => s.BrandRed,

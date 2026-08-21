@@ -66,6 +66,11 @@ public sealed partial class LayoutStore
                 1.25),
             SteeringWheelImagePath = SanitizeSteeringWheelImagePath(
                 settings.SteeringWheelImagePath),
+            SteeringWheelRangeDegrees =
+                settings.SteeringWheelRangeDegrees is >= 180 and <= 1440
+                    ? settings.SteeringWheelRangeDegrees
+                    : 0,
+            SteeringInputDeviceId = Math.Clamp(settings.SteeringInputDeviceId, -1, 15),
             LiveStandingsMaximumRows = Math.Clamp(
                 settings.LiveStandingsMaximumRows <= 0 ? 12 : settings.LiveStandingsMaximumRows,
                 6,
@@ -103,7 +108,24 @@ public sealed partial class LayoutStore
                 settings.PedalHistorySeconds <= 0 ? 5 : settings.PedalHistorySeconds,
                 3,
                 10),
+            RemoteDashboardPort = Math.Clamp(
+                settings.RemoteDashboardPort <= 0 ? 28765 : settings.RemoteDashboardPort,
+                1024,
+                65535),
+            RemoteDashboardToken = SanitizeRemoteDashboardToken(
+                settings.RemoteDashboardToken),
         };
+    }
+
+    private static string SanitizeRemoteDashboardToken(string? value)
+    {
+        var token = new string((value ?? string.Empty)
+            .Where(char.IsLetterOrDigit)
+            .Take(32)
+            .ToArray());
+        return token.Length >= 8
+            ? token
+            : RemoteDashboardDefaults.NewToken();
     }
 
     private static string SanitizeSteeringWheelImagePath(string? value)
@@ -128,10 +150,12 @@ public sealed partial class LayoutStore
 
     private static WidgetPlacement SanitizePlacement(WidgetPlacement item) => item with
     {
-        X = Math.Clamp(item.X, 0, 0.95),
-        Y = Math.Clamp(item.Y, 0, 0.95),
-        Width = Math.Clamp(item.Width, 0.08, 1),
-        Height = Math.Clamp(item.Height, 0.08, 1),
+        // A widget occupying 8% of one monitor can be below 3% of a triple-
+        // monitor desktop. Preserve it; responsive layout enforces readability.
+        X = Math.Clamp(item.X, 0, 0.999),
+        Y = Math.Clamp(item.Y, 0, 0.999),
+        Width = Math.Clamp(item.Width, 0.02, 1),
+        Height = Math.Clamp(item.Height, 0.02, 1),
         Scale = Math.Clamp(item.Scale, 0.5, 2),
         Opacity = Math.Clamp(item.Opacity, 0.2, 1),
     };

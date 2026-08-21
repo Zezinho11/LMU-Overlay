@@ -15,62 +15,35 @@ public partial class App
 {
     private void OnTelemetrySnapshot(LmuTelemetrySnapshot snapshot)
     {
-        _officialTimingOptimal?.Update(snapshot);
         var sessionEnded = snapshot.Session?.GamePhase == LmuGamePhase.SessionOver;
         var liveSnapshot = sessionEnded
             ? LmuTelemetrySnapshot.Unavailable(
                 LmuConnectionState.Disconnected,
                 "Session ended.")
             : snapshot;
-        var dashboard = EssentialWidgetStateFactory.CreateDashboard(liveSnapshot);
-        var trackedSectors = _nativeSectorReferenceTracker?.Update(
-            liveSnapshot,
-            dashboard.SectorTimes) ?? dashboard.SectorTimes;
-        var liveOptimal = _officialTimingOptimal?.GetOptimal(snapshot) ?? 0;
-        var persistedOptimal = _nativeSectorReferenceTracker?.ObserveOptimal(
-            liveSnapshot,
-            liveOptimal) ?? liveOptimal;
-        dashboard = dashboard with
+        var dashboard = EssentialWidgetStateFactory.CreateDashboard(liveSnapshot) with
         {
-            SectorTimes = trackedSectors,
-            BestLapTimeSeconds =
-                _nativeSectorReferenceTracker?.PersonalBestLapTimeSeconds > 0
-                    ? _nativeSectorReferenceTracker.PersonalBestLapTimeSeconds
-                    : dashboard.BestLapTimeSeconds,
-            OptimalLapTimeSeconds = persistedOptimal,
+            EngineRpmFraction = _nativeShiftLightTiming.Update(liveSnapshot.Player),
         };
+        var profileSettings = _overlay?.CurrentProfile.Settings ?? new();
+        var directSteering = ReadDirectSteering(profileSettings);
         var sessionKey = GetNativeSessionKey(snapshot);
+        var analytics = Volatile.Read(ref _nativeDashboardAnalytics);
+        if (analytics is not null &&
+            string.Equals(analytics.SessionKey, sessionKey, StringComparison.Ordinal))
+        {
+            dashboard = dashboard with
+            {
+                SectorTimes = analytics.SectorTimes,
+                BestLapTimeSeconds = analytics.BestLapTimeSeconds > 0
+                    ? analytics.BestLapTimeSeconds
+                    : dashboard.BestLapTimeSeconds,
+                OptimalLapTimeSeconds = analytics.OptimalLapTimeSeconds,
+            };
+        }
+        _remoteDashboard?.Publish(dashboard);
         var capturedTimestamp = Stopwatch.GetTimestamp();
-        if (sessionEnded)
-        {
-            Volatile.Write(ref _nativeFuelSaveFraction, 0);
-            Interlocked.Exchange(ref _lastNativeFuelStrategyAt, 0);
-        }
-        else if (_overlay is { } overlay &&
-                 (Volatile.Read(ref _lastNativeFuelStrategyAt) == 0 ||
-                  capturedTimestamp - Volatile.Read(ref _lastNativeFuelStrategyAt) >=
-                  Stopwatch.Frequency / 5))
-        {
-            var settings = overlay.CurrentProfile.Settings;
-            var fuelSave = _nativeFuelStrategyTracker.Update(
-                snapshot,
-                new FuelStrategyOptions(
-                    settings.FuelReserveLaps,
-                    settings.EnergyReservePercent / 100,
-                    settings.ManualRemainingLaps,
-                    settings.MaximumStintLaps,
-                    settings.EstimatedPitLossSeconds,
-                    settings.AvailableTireSets,
-                    settings.TireWearLimitPercent / 100,
-                    settings.EstimatedTireChangeSeconds,
-                    settings.ManualRemainingMinutes,
-                    settings.ManualLapTimeSeconds,
-                    settings.ManualFuelPerLapLiters,
-                    settings.ManualFuelCapacityLiters)).RequiredFuelSavingFraction;
-            Volatile.Write(ref _nativeFuelSaveFraction, fuelSave);
-            Interlocked.Exchange(ref _lastNativeFuelStrategyAt, capturedTimestamp);
-        }
-        var fuelSaveFraction = Volatile.Read(ref _nativeFuelSaveFraction);
+        var fuelSaveFraction = sessionEnded ? 0 : analytics?.FuelSaveFraction ?? 0;
 
         var dashboardRenderer = _nativeDashboard;
         var dashboardConfiguration = Volatile.Read(ref _nativeDashboardConfiguration);
@@ -92,7 +65,10 @@ public partial class App
         if (inputsRenderer is not null && inputsConfiguration is not null)
         {
             inputsRenderer.Publish(new NativeInputsFrame(
-                EssentialWidgetStateFactory.CreateInputs(liveSnapshot),
+                EssentialWidgetStateFactory.CreateInputs(
+                    liveSnapshot,
+                    profileSettings.SteeringWheelRangeDegrees,
+                    directSteering),
                 inputsConfiguration.Bounds,
                 inputsConfiguration.Visible && inputsRenderer.IsAvailable,
                 Interlocked.Increment(ref _nativeInputsSequence),
@@ -100,7 +76,125 @@ public partial class App
                 sessionKey,
                 inputsConfiguration.Style));
         }
+
+        // Keep persistence, strategy and HTTP target bookkeeping off the
+        // capture thread. RPM, gear, shift lights and pedals are published
+        // first and can never wait behind disk or derived-widget work.
+        if (_lastNativeAnalyticsQueuedAt == 0 ||
+            capturedTimestamp - _lastNativeAnalyticsQueuedAt >= Stopwatch.Frequency / 10)
+        {
+            _lastNativeAnalyticsQueuedAt = capturedTimestamp;
+            QueueNativeDashboardAnalytics(new(
+                snapshot,
+                liveSnapshot,
+                sessionKey,
+                profileSettings,
+                sessionEnded));
+        }
     }
+
+    private double? ReadDirectSteering(
+        LmuOverlay.Configuration.OverlayProfileSettings settings)
+    {
+        if (!settings.UseDirectSteeringInput)
+        {
+            Volatile.Write(ref _directSteeringAvailable, 0);
+            return null;
+        }
+        if (_steeringInputReader is null ||
+            _steeringInputDeviceId != settings.SteeringInputDeviceId)
+        {
+            _steeringInputDeviceId = settings.SteeringInputDeviceId;
+            _steeringInputReader = new(settings.SteeringInputDeviceId);
+        }
+        var sample = _steeringInputReader.Read();
+        if (!sample.Available)
+        {
+            Volatile.Write(ref _directSteeringAvailable, 0);
+            return null;
+        }
+        Interlocked.Exchange(
+            ref _directSteeringBits,
+            BitConverter.DoubleToInt64Bits(sample.NormalizedPosition));
+        Volatile.Write(ref _directSteeringAvailable, 1);
+        return sample.NormalizedPosition;
+    }
+
+    private double? LatestDirectSteering() =>
+        Volatile.Read(ref _directSteeringAvailable) == 1
+            ? BitConverter.Int64BitsToDouble(Interlocked.Read(ref _directSteeringBits))
+            : null;
+
+    private void QueueNativeDashboardAnalytics(NativeDashboardAnalyticsRequest request)
+    {
+        Volatile.Write(ref _nativeAnalyticsPending, request);
+        if (Interlocked.CompareExchange(ref _nativeAnalyticsWorkerActive, 1, 0) == 0)
+        {
+            _nativeAnalyticsTask = Task.Run(ProcessNativeDashboardAnalytics);
+        }
+    }
+
+    private void ProcessNativeDashboardAnalytics()
+    {
+        try
+        {
+            while (!_isExiting &&
+                   Interlocked.Exchange(ref _nativeAnalyticsPending, null) is { } request)
+            {
+                try
+                {
+                    _officialTimingOptimal?.Update(request.Snapshot);
+                    var raw = EssentialWidgetStateFactory.CreateDashboard(request.LiveSnapshot);
+                    var sectors = _nativeSectorReferenceTracker?.Update(
+                        request.LiveSnapshot,
+                        raw.SectorTimes) ?? raw.SectorTimes;
+                    var liveOptimal = _officialTimingOptimal?.GetOptimal(request.Snapshot) ?? 0;
+                    var optimal = _nativeSectorReferenceTracker?.ObserveOptimal(
+                        request.LiveSnapshot,
+                        liveOptimal) ?? liveOptimal;
+                    var fuelSave = request.SessionEnded
+                        ? 0
+                        : _nativeFuelStrategyTracker.Update(
+                            request.Snapshot,
+                            FuelOptions(request.Settings)).RequiredFuelSavingFraction;
+                    Volatile.Write(ref _nativeDashboardAnalytics, new(
+                        request.SessionKey,
+                        sectors,
+                        _nativeSectorReferenceTracker?.PersonalBestLapTimeSeconds ?? 0,
+                        optimal,
+                        fuelSave));
+                }
+                catch
+                {
+                    // Derived widgets are best-effort. A persistence or HTTP
+                    // failure must not fault shutdown or the fast telemetry lane.
+                }
+            }
+        }
+        finally
+        {
+            Interlocked.Exchange(ref _nativeAnalyticsWorkerActive, 0);
+            if (!_isExiting && Volatile.Read(ref _nativeAnalyticsPending) is { } pending)
+            {
+                QueueNativeDashboardAnalytics(pending);
+            }
+        }
+    }
+
+    private static FuelStrategyOptions FuelOptions(
+        LmuOverlay.Configuration.OverlayProfileSettings settings) => new(
+        settings.FuelReserveLaps,
+        settings.EnergyReservePercent / 100,
+        settings.ManualRemainingLaps,
+        settings.MaximumStintLaps,
+        settings.EstimatedPitLossSeconds,
+        settings.AvailableTireSets,
+        settings.TireWearLimitPercent / 100,
+        settings.EstimatedTireChangeSeconds,
+        settings.ManualRemainingMinutes,
+        settings.ManualLapTimeSeconds,
+        settings.ManualFuelPerLapLiters,
+        settings.ManualFuelCapacityLiters);
 
     private string GetNativeSessionKey(LmuTelemetrySnapshot snapshot)
     {
@@ -174,6 +268,20 @@ public partial class App
         NativeDashboardBounds Bounds,
         bool Visible,
         NativeOverlayStyle Style);
+
+    private sealed record NativeDashboardAnalyticsRequest(
+        LmuTelemetrySnapshot Snapshot,
+        LmuTelemetrySnapshot LiveSnapshot,
+        string SessionKey,
+        LmuOverlay.Configuration.OverlayProfileSettings Settings,
+        bool SessionEnded);
+
+    private sealed record NativeDashboardAnalytics(
+        string SessionKey,
+        DashboardSectorTimes SectorTimes,
+        double BestLapTimeSeconds,
+        double OptimalLapTimeSeconds,
+        double FuelSaveFraction);
 
     private sealed record NativeTimingConfiguration(
         NativeDashboardBounds LiveStandingsBounds,

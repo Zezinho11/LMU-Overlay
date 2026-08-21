@@ -12,6 +12,11 @@ before and after every copy. A scoring-counter change triggers an immediate full
 parse; otherwise rival telemetry is refreshed at a bounded rate. Presentation
 receives only the latest frame and does not build a render queue.
 
+The optional phone dashboard follows the same latest-frame rule. Serialization
+is capped at 30 Hz and each browser receives only the newest JSON snapshot over
+one server-sent-event stream. Direct physical steering is sampled in the fast
+telemetry path without locks, writes, force feedback, or per-frame discovery.
+
 Run the default 30-second gate:
 
 ```powershell

@@ -236,6 +236,8 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
                 <TextBlock Grid.ColumnSpan="4" Text="PERFIL, ESTRATÉGIA E DESEMPENHO"
                            Foreground="#FF788795" FontWeight="Bold" FontSize="10"
@@ -479,6 +481,57 @@
                             Padding="12,6" Margin="8,0,6,0" />
                     <Button Grid.Column="3" Content="Usar padrão"
                             Click="ResetSteeringWheelImageClicked" Padding="12,6" />
+                </Grid>
+                <StackPanel Grid.Row="14" Grid.Column="0" Grid.ColumnSpan="4"
+                            Margin="0,10,0,0" Orientation="Horizontal">
+                    <TextBlock Text="ROTAÇÃO DO VOLANTE"
+                               Foreground="#FF9BA8B5" FontSize="10" FontWeight="Bold"
+                               VerticalAlignment="Center" Margin="0,0,14,0" />
+                    <TextBox x:Name="SteeringWheelRangeDegrees" Width="90" Height="28"
+                             VerticalContentAlignment="Center" TextAlignment="Right"
+                             ToolTip="Range total em graus. Use 0 para detectar pelo carro no LMU." />
+                    <TextBlock x:Name="SteeringDevicesText"
+                               Text="°  (0 = automático; ajuste somente se o carro publicar o range errado)"
+                               Foreground="#FF718096" FontSize="9" VerticalAlignment="Center"
+                               Margin="6,0,0,0" />
+                </StackPanel>
+                <Grid Grid.Row="15" Grid.Column="0" Grid.ColumnSpan="4" Margin="0,12,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="1.2*" />
+                        <ColumnDefinition Width="1.1*" />
+                        <ColumnDefinition Width="1.7*" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0">
+                        <CheckBox x:Name="UseDirectSteeringInput"
+                                  Content="Ler volante físico pelo Windows" />
+                        <StackPanel Orientation="Horizontal" Margin="22,5,0,0">
+                            <TextBlock Text="ID do dispositivo" Foreground="#FF9BA8B5"
+                                       FontSize="9" VerticalAlignment="Center" />
+                            <TextBox x:Name="SteeringInputDeviceId" Width="48" Height="25"
+                                     Margin="8,0,0,0" TextAlignment="Right"
+                                     ToolTip="-1 seleciona automaticamente um volante reconhecido." />
+                            <TextBlock Text="(-1 = auto)" Foreground="#FF718096"
+                                       FontSize="9" Margin="5,0,0,0" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1">
+                        <CheckBox x:Name="AllowMultiMonitorPlacement"
+                                  Content="Permitir outros monitores" />
+                        <TextBlock Text="O editor passa a usar todo o desktop virtual."
+                                   Foreground="#FF718096" FontSize="9" Margin="22,5,0,0" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="2">
+                        <StackPanel Orientation="Horizontal">
+                            <CheckBox x:Name="EnableRemoteDashboard"
+                                      Content="Dashboard no celular" />
+                            <TextBlock Text="Porta" Foreground="#FF9BA8B5" FontSize="9"
+                                       Margin="14,0,5,0" VerticalAlignment="Center" />
+                            <TextBox x:Name="RemoteDashboardPort" Width="60" Height="25"
+                                     TextAlignment="Right" />
+                        </StackPanel>
+                        <TextBlock x:Name="RemoteDashboardAddress" Foreground="#FF42D3A6"
+                                   FontSize="9" Margin="22,5,0,0" TextWrapping="Wrap" />
+                    </StackPanel>
                 </Grid>
             </Grid>
         </Border>

@@ -16,9 +16,15 @@ public sealed record EssentialOverlayFrame(
 
 public sealed class EssentialOverlayFrameComposer
 {
-    public EssentialOverlayFrame Compose(LmuTelemetrySnapshot snapshot) => new(
+    public EssentialOverlayFrame Compose(
+        LmuTelemetrySnapshot snapshot,
+        double steeringWheelRangeDegrees = 0,
+        double? directSteeringPosition = null) => new(
         EssentialWidgetStateFactory.CreateDashboard(snapshot),
-        EssentialWidgetStateFactory.CreateInputs(snapshot),
+        EssentialWidgetStateFactory.CreateInputs(
+            snapshot,
+            steeringWheelRangeDegrees,
+            directSteeringPosition),
         EssentialWidgetStateFactory.CreateSessionFlags(snapshot),
         EssentialWidgetStateFactory.CreateRaceControl(snapshot));
 }

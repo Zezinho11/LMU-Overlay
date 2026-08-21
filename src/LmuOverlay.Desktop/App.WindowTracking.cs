@@ -1,5 +1,6 @@
 using System.Drawing;
 using System.Diagnostics;
+using System.Net.Sockets;
 using System.Windows.Media;
 using System.Windows.Threading;
 using LmuOverlay.Core;
@@ -19,6 +20,7 @@ public partial class App
         {
             return;
         }
+        EnsureRemoteDashboard(_overlay.CurrentProfile.Settings);
 
         var snapshot = _telemetryRuntime?.Latest
             ?? LmuTelemetrySnapshot.Unavailable(
@@ -88,6 +90,39 @@ public partial class App
             sinceRender > Stopwatch.Frequency / 5)
         {
             RenderLatest(forceSlowUpdate: true);
+        }
+    }
+
+    private void EnsureRemoteDashboard(
+        LmuOverlay.Configuration.OverlayProfileSettings settings)
+    {
+        if (!settings.EnableRemoteDashboard)
+        {
+            if (_remoteDashboard is not null)
+            {
+                _remoteDashboard.DisposeAsync().AsTask().GetAwaiter().GetResult();
+                _remoteDashboard = null;
+            }
+            return;
+        }
+        if (_remoteDashboard is not null &&
+            _remoteDashboard.Port == settings.RemoteDashboardPort &&
+            string.Equals(_remoteDashboard.Token, settings.RemoteDashboardToken,
+                StringComparison.Ordinal))
+        {
+            return;
+        }
+        _remoteDashboard?.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        _remoteDashboard = null;
+        try
+        {
+            _remoteDashboard = new(
+                settings.RemoteDashboardPort,
+                settings.RemoteDashboardToken);
+        }
+        catch (SocketException)
+        {
+            // Keep the desktop overlay running when the chosen LAN port is in use.
         }
     }
 }

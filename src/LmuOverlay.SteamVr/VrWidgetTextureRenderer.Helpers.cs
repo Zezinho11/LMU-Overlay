@@ -111,6 +111,71 @@ public static partial class VrWidgetTextureRenderer
         c.Text(Trim(fourth, 82), 16, c.Style.SecondaryText, new(42, y + 110, 916, 28), true);
     }
 
+    private static void FuelSaveStrategyBox(
+        VrCanvas c,
+        string title,
+        string summary,
+        string saveTargets,
+        string consumptionTargets,
+        string pitPlan,
+        string tirePlan,
+        float y,
+        Color accent)
+    {
+        c.Fill(c.Style.Card, 20, y, 960, 170);
+        c.Fill(accent, 20, y, 8, 170);
+        c.Text(title, 17, accent, new(42, y + 4, 300, 22), true);
+        c.Text(Trim(summary, 92), 16, c.Style.PrimaryText, new(42, y + 25, 916, 21), true);
+        c.Text(Trim(saveTargets, 104), 15, accent, new(42, y + 46, 916, 20), true);
+        c.Text(Trim(consumptionTargets, 104), 14, c.Style.SecondaryText, new(42, y + 66, 916, 19), true);
+
+        var lineY = y + 86;
+        foreach (var line in WrapStrategyPlan(pitPlan, 104, 2))
+        {
+            c.Text(line, 14, c.Style.SecondaryText, new(42, lineY, 916, 18), true);
+            lineY += 18;
+        }
+        foreach (var line in WrapStrategyPlan(tirePlan, 104, 2))
+        {
+            c.Text(line, 14, c.Style.Information, new(42, lineY, 916, 18), true);
+            lineY += 18;
+        }
+    }
+
+    private static IReadOnlyList<string> WrapStrategyPlan(
+        string value,
+        int maximumCharacters,
+        int maximumLines)
+    {
+        if (value.Length <= maximumCharacters)
+            return new[] { value };
+
+        var segments = value.Split(" · ", StringSplitOptions.RemoveEmptyEntries);
+        var lines = new List<string>();
+        var current = string.Empty;
+        foreach (var segment in segments)
+        {
+            var candidate = current.Length == 0 ? segment : $"{current} · {segment}";
+            if (candidate.Length <= maximumCharacters || current.Length == 0)
+            {
+                current = candidate;
+                continue;
+            }
+
+            lines.Add(current);
+            current = segment;
+        }
+        if (current.Length > 0)
+            lines.Add(current);
+
+        if (lines.Count <= maximumLines)
+            return lines;
+
+        var visible = lines.Take(maximumLines - 1).ToList();
+        visible.Add(string.Join(" · ", lines.Skip(maximumLines - 1)));
+        return visible;
+    }
+
     private static void WeatherIcon(VrCanvas c, WeatherConditionKind weather, float x, float y, VrRenderStyle style)
     {
         var rainy = weather is WeatherConditionKind.LightRain or WeatherConditionKind.Rain or WeatherConditionKind.HeavyRain;
@@ -137,9 +202,11 @@ public static partial class VrWidgetTextureRenderer
         }
     }
 
-    private static (string Code, Color Color) Manufacturer(string value)
+    private static (string Code, Color Color) Manufacturer(
+        string vehicleModel,
+        string vehicleName)
     {
-        var identity = VehicleCatalog.Resolve(value);
+        var identity = VehicleCatalog.Resolve(vehicleModel, vehicleName);
         return (identity.Code, ColorTranslator.FromHtml(identity.Color));
     }
 

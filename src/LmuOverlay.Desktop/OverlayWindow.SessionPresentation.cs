@@ -195,13 +195,15 @@ public partial class OverlayWindow
         FlagScenarioText.Text = state.FuelSavePlan;
         FuelSaveLapPlanText.Text = state.FuelSaveLapPlan;
         WeatherScenarioText.Text = state.FuelSaveVirtualEnergyTargetPerLap > 0
-            ? $"{state.FuelSavePitPlan} · NRG TARGET {state.FuelSaveVirtualEnergyTargetPerLap:P1}/LAP"
-            : state.FuelSavePitPlan;
-        TrafficScenarioText.Text = $"TIRES  {state.FuelSaveTirePlan}";
+            ? $"TARGET  {state.FuelSaveTargetLitersPerLap:0.00} L/LAP · NRG {state.FuelSaveVirtualEnergyTargetPerLap:P1}/LAP"
+            : $"TARGET  {state.FuelSaveTargetLitersPerLap:0.00} L/LAP";
+        TrafficScenarioText.Text = $"PIT  {state.FuelSavePitPlan}\nTIRES  {state.FuelSaveTirePlan}";
         FuelSamplesText.Text = state.Learning
             ? "COMPLETE A LAP TO CALCULATE"
             : $"PIT L{state.SuggestedPitLap} ({state.LapsUntilPit} LAPS)  " +
-              $"· SAVE {state.RequiredFuelSavingFraction:P0}  " +
+              (state.FuelSaveCurrentStintTargetLaps > 0
+                  ? $"· SAVE TARGET +{state.FuelSaveCurrentStintTargetLaps} LAPS  "
+                  : "· SAVE TARGET --  ") +
               $"· ADD {state.FuelToAddLiters:0.0} L  " +
               $"· CONF {state.Confidence} ({state.Samples}/12)";
     }

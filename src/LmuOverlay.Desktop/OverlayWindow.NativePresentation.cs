@@ -17,38 +17,58 @@ public partial class OverlayWindow
 {
     public LmuOverlay.DirectX.NativeDashboardBounds GetNativeDashboardBounds(
         Rect gameBounds)
-        => GetNativeBounds(gameBounds, _profile.Diagnostic, DiagnosticWidget.Name);
+        => GetNativeBounds(GetPlacementBounds(gameBounds), _profile.Diagnostic,
+            DiagnosticWidget.Name, _profile.Settings.AllowMultiMonitorPlacement);
 
     public LmuOverlay.DirectX.NativeDashboardBounds GetNativeLiveStandingsBounds(
         Rect gameBounds)
         => GetNativeBounds(
-            gameBounds,
+            GetPlacementBounds(gameBounds),
             _profile.LiveStandings,
-            LiveStandingsWidget.Name);
+            LiveStandingsWidget.Name,
+            _profile.Settings.AllowMultiMonitorPlacement);
 
     public LmuOverlay.DirectX.NativeDashboardBounds GetNativeInputsBounds(
         Rect gameBounds)
-        => GetNativeBounds(gameBounds, _profile.Inputs, InputsWidget.Name);
+        => GetNativeBounds(GetPlacementBounds(gameBounds), _profile.Inputs,
+            InputsWidget.Name, _profile.Settings.AllowMultiMonitorPlacement);
 
     public LmuOverlay.DirectX.NativeDashboardBounds GetNativeRelativeBounds(
         Rect gameBounds)
-        => GetNativeBounds(gameBounds, _profile.Relative, RelativeWidget.Name);
+        => GetNativeBounds(GetPlacementBounds(gameBounds), _profile.Relative,
+            RelativeWidget.Name, _profile.Settings.AllowMultiMonitorPlacement);
 
     private static LmuOverlay.DirectX.NativeDashboardBounds GetNativeBounds(
         Rect gameBounds,
         WidgetPlacement placement,
-        string widgetName)
+        string widgetName,
+        bool useLocalDisplayScale)
     {
         var bounds = ResponsiveWidgetLayout.Calculate(
             gameBounds.Width,
             gameBounds.Height,
             placement,
-            ResponsiveWidgetLayout.For(widgetName));
+            ResponsiveWidgetLayout.For(widgetName),
+            useLocalDisplayScale ? LocalDisplayScale(gameBounds, placement) : 0);
         return new(
             (int)Math.Round(gameBounds.Left + bounds.X),
             (int)Math.Round(gameBounds.Top + bounds.Y),
             Math.Max(1, (int)Math.Round(bounds.Width)),
             Math.Max(1, (int)Math.Round(bounds.Height)));
+    }
+
+    private static double LocalDisplayScale(Rect desktop, WidgetPlacement placement)
+    {
+        var point = new System.Drawing.Point(
+            (int)Math.Round(desktop.Left +
+                            (placement.X + placement.Width / 2) * desktop.Width),
+            (int)Math.Round(desktop.Top +
+                            (placement.Y + placement.Height / 2) * desktop.Height));
+        var display = System.Windows.Forms.Screen.FromPoint(point).Bounds;
+        return Math.Clamp(
+            Math.Min(display.Width / 1920d, display.Height / 1080d),
+            0.55,
+            1.5);
     }
 
     public bool NativeDashboardShouldBeVisible =>

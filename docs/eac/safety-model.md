@@ -16,6 +16,10 @@ Live Timing endpoint as the only game-data boundaries.
 - Read `/rest/watch/standings/history` from LMU's localhost WebUI solely to
   reproduce the game's theoretical optimal-sector calculation.
 - Render in a separate top-level desktop window.
+- Read the user's physical wheel axis through the read-only Windows multimedia
+  controller API; do not send force feedback, calibration, or simulated input.
+- Serve application-owned dashboard snapshots to authenticated browsers on the
+  local network; this server never exposes or writes game memory.
 - In VR, submit application-owned textures through SteamVR's documented
   `IVROverlay` API.
 

@@ -343,6 +343,8 @@ public sealed partial class FuelStrategyTracker
             FuelSavePitPlan = fuelSave.PitPlan,
             FuelSaveTirePlan = fuelSave.TirePlan,
             FuelSaveLapPlan = fuelSave.SaveLapPlan,
+            FuelSaveCurrentStintTargetLaps = fuelSave.StintInstructions
+                .FirstOrDefault(item => item.StintNumber == 1)?.SaveTargetLaps ?? 0,
             FuelSaveTargetLitersPerLap = fuelSave.TargetConsumptionLitersPerLap,
             FuelSaveFraction = fuelSave.SavingFraction,
             FuelSaveReducesStopCount = fuelSave.ReducesStopCount,

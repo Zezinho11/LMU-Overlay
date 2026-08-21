@@ -85,6 +85,18 @@ public partial class OverlayWindow
 
     public void ApplyDisplaySettings(LayoutProfile profile)
     {
+        if (profile.Settings.AllowMultiMonitorPlacement !=
+            _profile.Settings.AllowMultiMonitorPlacement &&
+            _lastGameBounds.Width > 0)
+        {
+            var oldBounds = GetPlacementBounds(
+                _lastGameBounds,
+                _profile.Settings.AllowMultiMonitorPlacement);
+            var newBounds = GetPlacementBounds(
+                _lastGameBounds,
+                profile.Settings.AllowMultiMonitorPlacement);
+            profile = RebaseProfile(profile, oldBounds, newBounds);
+        }
         _profile = profile with
         {
             SchemaVersion = LayoutProfile.CurrentSchemaVersion,
@@ -92,6 +104,46 @@ public partial class OverlayWindow
         ApplyProfile();
         _layoutStore.Save(_profile);
     }
+
+    public Rect GetPlacementBounds(Rect gameBounds) =>
+        GetPlacementBounds(gameBounds, _profile.Settings.AllowMultiMonitorPlacement);
+
+    private static Rect GetPlacementBounds(Rect gameBounds, bool virtualDesktop) =>
+        virtualDesktop
+            ? new Rect(
+                SystemParameters.VirtualScreenLeft,
+                SystemParameters.VirtualScreenTop,
+                SystemParameters.VirtualScreenWidth,
+                SystemParameters.VirtualScreenHeight)
+            : gameBounds;
+
+    internal static LayoutProfile RebaseProfile(
+        LayoutProfile profile,
+        Rect source,
+        Rect target) => profile with
+    {
+        Diagnostic = Rebase(profile.Diagnostic, source, target),
+        Inputs = Rebase(profile.Inputs, source, target),
+        LiveStandings = Rebase(profile.LiveStandings, source, target),
+        Relative = Rebase(profile.Relative, source, target),
+        SessionFlags = Rebase(profile.SessionFlags, source, target),
+        FuelStrategy = Rebase(profile.FuelStrategy, source, target),
+        RaceControl = Rebase(profile.RaceControl, source, target),
+        PriorityAlert = Rebase(profile.PriorityAlert, source, target),
+    };
+
+    internal static WidgetPlacement Rebase(
+        WidgetPlacement placement,
+        Rect source,
+        Rect target) => placement with
+    {
+        X = (source.Left + placement.X * source.Width - target.Left) /
+            Math.Max(1, target.Width),
+        Y = (source.Top + placement.Y * source.Height - target.Top) /
+            Math.Max(1, target.Height),
+        Width = placement.Width * source.Width / Math.Max(1, target.Width),
+        Height = placement.Height * source.Height / Math.Max(1, target.Height),
+    };
 
     private void ApplyProfile()
     {
@@ -118,7 +170,8 @@ public partial class OverlayWindow
             LayoutWidth,
             LayoutHeight,
             _profile.PriorityAlert,
-            ResponsiveWidgetLayout.For(PriorityAlert.Name));
+            ResponsiveWidgetLayout.For(PriorityAlert.Name),
+            LocalDisplayScale(_profile.PriorityAlert));
         PriorityAlert.Width = bounds.Width;
         PriorityAlert.Height = bounds.Height;
         PriorityAlert.Opacity = _profile.PriorityAlert.Opacity;
@@ -144,7 +197,8 @@ public partial class OverlayWindow
             LayoutWidth,
             LayoutHeight,
             placement,
-            ResponsiveWidgetLayout.For(element.Name));
+            ResponsiveWidgetLayout.For(element.Name),
+            LocalDisplayScale(placement));
         element.Width = bounds.Width;
         element.Height = bounds.Height;
         Canvas.SetLeft(element, bounds.X);
@@ -156,5 +210,25 @@ public partial class OverlayWindow
                 bounds.Width,
                 ResponsiveWidgetLayout.For(element.Name).DesignWidth));
         }
+    }
+
+    internal double LocalDisplayScale(WidgetPlacement placement)
+    {
+        if (!_profile.Settings.AllowMultiMonitorPlacement ||
+            _lastLayoutBounds.Width <= 0 || _lastLayoutBounds.Height <= 0)
+        {
+            return 0;
+        }
+
+        var point = new System.Drawing.Point(
+            (int)Math.Round(_lastLayoutBounds.Left +
+                            (placement.X + placement.Width / 2) * _lastLayoutBounds.Width),
+            (int)Math.Round(_lastLayoutBounds.Top +
+                            (placement.Y + placement.Height / 2) * _lastLayoutBounds.Height));
+        var display = System.Windows.Forms.Screen.FromPoint(point).Bounds;
+        return Math.Clamp(
+            Math.Min(display.Width / 1920d, display.Height / 1080d),
+            0.55,
+            1.5);
     }
 }

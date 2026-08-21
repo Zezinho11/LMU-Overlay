@@ -27,22 +27,32 @@ The first strategy box is the deterministic `FULL PUSH` baseline:
   sample is available.
 
 The second box is an independent `FUEL SAVE` alternative. It searches for a
-lower per-lap fuel/energy target, capped at 15% saving. Removing a stop is the
+lower per-lap fuel/energy target, capped at 15% saving internally. Removing a stop is the
 highest-value result, but is not required: a valid go-long plan may retain the
 same stop count while moving its pit laps and reducing later fills. It may
 never contain more stops than Full Push. The box reports whether it removes a
 stop or keeps the same count, plus target consumption, complete pit sequence
-and the corresponding tire plan. It also converts the target into LMU-style
-per-stint instructions: equivalent laps of range to save, how many laps in that
-stint require lift-and-coast, and the consumption target on those save laps.
+and the corresponding tire plan. The driver-facing instruction never exposes
+that internal percentage. It uses the same operational meaning as LMU's MFD:
+each listed stint receives an integer `+1`, `+2` or `+3 LAPS` Save Target,
+and no target may exceed the game's three-lap limit. Stints that do not need
+fuel saving are omitted rather than being given a fictional save-lap count.
 
 Tire recommendations use four independent rolling wear models (FL/FR/RL/RR)
 rather than a single maximum or life percentage. At least three valid samples
 per corner are required before projecting a change. Every planned pit lap is
 listed with `KEEP` or the exact tires to service, such as `L29 FR+RR`, across
-the complete session horizon. This lets asymmetric tracks produce selective
-two-tire changes and lets the prediction adapt as new valid laps replace older
-samples. LMU publishes remaining tire life (near 100% on a new set), so the
+the complete session horizon. Normal dry service changes one complete side and
+alternates left/right at the next stop. Because changing only two tires means
+the other pair necessarily continues, this limits each side to the alternating
+two-stint cycle rather than retaining it for a third stint. It avoids four cold
+tires at once and prices a two-tire service below a four-tire service. Four
+tires are reserved for the safety fallback
+where both sides are already unable to finish the next stint. The selected
+first side follows the measured track/driver wear asymmetry and the prediction
+adapts as new valid laps replace older samples. Changing only one side does not
+reset the modeled age of the other side. LMU publishes remaining tire life
+(near 100% on a new set), so the
 learner measures the valid lap-to-lap decrease while the planner internally
 converts it to consumed wear. The configured wear threshold, available
 allocation and double/triple stint feasibility remain constraints.

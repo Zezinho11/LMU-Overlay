@@ -82,6 +82,15 @@ public partial class ConfigurationWindow
         TimingTextScale.Value = profile.Settings.TimingTextScale;
         InputsTextScale.Value = profile.Settings.InputsTextScale;
         SteeringWheelImagePath.Text = profile.Settings.SteeringWheelImagePath;
+        SteeringWheelRangeDegrees.Text =
+            profile.Settings.SteeringWheelRangeDegrees.ToString("0");
+        UseDirectSteeringInput.IsChecked = profile.Settings.UseDirectSteeringInput;
+        SteeringInputDeviceId.Text = profile.Settings.SteeringInputDeviceId.ToString();
+        var steeringDevices = WindowsSteeringInputReader.EnumerateDevices();
+        SteeringDevicesText.Text = steeringDevices.Count == 0
+            ? "°  (0 = automático; nenhum dispositivo Windows encontrado)"
+            : "°  Dispositivos: " + string.Join(" · ",
+                steeringDevices.Select(device => $"{device.Id}: {device.Name}"));
         LiveStandingsMaximumRows.Value = profile.Settings.LiveStandingsMaximumRows;
         RelativeCarsEachSide.Value = profile.Settings.RelativeCarsEachSide;
         PedalHistory.Value = profile.Settings.PedalHistorySeconds;
@@ -91,6 +100,12 @@ public partial class ConfigurationWindow
         EnableOfficialTimingHttp.IsChecked = profile.Settings.EnableOfficialTimingHttp;
         EnableNativeRendering.IsChecked = profile.Settings.EnableNativeRendering;
         EnableSteamVr.IsChecked = profile.Settings.EnableSteamVr;
+        AllowMultiMonitorPlacement.IsChecked = profile.Settings.AllowMultiMonitorPlacement;
+        EnableRemoteDashboard.IsChecked = profile.Settings.EnableRemoteDashboard;
+        RemoteDashboardPort.Text = profile.Settings.RemoteDashboardPort.ToString();
+        RemoteDashboardAddress.Text = RemoteDashboardServer.DisplayUrl(
+            profile.Settings.RemoteDashboardPort,
+            profile.Settings.RemoteDashboardToken);
         foreach (var item in DensitySelector.Items.OfType<ComboBoxItem>())
         {
             if (string.Equals(

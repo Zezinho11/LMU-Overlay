@@ -37,7 +37,7 @@ public static partial class VrWidgetTextureRenderer
                     canvas.Text(row.ClassPosition.ToString(), 21 * f,
                         row.ClassPosition == 1 ? Color.Gold : style.PrimaryText,
                         new(0, y, 52, rowHeight), true, StringAlignment.Center);
-                    var (brand, brandColor) = Manufacturer(row.VehicleModel);
+                    var (brand, brandColor) = Manufacturer(row.VehicleModel, row.VehicleName);
                     canvas.FillRound(brandColor, 58, y + 8, 72, rowHeight - 16, 4);
                     canvas.Text(brand, 15 * f, Color.White, new(58, y + 8, 72, rowHeight - 16), true, StringAlignment.Center);
                     canvas.Text(row.CarNumber, 18 * f, style.PrimaryText, new(136, y, 60, rowHeight), true, StringAlignment.Center);

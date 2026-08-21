@@ -13,6 +13,7 @@ public sealed class PersistentSectorReferenceTracker
     private SectorReferenceSeed _saved;
     private PersonalBestLap _personalBest;
     private double _personalOptimal;
+    private int _persistenceRevision;
 
     public PersistentSectorReferenceTracker(
         SectorReferenceStore sectorStore,
@@ -64,9 +65,22 @@ public sealed class PersistentSectorReferenceTracker
                 _saved = _sectorStore.Load(_trackName, _vehicleModel);
             }
             _tracker = new SectorReferenceTracker();
+            _persistenceRevision = 0;
         }
 
         var result = _tracker.Update(snapshot, observed, _saved);
+        if (_tracker.PersistenceRevision != _persistenceRevision)
+        {
+            _persistenceRevision = _tracker.PersistenceRevision;
+            var validSectorRecords = _tracker.PersistentReferences;
+            _sectorStore.Save(_trackName, _vehicleModel, validSectorRecords);
+            _saved = _personalBestStore.SaveSectorsIfFaster(
+                _trackName,
+                _driverName,
+                _vehicleModel,
+                validSectorRecords);
+            _personalOptimal = _saved.Optimal;
+        }
         var officialBest = OfficialPersonalBest(playerStanding);
         var isNewPersonalBest = officialBest.IsValid &&
             (!_personalBest.IsValid ||

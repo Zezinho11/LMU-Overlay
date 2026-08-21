@@ -55,12 +55,12 @@ public partial class App
         _overlay.SetNativeDashboardActive(_nativeDashboard?.IsAvailable == true);
         _overlay.SetNativeInputsActive(_nativeInputs?.IsAvailable == true);
         _overlay.SetNativeTimingActive(_nativeTiming?.IsAvailable == true);
-        _officialTimingOptimal?.Update(snapshot);
         _overlay.UpdateFrame(
             _gameBounds.Value,
             snapshot,
             slowUpdate,
-            _officialTimingOptimal?.GetOptimal(snapshot) ?? 0);
+            _officialTimingOptimal?.GetOptimal(snapshot) ?? 0,
+            LatestDirectSteering());
         _lastRenderedSnapshot = snapshot;
         _lastRenderedAt = now;
         if (slowUpdate)

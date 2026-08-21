@@ -725,7 +725,7 @@
                 MouseLeftButtonUp="WidgetMouseLeftButtonUp">
             <Grid>
                 <Viewbox Stretch="Uniform">
-                    <Grid Width="500" Height="418" Background="#F20A0F1A">
+                    <Grid Width="500" Height="456" Background="#F20A0F1A">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="34" />
                             <RowDefinition Height="54" />
@@ -734,7 +734,7 @@
                             <RowDefinition Height="38" />
                             <RowDefinition Height="52" />
                             <RowDefinition Height="80" />
-                            <RowDefinition Height="78" />
+                            <RowDefinition Height="116" />
                             <RowDefinition Height="18" />
                         </Grid.RowDefinitions>
                         <Border Grid.Row="0" Background="#FF1B2441">
@@ -901,24 +901,31 @@
                                 Background="#FF0D1422" BorderBrush="#FF34415A" BorderThickness="1">
                             <Grid>
                                 <Grid.RowDefinitions>
-                                    <RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition />
+                                    <RowDefinition Height="18" />
+                                    <RowDefinition Height="18" />
+                                    <RowDefinition Height="18" />
+                                    <RowDefinition Height="*" />
                                 </Grid.RowDefinitions>
                                 <TextBlock x:Name="FlagScenarioText"
                                            Text="FLAGS · LEARNING"
                                            Foreground="#FF42D3A6" FontFamily="Bahnschrift"
-                                           FontSize="9" FontWeight="Bold" />
+                                           FontSize="9" FontWeight="Bold"
+                                           TextWrapping="Wrap" />
                                 <TextBlock x:Name="FuelSaveLapPlanText" Grid.Row="1"
                                            Text="SAVE TARGET · LEARNING"
                                            Foreground="#FF42D3A6" FontFamily="Bahnschrift"
-                                           FontSize="9" FontWeight="Bold" />
+                                           FontSize="9" FontWeight="Bold"
+                                           TextWrapping="Wrap" />
                                 <TextBlock x:Name="WeatherScenarioText" Grid.Row="2"
                                            Text="PIT · LEARNING"
                                            Foreground="#FF8BC5FF" FontFamily="Bahnschrift"
-                                           FontSize="9" FontWeight="Bold" />
+                                           FontSize="9" FontWeight="Bold"
+                                           TextWrapping="Wrap" />
                                 <TextBlock x:Name="TrafficScenarioText" Grid.Row="3"
                                            Text="TRAFFIC · LEARNING"
                                            Foreground="#FF42D3A6" FontFamily="Bahnschrift"
-                                           FontSize="9" FontWeight="Bold" />
+                                           FontSize="8.5" FontWeight="Bold"
+                                           TextWrapping="Wrap" LineHeight="11" />
                             </Grid>
                         </Border>
                         <TextBlock x:Name="FuelSamplesText" Grid.Row="8"

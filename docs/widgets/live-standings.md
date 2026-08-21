@@ -43,10 +43,13 @@ If a time or interval is unavailable, the widget renders a neutral placeholder
 rather than inventing a value. Car numbers are extracted from explicit
 `#number`, `CAR`, `NO`, `NUM` or standalone number tokens in the official
 vehicle name. Tokens that belong to the vehicle model are excluded, and the
-runtime vehicle ID is never misrepresented as a race number. Manufacturer badges cross-reference each
-scoring row with the official telemetry vehicle model by vehicle ID, then use a
-known three-letter code and brand color. Unknown models render `---` rather than
-misrepresenting a team-name abbreviation as a manufacturer.
+runtime vehicle ID is never misrepresented as a race number. Manufacturer
+badges cross-reference each scoring row with the official telemetry vehicle
+model by vehicle ID, then use a known three-letter code and brand color. During
+a temporary model-metadata gap they also resolve the official scoring vehicle
+name, so `BMW`, `FER`, `AST` and the other known codes remain visible. A
+genuinely unknown model renders `---` rather than misrepresenting a team-name
+abbreviation as a manufacturer.
 
 Virtual Energy and compound names are joined by official vehicle ID from each
 corresponding LMU telemetry block. The same rule applies to the compact P1 row

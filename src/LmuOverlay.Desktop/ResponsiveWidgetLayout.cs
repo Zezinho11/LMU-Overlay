@@ -36,17 +36,20 @@ public static class ResponsiveWidgetLayout
         double canvasWidth,
         double canvasHeight,
         WidgetPlacement placement,
-        WidgetLayoutSpec spec)
+        WidgetLayoutSpec spec,
+        double localDisplayScale = 0)
     {
         if (canvasWidth <= 0 || canvasHeight <= 0)
         {
             return default;
         }
 
-        var displayScale = Math.Clamp(
-            Math.Min(canvasWidth / ReferenceWidth, canvasHeight / ReferenceHeight),
-            0.55,
-            1.5);
+        var displayScale = localDisplayScale > 0
+            ? Math.Clamp(localDisplayScale, 0.55, 1.5)
+            : Math.Clamp(
+                Math.Min(canvasWidth / ReferenceWidth, canvasHeight / ReferenceHeight),
+                0.55,
+                1.5);
         var minimumWidth = Math.Min(canvasWidth, spec.MinimumWidth * displayScale);
         var minimumHeight = Math.Min(canvasHeight, spec.MinimumHeight * displayScale);
 

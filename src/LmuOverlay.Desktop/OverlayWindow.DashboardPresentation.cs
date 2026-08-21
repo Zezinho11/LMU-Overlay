@@ -17,7 +17,7 @@ public partial class OverlayWindow
 {
     private void UpdateShiftLights(double rpmFraction)
     {
-        var activeFraction = Math.Clamp((rpmFraction - 0.65) / 0.35, 0, 1);
+        var activeFraction = Math.Clamp(rpmFraction, 0, 1);
         var activeCount = (int)Math.Ceiling(activeFraction * _shiftLights.Length);
         for (var index = 0; index < _shiftLights.Length; index++)
         {

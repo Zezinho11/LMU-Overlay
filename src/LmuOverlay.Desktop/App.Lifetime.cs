@@ -28,6 +28,9 @@ public partial class App
             _telemetryRuntime.SnapshotPublished -= OnTelemetrySnapshot;
         }
         _telemetryRuntime?.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        _nativeAnalyticsTask?.Wait(TimeSpan.FromSeconds(1));
+        _remoteDashboard?.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        _remoteDashboard = null;
         _nativeDashboard?.Dispose();
         _nativeDashboard = null;
         _nativeInputs?.Dispose();

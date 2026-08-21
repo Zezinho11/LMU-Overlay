@@ -37,12 +37,13 @@ public static partial class VrWidgetTextureRenderer
                 25, style.Attention, new(680, 310, 270, 40), true);
             StrategyBox(canvas, "FULL PUSH", state.PlanSummary, state.PitPlan,
                 $"{state.TirePlan} · FINAL +{state.FinalFuelToAddLiters:0.0}L / NRG {state.FinalVirtualEnergyTargetFraction:P0}", 390, style.Positive);
-            StrategyBoxFourLines(canvas, "FUEL SAVE", state.FuelSavePlan,
+            FuelSaveStrategyBox(canvas, "FUEL SAVE", state.FuelSavePlan,
                 state.FuelSaveLapPlan,
                 state.FuelSaveVirtualEnergyTargetPerLap > 0
-                    ? $"{state.FuelSavePitPlan} · NRG {state.FuelSaveVirtualEnergyTargetPerLap:P1}/LAP"
-                    : state.FuelSavePitPlan,
-                state.FuelSaveTirePlan, 540, style.Information);
+                    ? $"TARGET {state.FuelSaveTargetLitersPerLap:0.00}L/LAP · NRG {state.FuelSaveVirtualEnergyTargetPerLap:P1}/LAP"
+                    : $"TARGET {state.FuelSaveTargetLitersPerLap:0.00}L/LAP",
+                $"PIT {state.FuelSavePitPlan}",
+                $"TIRES {state.FuelSaveTirePlan}", 540, style.Information);
             canvas.Fill(style.Card, 20, 710, 960, 66);
             canvas.Text($"PACE {Lap(state.AveragePaceSeconds)} · TREND {state.PaceTrendSecondsPerLap:+0.00;-0.00;0.00}/LAP · " +
                         $"STOPS {state.EstimatedPitStops} · FINISH {state.FinishProbability:P0} · CONFIDENCE {state.Confidence}",

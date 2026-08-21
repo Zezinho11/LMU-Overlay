@@ -50,7 +50,10 @@ internal sealed partial class DirectCompositionDashboardHost
             (frame.Style ?? NativeOverlayStyle.RedFox).DashboardModuleOrder);
 
         drawing.EndDraw().CheckError();
-        _swapChain!.Present(1, PresentFlags.None).CheckError();
+        // DirectComposition owns final synchronization. Presenting this
+        // producer with an additional VSync made every overlay window block
+        // independently and caused bursty RPM/shift-light updates.
+        _swapChain!.Present(0, PresentFlags.None).CheckError();
     }
 
     private void DrawDashboard(
@@ -201,7 +204,7 @@ internal sealed partial class DirectCompositionDashboardHost
 
     private void DrawShiftLights(ID2D1DeviceContext drawing, double rpmFraction)
     {
-        var active = (int)Math.Ceiling(Math.Clamp((rpmFraction - 0.65) / 0.35, 0, 1) * 12);
+        var active = (int)Math.Ceiling(Math.Clamp(rpmFraction, 0, 1) * 12);
         for (var index = 0; index < 12; index++)
         {
             var brush = index < active
@@ -310,6 +313,7 @@ internal sealed partial class DirectCompositionDashboardHost
         var newestTime = _pedalHistory[newestIndex].Timestamp;
         var oldestTime = newestTime - Stopwatch.Frequency * 4;
         var hasPrevious = false;
+        var stride = Math.Max(1, (int)Math.Ceiling(_pedalCount / width));
         Vector2 previousThrottle = default;
         Vector2 previousBrake = default;
         for (var offset = _pedalCount - 1; offset >= 0; offset--)
@@ -317,6 +321,10 @@ internal sealed partial class DirectCompositionDashboardHost
             var index = (_pedalHead - 1 - offset + _pedalHistory.Length) % _pedalHistory.Length;
             var sample = _pedalHistory[index];
             if (sample.Timestamp < oldestTime)
+            {
+                continue;
+            }
+            if (offset != 0 && offset != _pedalCount - 1 && offset % stride != 0)
             {
                 continue;
             }

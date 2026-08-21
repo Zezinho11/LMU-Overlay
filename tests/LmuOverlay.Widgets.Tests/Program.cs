@@ -3,8 +3,9 @@ using LmuOverlay.Widgets;
 
 Assert(VehicleCatalog.Resolve("BMW M4 GT3").Code == "BMW" &&
        VehicleCatalog.Resolve("Ferrari 296 GT3").Code == "FER" &&
+       VehicleCatalog.Resolve(string.Empty, "BMW M4 GT3 #32").Code == "BMW" &&
        VehicleCatalog.Resolve("Unknown Prototype").Code == "---",
-    "The versioned vehicle catalog must resolve known manufacturers and fail explicitly.");
+    "The versioned vehicle catalog must resolve known manufacturers from model or scoring name and fail explicitly.");
 
 var externalCatalogPath = Path.Combine(Path.GetTempPath(), $"vehicle-catalog-{Guid.NewGuid():N}.json");
 var tireProfilesPath = Path.Combine(Path.GetTempPath(), $"tire-profiles-{Guid.NewGuid():N}.json");
@@ -129,6 +130,87 @@ Assert(TireTemperatureClassifier.Classify(120) == TireTemperatureBand.Critical,
     "Critical tire temperatures must use the critical visual band.");
 Assert(inputs.Throttle == 1 && inputs.Brake == 0, "Pedal inputs must be clamped.");
 Assert(inputs.Steering == 1, "Steering must be clamped.");
+var synchronizedInputs = EssentialWidgetStateFactory.CreateInputs(
+    snapshot with
+    {
+        Player = player with
+        {
+            Steering = 0.3,
+            VisualSteeringWheelRangeDegrees = 540,
+            PhysicalSteeringWheelRangeDegrees = 540,
+        },
+    },
+    directSteeringPosition: 0.18);
+Assert(Math.Abs(synchronizedInputs.SteeringWheelRangeDegrees - 900) < 0.001,
+    "Direct steering must reconcile controller lock with the active LMU car lock.");
+var physicalReferenceInputs = EssentialWidgetStateFactory.CreateInputs(
+    snapshot with
+    {
+        Player = player with
+        {
+            Steering = 0.3,
+            VisualSteeringWheelRangeDegrees = 540,
+            PhysicalSteeringWheelRangeDegrees = 600,
+        },
+    },
+    directSteeringPosition: 0.18);
+Assert(Math.Abs(physicalReferenceInputs.SteeringWheelRangeDegrees - 1000) < 0.001,
+    "The physical LMU range must win over the cockpit visual animation range.");
+
+var bmwShiftLights = new ShiftLightTimingTracker();
+var ferrariShiftLights = new ShiftLightTimingTracker();
+var bmwLightFraction = bmwShiftLights.Update(player with
+{
+    VehicleModel = "BMW M4 GT3",
+    Gear = 3,
+    EngineRpm = 7600,
+    EngineMaximumRpm = 8000,
+    Throttle = 1,
+});
+var ferrariLightFraction = ferrariShiftLights.Update(player with
+{
+    VehicleModel = "Ferrari 296 GT3",
+    Gear = 3,
+    EngineRpm = 7600,
+    EngineMaximumRpm = 8000,
+    Throttle = 1,
+});
+Assert(bmwLightFraction > ferrariLightFraction,
+    "Different vehicle shift profiles must not illuminate at one generic RPM fraction.");
+var adaptiveShiftLights = new ShiftLightTimingTracker();
+_ = adaptiveShiftLights.Update(player with
+{
+    VehicleModel = "Test Car",
+    Gear = 2,
+    EngineRpm = 7200,
+    EngineMaximumRpm = 8000,
+    Throttle = 1,
+});
+_ = adaptiveShiftLights.Update(player with
+{
+    VehicleModel = "Test Car",
+    Gear = 3,
+    EngineRpm = 6100,
+    EngineMaximumRpm = 8000,
+    Throttle = 1,
+});
+_ = adaptiveShiftLights.Update(player with
+{
+    VehicleModel = "Test Car",
+    Gear = 2,
+    EngineRpm = 6500,
+    EngineMaximumRpm = 8000,
+    Throttle = 1,
+});
+Assert(adaptiveShiftLights.Update(player with
+{
+    VehicleModel = "Test Car",
+    Gear = 2,
+    EngineRpm = 7200,
+    EngineMaximumRpm = 8000,
+    Throttle = 1,
+}) > 0.99,
+    "A clean upshift must refine the light target for that vehicle and gear.");
 
 var standings = new[]
 {
@@ -684,22 +766,27 @@ var sameStopFuelSave = EnduranceStrategyPlanner.CalculateFuelSave(
 Assert(sameStopFuelSave.Available &&
        sameStopFuelSave.Strategy.Stops <= sameStopFuelSaveBase.Stops,
     "Fuel Save must remain available as a go-long plan when it cannot remove a stop.");
-Assert(fuelSavePlan.PitPlan.Contains("TARGET", StringComparison.Ordinal) &&
+Assert(!fuelSavePlan.PitPlan.Contains("=>", StringComparison.Ordinal) &&
        fuelSavePlan.TirePlan.Length > 0,
-    "Fuel-save guidance must include both the per-lap target and its tire plan.");
-Assert(fuelSavePlan.StintInstructions.Count == fuelSavePlan.Strategy.Stints &&
+    "Fuel-save guidance must keep the pit sequence compact and include its tire plan.");
+Assert(fuelSavePlan.StintInstructions.Count > 0 &&
        fuelSavePlan.StintInstructions.All(item =>
-           item.SaveLaps > 0 && item.SaveLaps <= item.StintLaps) &&
+           item.SaveTargetLaps is >= 1 and <= 3) &&
        fuelSavePlan.SaveLapPlan.Contains("SAVE TARGET", StringComparison.Ordinal),
-    "Fuel Save must state how many laps to save in every planned stint.");
+    "Fuel Save must state LMU-compatible +1/+2/+3 lap targets for the stints that need saving.");
+Assert(!fuelSavePlan.Summary.Contains('%') &&
+       !fuelSavePlan.SaveLapPlan.Contains('('),
+    "Fuel Save presentation must show operational MFD lap targets, not a percentage or save-lap count.");
+Assert(fuelSavePlan.SaveLapPlan.Length < 90,
+    "Repeated Fuel Save stint targets must be grouped so the plan fits the overlay.");
 
 var healthyTires = EnduranceStrategyPlanner.Calculate(finalSplashInput with
 {
     RemainingLaps = 40,
     TireWearFractionPerLap = 0.01,
 });
-Assert(healthyTires.TireChangeLaps.Count == 0,
-    "Tires at 85% life must not trigger an automatic change recommendation.");
+Assert(healthyTires.TireStops.All(stop => stop.Tires.Count is 0 or 2),
+    "Normal endurance service must rotate one tire side instead of heating all four at once.");
 
 var manualCalculator = new FuelStrategyTracker().Update(
     raceSnapshot,
@@ -792,6 +879,27 @@ Assert(asymmetricTires.TireStops.Count > 0 &&
     "The tire plan must name only the individual corners that cannot complete the next stint.");
 Assert(asymmetricTires.TirePlan.Contains("L5 FR+RR", StringComparison.Ordinal),
     "The complete tire schedule must pair the pit lap with the tires to change.");
+var groupedTireService = TireStrategyCalculator.ServiceForUpcomingStints(
+    new LmuWheelWear(0.10, 0.66, 0.10, 0.56),
+    new LmuWheelWear(0.01, 0.01, 0.01, 0.01),
+    nextStintLaps: 5,
+    followingStintLaps: 10,
+    limit: 0.70);
+Assert(groupedTireService.SequenceEqual(new[] { "FR", "RR" }),
+    "Once service is required, the plan must group a same-side tire that otherwise needs service at the next stop.");
+var alternatingTireService = TireStrategyCalculator.ServiceForUpcomingStints(
+    new LmuWheelWear(0.45, 0.20, 0.42, 0.18),
+    new LmuWheelWear(0.01, 0.01, 0.01, 0.01),
+    nextStintLaps: 5,
+    followingStintLaps: 5,
+    limit: 0.70,
+    previousService: new[] { "FR", "RR" });
+Assert(alternatingTireService.SequenceEqual(new[] { "FL", "RL" }),
+    "Successive tire services must alternate sides so neither pair is retained beyond its two-stint cycle.");
+Assert(TireStrategyCalculator.EquivalentAgeLaps(
+        new LmuWheelWear(0, 0.5, 0, 0.4),
+        new LmuWheelWear(0.01, 0.01, 0.01, 0.01)) == 50,
+    "Changing only some corners must not reset the degradation age of every tire.");
 
 var sectorTracker = new SectorReferenceTracker();
 var noSectorReference = default(DashboardSectorTimes);
@@ -1140,7 +1248,17 @@ Assert(SteeringWheelRotation.ResolveRangeDegrees(900, 540) == 900,
 Assert(SteeringWheelRotation.ResolveRangeDegrees(0, 540) == 540,
     "Visual steering range must be used when physical range is unavailable.");
 Assert(SteeringWheelRotation.ResolveDisplayRangeDegrees(540, 900) == 540,
-    "The Inputs overlay must follow LMU's visual wheel range instead of diverging at large angles.");
+    "The Inputs overlay must use the car's visual steering range for LMU's normalized axis.");
+Assert(SteeringWheelRotation.ResolveDisplayRangeDegrees(540, 540) == 540,
+    "Matching LMU visual and physical ranges must remain one-to-one.");
+Assert(SteeringWheelRotation.AngleDegrees(
+        0.5,
+        SteeringWheelRotation.ResolveDisplayRangeDegrees(540, 900)) == 135,
+    "A half-axis input must match the car steering animation instead of the device capability.");
+Assert(SteeringWheelRotation.ResolveDisplayRangeDegrees(540, 900, 720) == 720,
+    "A valid per-profile manual calibration must override unreliable LMU ranges.");
+Assert(SteeringWheelRotation.ResolvePhysicalRangeDegrees(900, 540) == 900,
+    "Raw Windows steering input must use the physical device range.");
 Assert(SteeringWheelRotation.AngleDegrees(0.5, 900) == 225,
     "Normalized steering must map to the real half-range angle.");
 Assert(SteeringWheelRotation.AngleDegrees(-2, 540) == -270,

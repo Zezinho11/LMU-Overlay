@@ -9,7 +9,7 @@ public sealed record LayoutProfile(
     WidgetPlacement SessionFlags,
     WidgetPlacement FuelStrategy)
 {
-    public const int CurrentSchemaVersion = 24;
+    public const int CurrentSchemaVersion = 26;
 
     public WidgetPlacement RaceControl { get; init; } =
         new(0.35, 0.25, 0.26, 0.18, 1, 0.96, true);
@@ -61,6 +61,9 @@ public sealed record OverlayProfileSettings
     public double TimingTextScale { get; init; } = 1;
     public double InputsTextScale { get; init; } = 1;
     public string SteeringWheelImagePath { get; init; } = string.Empty;
+    public double SteeringWheelRangeDegrees { get; init; }
+    public bool UseDirectSteeringInput { get; init; } = true;
+    public int SteeringInputDeviceId { get; init; } = -1;
     public int LiveStandingsMaximumRows { get; init; } = 12;
     public int RelativeCarsEachSide { get; init; } = 4;
     public int RefreshRateHz { get; init; } = 120;
@@ -85,4 +88,15 @@ public sealed record OverlayProfileSettings
     public bool EnableOfficialTimingHttp { get; init; } = true;
     public bool EnableNativeRendering { get; init; } = true;
     public bool EnableSteamVr { get; init; } = true;
+    public bool AllowMultiMonitorPlacement { get; init; }
+    public bool EnableRemoteDashboard { get; init; }
+    public int RemoteDashboardPort { get; init; } = 28765;
+    public string RemoteDashboardToken { get; init; } =
+        RemoteDashboardDefaults.Token;
+}
+
+public static class RemoteDashboardDefaults
+{
+    public static string Token { get; } = NewToken();
+    public static string NewToken() => Guid.NewGuid().ToString("N")[..12];
 }

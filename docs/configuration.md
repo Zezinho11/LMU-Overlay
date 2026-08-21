@@ -46,6 +46,26 @@ versions so incompatible data is rejected instead of partially applied.
 - Choose 6-12 visible Live Standings cars and 2-5 track-relative cars on each
   side of the player.
 - Select a 30-144 Hz UI refresh rate and a 0-50 px magnetic grid.
+- Read the physical steering axis directly from the Windows game-controller
+  interface. Device `-1` selects a recognized wheel automatically; the IDs and
+  names detected by Windows are listed in the configuration window. A manual
+  wheel range (for example 900 degrees) remains available for drivers whose
+  firmware does not publish its physical range correctly. This source is
+  read-only and automatically falls back to LMU telemetry when unavailable.
+  Automatic range also reconciles the controller lock with LMU's active car
+  lock. Set the manual range to `0` to use this synchronization.
+- Enable placement across the complete Windows virtual desktop. After enabling
+  **Permitir outros monitores**, unlock the overlay and drag/resize each widget
+  normally onto another monitor; existing positions are rebased so enabling or
+  disabling the option does not reset the layout.
+- Enable the LAN dashboard and select its TCP port. The configuration window
+  displays the token-protected URL to open on a phone connected to the same
+  private network. The browser consumes latest-only server-sent frames at up to
+  30 Hz, so a slow phone never builds a delayed telemetry queue.
+- Shift lights use each vehicle's live engine maximum RPM and a per-model
+  baseline. Clean full-throttle upshifts refine the target independently for
+  that vehicle and gear. This is necessary because LMU's public shared-memory
+  contract exposes RPM and rev limit, but not the native cockpit lamp bitfield.
 - Configure reserves, manual remaining laps, maximum stint, pit loss, available
   tire sets, tire-wear limit and estimated tire-change time.
 - Export a privacy-safe JSON diagnostic report.
@@ -73,5 +93,7 @@ The built-in visual presets include Minimal, Broadcast and Endurance Pro in
 addition to the race-mode layout presets. Applying a preset changes the active
 profile only; it can then be refined and exported normally.
 
-Normalized placement adapts to resolution and monitor size. Future increments
-may add per-display automatic profile selection and snapping to nearby widgets.
+Normalized placement adapts to resolution and monitor size, including negative
+virtual-desktop coordinates used by a monitor placed to the left or above the
+primary display. Future increments may add per-display automatic profile
+selection and snapping to nearby widgets.
